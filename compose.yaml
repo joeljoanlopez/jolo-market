@@ -22,7 +22,8 @@ services:
     command: ["sh", "-c", "npm ci --no-audit --no-fund && exec npm run dev"]
     volumes:
       - ./frontend:/app
-      # Keeps the container's Linux node_modules apart from the host's.
+      # Keeps the container's Linux node_modules apart from the host's. If frontend/node_modules
+      # does not exist yet, Docker creates it on the host as root: run `npm ci` on the host first.
       - frontend-node-modules:/app/node_modules
 
   php:
