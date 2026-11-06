@@ -1,0 +1,5 @@
+doctrine_migrations:
+    migrations_paths:
+        # Migrations are not autoloaded by Composer, so they use their own namespace.
+        'DoctrineMigrations': '%kernel.project_dir%/migrations'
+    enable_profiler: false
