@@ -1,0 +1,100 @@
+# Hexagonal dependency rules (docs/architecture.md#dependency-rules-enforced-by-deptrac).
+# Never add exceptions or skip_violations here to make a build green: ask instead.
+deptrac:
+  paths:
+    - ./src
+
+  layers:
+    # Any class outside the App namespace that is not part of PHP itself
+    # (Symfony, Doctrine, PSR, any other vendor).
+    - name: Vendor
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^(?!App\\).+'
+          must_not:
+            - type: php_internal
+              value: '.+'
+
+    - name: SharedDomain
+      collectors:
+        - type: classLike
+          value: '^App\\Shared\\Domain\\.*'
+    - name: SharedApplication
+      collectors:
+        - type: classLike
+          value: '^App\\Shared\\Application\\.*'
+    - name: SharedInfrastructure
+      collectors:
+        - type: classLike
+          value: '^App\\Shared\\Infrastructure\\.*'
+
+    - name: CatalogDomain
+      collectors:
+        - type: classLike
+          value: '^App\\Catalog\\Domain\\.*'
+    - name: CatalogApplication
+      collectors:
+        - type: classLike
+          value: '^App\\Catalog\\Application\\.*'
+    - name: CatalogInfrastructure
+      collectors:
+        - type: classLike
+          value: '^App\\Catalog\\Infrastructure\\.*'
+
+    - name: ShoppingListDomain
+      collectors:
+        - type: classLike
+          value: '^App\\ShoppingList\\Domain\\.*'
+    - name: ShoppingListApplication
+      collectors:
+        - type: classLike
+          value: '^App\\ShoppingList\\Application\\.*'
+    - name: ShoppingListInfrastructure
+      collectors:
+        - type: classLike
+          value: '^App\\ShoppingList\\Infrastructure\\.*'
+
+  ruleset:
+    # Domain: Shared\Domain only. No Application, Infrastructure or vendor.
+    SharedDomain: ~
+    CatalogDomain:
+      - SharedDomain
+    ShoppingListDomain:
+      - SharedDomain
+
+    # Application: its own Domain plus the shared kernel. No Infrastructure or vendor.
+    SharedApplication:
+      - SharedDomain
+    CatalogApplication:
+      - CatalogDomain
+      - SharedDomain
+      - SharedApplication
+    ShoppingListApplication:
+      - ShoppingListDomain
+      - SharedDomain
+      - SharedApplication
+
+    # Infrastructure: everything of its own context, the shared kernel and vendor.
+    # Another context is reachable only through its Application layer (query API).
+    SharedInfrastructure:
+      - SharedDomain
+      - SharedApplication
+      - Vendor
+    CatalogInfrastructure:
+      - CatalogDomain
+      - CatalogApplication
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - Vendor
+      - ShoppingListApplication
+    ShoppingListInfrastructure:
+      - ShoppingListDomain
+      - ShoppingListApplication
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - Vendor
+      - CatalogApplication

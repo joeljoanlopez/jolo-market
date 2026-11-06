@@ -15,12 +15,21 @@
         "symfony/yaml": "7.4.*"
     },
     "require-dev": {
+        "deptrac/deptrac": "^4.7",
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan": "^2.3",
+        "phpstan/phpstan-phpunit": "^2.1",
+        "phpstan/phpstan-symfony": "^2.1",
+        "phpunit/phpunit": "^13.4",
+        "symfony/browser-kit": "7.4.*"
     },
     "config": {
         "allow-plugins": {
             "php-http/discovery": true,
             "symfony/flex": true,
-            "symfony/runtime": true
+            "symfony/runtime": true,
+            "phpstan/extension-installer": true
         },
         "bump-after-update": true,
         "platform": {
@@ -58,6 +67,17 @@
         ],
         "post-update-cmd": [
             "@auto-scripts"
+        ],
+        "test": "phpunit",
+        "test:unit": "phpunit --testsuite=Unit",
+        "analyse": "phpstan analyse --no-progress --memory-limit=1G",
+        "deptrac": "deptrac analyse --no-progress",
+        "cs": "php-cs-fixer fix --dry-run --diff",
+        "check": [
+            "@cs",
+            "@analyse",
+            "@deptrac",
+            "@test"
         ]
     },
     "conflict": {
@@ -66,7 +86,16 @@
     "extra": {
         "symfony": {
             "allow-contrib": false,
-            "require": "7.4.*"
+            "require": "7.4.*",
+            "docker": false
         }
+    },
+    "scripts-descriptions": {
+        "test": "Run every PHPUnit suite (Unit, Integration, Functional).",
+        "test:unit": "Run the Unit suite only (no I/O).",
+        "analyse": "Run PHPStan at max level.",
+        "deptrac": "Check hexagonal layer and context dependency rules.",
+        "cs": "Check coding style with PHP-CS-Fixer (dry run).",
+        "check": "Run cs, analyse, deptrac and test."
     }
 }
