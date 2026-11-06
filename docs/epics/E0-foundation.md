@@ -41,8 +41,8 @@
 - [x] E0.16 Set up react-i18next with `es.json`. A test fails if a component renders a missing key.
 - [x] E0.17 Add TanStack Query and React Router providers, plus an app shell with a placeholder home route.
 - [ ] E0.18 Add a base `httpClient` wrapper in `shared/http` that maps problem+json to typed errors (tested with MSW).
-- [ ] E0.19 Set up Tailwind CSS with the Vite plugin. Define the theme tokens (colors including one per supermarket, spacing, typography, radii). Add `class-variance-authority`, `tailwind-merge` and a `cn()` helper, plus `prettier-plugin-tailwindcss` for class ordering.
-- [ ] E0.19b Add a first set of atoms with `cva` variants (`Button`, `Input`, `Text`), with component tests.
+- [x] E0.19 Set up Tailwind CSS with the Vite plugin. Define the theme tokens (colors including one per supermarket, spacing, typography, radii). Add `class-variance-authority`, `tailwind-merge` and a `cn()` helper, plus `prettier-plugin-tailwindcss` for class ordering.
+- [x] E0.19b Add a first set of atoms with `cva` variants (`Button`, `Input`, `Text`), with component tests.
 - [x] E0.20 Add npm scripts: `test`, `typecheck`, `lint`, `format:check`, `check` (runs all of them).
 - [ ] E0.21 Set up Playwright with one smoke test (home page loads) against the Docker stack.
 
