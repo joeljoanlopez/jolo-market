@@ -22,7 +22,7 @@
 
 - [x] E0.3 Bootstrap a Symfony skeleton (API only, no Twig) inside `backend/`.
 - [x] E0.4 Create `src/Shared/{Domain,Application,Infrastructure}` and empty `Catalog` and `ShoppingList` contexts. Configure DI autowiring per context.
-- [ ] E0.5 Add the `Shared\Domain` kernel through TDD: `Money` (integer cents, EUR, add, multiply, compare), `Uuid` value object, `Clock` port. Add `SystemClock` and `FixedClock` (tests).
+- [x] E0.5 Add the `Shared\Domain` kernel through TDD: `Money` (integer cents, EUR, add, multiply, compare), `Uuid` value object, `Clock` port. Add `SystemClock` and `FixedClock` (tests).
 - [x] E0.6 Configure PHPUnit with `Unit`, `Integration` and `Functional` suites and a dedicated MySQL test database.
 - [x] E0.7 Configure PHPStan at max level, PHP-CS-Fixer and **Deptrac** with the layer and context rules from the architecture doc.
   - Proved locally: a `Catalog\Domain` class importing `Symfony\Component\HttpFoundation\Request` makes `composer deptrac` report 1 violation and exit 1; PHP built-ins (`\DateTimeImmutable`, `\InvalidArgumentException`) are allowed. The probe was reverted.
