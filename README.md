@@ -73,14 +73,20 @@ Requirements: Docker with Docker Compose v2.
    echo "APP_SECRET=$(openssl rand -hex 32)" >> backend/.env.local
    ```
 
-3. Start the stack and install the backend dependencies (the `frontend` service installs its own with `npm ci` on start):
+3. If you will also run the frontend tooling on your machine (checks, Playwright), install its dependencies **before** the first `docker compose up`. Otherwise Docker creates `frontend/node_modules` as root (it is the mount point of the container's own `node_modules` volume) and `npm ci` fails with `EACCES` (fix it with `sudo chown -R "$(id -u):$(id -g)" frontend/node_modules`):
+
+   ```sh
+   (cd frontend && npm ci)
+   ```
+
+4. Start the stack and install the backend dependencies (the `frontend` service installs its own with `npm ci` on start):
 
    ```sh
    docker compose up -d --build
    docker compose exec php composer install
    ```
 
-4. Check that it works:
+5. Check that it works:
 
    ```sh
    curl http://localhost:8080/api/health   # {"status":"ok"}
