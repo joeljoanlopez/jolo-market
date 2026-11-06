@@ -14,20 +14,22 @@
 
 ### Repository
 
-- [ ] E0.1 Create the folder layout (`backend/`, `frontend/`, `docker/`, `compose.yaml`, `.env.example`) and `.editorconfig`. `.gitignore` already exists: extend it if the bootstrapped tools need more entries.
+- [x] E0.1 Create the folder layout (`backend/`, `frontend/`, `docker/`, `compose.yaml`, `.env.example`) and `.editorconfig`. `.gitignore` already exists: extend it if the bootstrapped tools need more entries.
 - [ ] E0.2 Pin versions (PHP, Symfony LTS, MySQL LTS, Node LTS, React, Vite) to the latest stable patch and record them in the architecture doc.
+  - Backend part done: PHP 8.5.12, Symfony 7.4 LTS, MySQL 9.7.4 LTS, nginx 1.30.6 (see the architecture doc, PD-16). Pending: Node LTS, React and Vite, with the frontend bootstrap.
 
 ### Backend
 
-- [ ] E0.3 Bootstrap a Symfony skeleton (API only, no Twig) inside `backend/`.
-- [ ] E0.4 Create `src/Shared/{Domain,Application,Infrastructure}` and empty `Catalog` and `ShoppingList` contexts. Configure DI autowiring per context.
+- [x] E0.3 Bootstrap a Symfony skeleton (API only, no Twig) inside `backend/`.
+- [x] E0.4 Create `src/Shared/{Domain,Application,Infrastructure}` and empty `Catalog` and `ShoppingList` contexts. Configure DI autowiring per context.
 - [ ] E0.5 Add the `Shared\Domain` kernel through TDD: `Money` (integer cents, EUR, add, multiply, compare), `Uuid` value object, `Clock` port. Add `SystemClock` and `FixedClock` (tests).
-- [ ] E0.6 Configure PHPUnit with `Unit`, `Integration` and `Functional` suites and a dedicated MySQL test database.
-- [ ] E0.7 Configure PHPStan at max level, PHP-CS-Fixer and **Deptrac** with the layer and context rules from the architecture doc.
-- [ ] E0.8 Set up Doctrine DBAL and Migrations, with `utf8mb4_0900_ai_ci` as the default collation.
-- [ ] E0.9 Add the `GET /api/health` endpoint (functional test first). It checks DB connectivity.
+- [x] E0.6 Configure PHPUnit with `Unit`, `Integration` and `Functional` suites and a dedicated MySQL test database.
+- [x] E0.7 Configure PHPStan at max level, PHP-CS-Fixer and **Deptrac** with the layer and context rules from the architecture doc.
+  - Proved locally: a `Catalog\Domain` class importing `Symfony\Component\HttpFoundation\Request` makes `composer deptrac` report 1 violation and exit 1; PHP built-ins (`\DateTimeImmutable`, `\InvalidArgumentException`) are allowed. The probe was reverted.
+- [x] E0.8 Set up Doctrine DBAL and Migrations, with `utf8mb4_0900_ai_ci` as the default collation.
+- [x] E0.9 Add the `GET /api/health` endpoint (functional test first). It checks DB connectivity.
 - [ ] E0.10 Add an RFC 9457 problem+json error listener, tested with a sample domain exception.
-- [ ] E0.11 Add Composer scripts: `test`, `test:unit`, `analyse`, `deptrac`, `cs`, `check` (runs all of them).
+- [x] E0.11 Add Composer scripts: `test`, `test:unit`, `analyse`, `deptrac`, `cs`, `check` (runs all of them).
 
 ### Frontend
 
@@ -46,6 +48,8 @@
 ### Docker & CI
 
 - [ ] E0.22 Write dev `compose.yaml` with nginx, php-fpm (with Xdebug optional), mysql and the frontend dev server.
+  - Done for nginx, php-fpm (optional Xdebug) and mysql. Pending: the frontend dev server service, with the frontend bootstrap.
 - [ ] E0.23 Environment files (PD-11): create the root `.env.example` for Compose with every variable documented, and keep the Symfony `backend/.env` committed with non-secret defaults only. Document `cp .env.example .env` and the use of `backend/.env.local` for secrets in the README.
+  - Root `.env.example` is committed and documented, and the README documents `cp .env.example .env` and `backend/.env.local`. Pending: review and commit `backend/.env`, `backend/.env.dev` and `backend/.env.test` with non-secret defaults only.
 - [ ] E0.24 Set up a CI pipeline that runs backend `check` and frontend `check` on every push.
 - [ ] E0.25 Update `AGENTS.md` §6 with the real commands and the README with dev setup instructions.
