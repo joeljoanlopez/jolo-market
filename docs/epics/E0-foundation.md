@@ -44,12 +44,11 @@
 - [x] E0.19 Set up Tailwind CSS with the Vite plugin. Define the theme tokens (colors including one per supermarket, spacing, typography, radii). Add `class-variance-authority`, `tailwind-merge` and a `cn()` helper, plus `prettier-plugin-tailwindcss` for class ordering.
 - [x] E0.19b Add a first set of atoms with `cva` variants (`Button`, `Input`, `Text`), with component tests.
 - [x] E0.20 Add npm scripts: `test`, `typecheck`, `lint`, `format:check`, `check` (runs all of them).
-- [ ] E0.21 Set up Playwright with one smoke test (home page loads) against the Docker stack.
+- [x] E0.21 Set up Playwright with one smoke test (home page loads) against the Docker stack.
 
 ### Docker & CI
 
-- [ ] E0.22 Write dev `compose.yaml` with nginx, php-fpm (with Xdebug optional), mysql and the frontend dev server.
-  - Done for nginx, php-fpm (optional Xdebug) and mysql. Pending: the frontend dev server service, with the frontend bootstrap.
+- [x] E0.22 Write dev `compose.yaml` with nginx, php-fpm (with Xdebug optional), mysql and the frontend dev server.
 - [x] E0.23 Environment files (PD-11): create the root `.env.example` for Compose with every variable documented, and keep the Symfony `backend/.env` committed with non-secret defaults only. Document `cp .env.example .env` and the use of `backend/.env.local` for secrets in the README.
 - [ ] E0.24 Set up a CI pipeline that runs backend `check` and frontend `check` on every push.
 - [ ] E0.25 Update `AGENTS.md` §6 with the real commands and the README with dev setup instructions.

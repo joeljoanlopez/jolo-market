@@ -52,7 +52,7 @@ jolo-market/
 ├── docs/
 │   ├── architecture.md # Stack, architecture, domain model, decisions
 │   └── epics/          # Epics with task checklists (progress tracking)
-├── compose.yaml        # Development stack: nginx, php-fpm, mysql
+├── compose.yaml        # Development stack: nginx, php-fpm, mysql, Vite dev server
 ├── .env.example        # Documented Compose variables (copy to .env)
 └── AGENTS.md           # Rules for AI assistants (TDD, hexagonal, English code)
 ```
@@ -73,7 +73,7 @@ Requirements: Docker with Docker Compose v2.
    echo "APP_SECRET=$(openssl rand -hex 32)" >> backend/.env.local
    ```
 
-3. Start the stack and install the backend dependencies:
+3. Start the stack and install the backend dependencies (the `frontend` service installs its own with `npm ci` on start):
 
    ```sh
    docker compose up -d --build
@@ -85,6 +85,8 @@ Requirements: Docker with Docker Compose v2.
    ```sh
    curl http://localhost:8080/api/health   # {"status":"ok"}
    ```
+
+   Open <http://localhost:8080> for the SPA. nginx serves `/api` from Symfony and everything else from the Vite dev server, with hot reload.
 
 The MySQL test database (`<MYSQL_DATABASE>_test`) is created automatically the first time the `mysql-data` volume is initialised. If you created the volume before that script existed, recreate it with `docker compose down -v`.
 
@@ -113,7 +115,16 @@ The frontend needs Node 26 (see `frontend/.nvmrc`). Install the dependencies onc
 | `format:check` | Prettier in check mode (`format` rewrites the files) |
 | `check` | All of the above. It must pass before a task is done |
 
-`npm run dev` starts the Vite dev server on port 5173.
+`npm run dev` starts the Vite dev server on port 5173 (the Docker stack already runs it).
+
+### End-to-end tests
+
+Playwright runs against the running Docker stack. Install the browser once, then run the suite from `frontend/`:
+
+```sh
+npx playwright install chromium
+npm run test:e2e        # E2E_BASE_URL defaults to http://localhost:8080
+```
 
 ### Xdebug
 
