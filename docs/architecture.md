@@ -80,7 +80,14 @@ Pinned in [E0](epics/E0-foundation.md) to the latest stable patch, checked on 20
 | Composer | 2.11.1 | `docker/php/Dockerfile` | [getcomposer.org](https://getcomposer.org/download/) |
 | Xdebug (optional) | 3.5.3 | `docker/php/Dockerfile` | [pecl.php.net](https://pecl.php.net/package/xdebug) |
 
-Backend libraries (PHPUnit, PHPStan, PHP-CS-Fixer, Deptrac, Doctrine) are locked in `backend/composer.lock`. Frontend versions (Node LTS, React, Vite) are pinned when the frontend is bootstrapped.
+| Node.js | 26.13.0 LTS ("Lithium") | `frontend/.nvmrc`, `engines` in `frontend/package.json` | [nodejs.org](https://nodejs.org/en/about/previous-releases) |
+| React | 19.3.1 | `frontend/package.json` (exact) | [npm](https://www.npmjs.com/package/react) |
+| Vite | 8.3.6 | `frontend/package.json` (exact) | [npm](https://www.npmjs.com/package/vite) |
+| TypeScript | 6.0.3 | `frontend/package.json` (exact) | [npm](https://www.npmjs.com/package/typescript) |
+
+Backend libraries (PHPUnit, PHPStan, PHP-CS-Fixer, Deptrac, Doctrine) are locked in `backend/composer.lock`. Every frontend dependency is pinned to an exact version in `frontend/package.json` and locked in `frontend/package-lock.json`.
+
+TypeScript stays on **6.0** on purpose: TypeScript 7 (7.0.2 at pin time) is not yet supported by `typescript-eslint` (it requires `<6.1`). Move to 7 when `typescript-eslint` supports it.
 
 ## Architecture style
 
@@ -303,6 +310,10 @@ frontend/src/
 
 Rules:
 
+- The `@/` import alias points to `src/`.
+- Boundaries inside a feature are enforced by ESLint (`no-restricted-imports` in `frontend/eslint.config.js`): `domain/` cannot import React, `application/`, `infrastructure/` or `ui/`; `application/` cannot import `infrastructure/` or `ui/`.
+- i18n: `createI18n()` in `shared/i18n` loads `locales/es.json`. In tests, any key rendered without a translation fails the test (`src/test/setup.ts`).
+- Test helpers live in `src/test/`: `renderWithProviders`, the MSW `server` (unhandled requests fail the test) and the test i18n instance.
 - Presentational components get data through props, render it, and emit events. They never fetch.
 - Containers hold state and data access. They contain no styling logic and no Tailwind classes beyond layout.
 - Styling uses Tailwind utilities **with theme tokens only**. Arbitrary values (`w-[13px]`, `text-[#3a3a3a]`) are not allowed. If a value is missing, add it to the theme.
@@ -512,6 +523,7 @@ Symfony variables (`backend/.env`, committed with non-secret defaults; real valu
 
 - nginx routes only `/api` to Symfony (`backend/public/index.php`). Any other path answers `404` until the frontend exists.
 - MySQL starts with `utf8mb4` / `utf8mb4_0900_ai_ci`, and DBAL creates tables with the same default. On the first start of the `mysql-data` volume, `docker/mysql/init/01-create-test-database.sh` creates `<MYSQL_DATABASE>_test`. The test environment uses that database (Doctrine `dbname_suffix: _test`).
+- Frontend quality commands run in `frontend/` with Node 26 (`npm ci` first): `npm run test`, `npm run typecheck`, `npm run lint`, `npm run format:check` and `npm run check` (runs all of them).
 - Backend quality commands run inside the php container: `composer test`, `composer test:unit`, `composer analyse`, `composer deptrac`, `composer cs` and `composer check` (runs all of them).
 
 ## Open questions

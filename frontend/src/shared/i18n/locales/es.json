@@ -1,0 +1,14 @@
+{
+  "app": {
+    "name": "jolo-market"
+  },
+  "home": {
+    "title": "Compara precios y comparte tu lista de la compra",
+    "description": "Muy pronto podrás buscar productos en varios supermercados y ver cuál sale más barato."
+  },
+  "notFound": {
+    "title": "Página no encontrada",
+    "description": "La página que buscas no existe.",
+    "backHome": "Volver al inicio"
+  }
+}

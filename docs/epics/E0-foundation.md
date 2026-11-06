@@ -15,8 +15,8 @@
 ### Repository
 
 - [x] E0.1 Create the folder layout (`backend/`, `frontend/`, `docker/`, `compose.yaml`, `.env.example`) and `.editorconfig`. `.gitignore` already exists: extend it if the bootstrapped tools need more entries.
-- [ ] E0.2 Pin versions (PHP, Symfony LTS, MySQL LTS, Node LTS, React, Vite) to the latest stable patch and record them in the architecture doc.
-  - Backend part done: PHP 8.5.12, Symfony 7.4 LTS, MySQL 9.7.4 LTS, nginx 1.30.6 (see the architecture doc, PD-16). Pending: Node LTS, React and Vite, with the frontend bootstrap.
+- [x] E0.2 Pin versions (PHP, Symfony LTS, MySQL LTS, Node LTS, React, Vite) to the latest stable patch and record them in the architecture doc.
+  - Backend: PHP 8.5.12, Symfony 7.4 LTS, MySQL 9.7.4 LTS, nginx 1.30.6 (PD-16). Frontend: Node 26.13.0 LTS, React 19.3.1, Vite 8.3.6, TypeScript 6.0.3 (TypeScript 7 is not supported by typescript-eslint yet).
 
 ### Backend
 
@@ -33,16 +33,17 @@
 
 ### Frontend
 
-- [ ] E0.12 Bootstrap Vite + React + TypeScript (strict) inside `frontend/`.
-- [ ] E0.13 Create the folder layout: `features/`, `shared/ui/{atoms,molecules,organisms,templates}`, `shared/i18n`, `shared/http`, `app/`.
-- [ ] E0.14 Configure Vitest, Testing Library and MSW, and write the first component test.
-- [ ] E0.15 Configure ESLint (including import-boundary rules: `domain/` cannot import React or `infrastructure/`) and Prettier.
-- [ ] E0.16 Set up react-i18next with `es.json`. A test fails if a component renders a missing key.
-- [ ] E0.17 Add TanStack Query and React Router providers, plus an app shell with a placeholder home route.
+- [x] E0.12 Bootstrap Vite + React + TypeScript (strict) inside `frontend/`.
+- [x] E0.13 Create the folder layout: `features/`, `shared/ui/{atoms,molecules,organisms,templates}`, `shared/i18n`, `shared/http`, `app/`.
+- [x] E0.14 Configure Vitest, Testing Library and MSW, and write the first component test.
+- [x] E0.15 Configure ESLint (including import-boundary rules: `domain/` cannot import React or `infrastructure/`) and Prettier.
+  - Proved locally: a probe `features/probe/domain` file importing `react` and `../infrastructure/api` (and an `application` file importing `infrastructure`) made `npm run lint` report 4 errors. The probe was reverted.
+- [x] E0.16 Set up react-i18next with `es.json`. A test fails if a component renders a missing key.
+- [x] E0.17 Add TanStack Query and React Router providers, plus an app shell with a placeholder home route.
 - [ ] E0.18 Add a base `httpClient` wrapper in `shared/http` that maps problem+json to typed errors (tested with MSW).
 - [ ] E0.19 Set up Tailwind CSS with the Vite plugin. Define the theme tokens (colors including one per supermarket, spacing, typography, radii). Add `class-variance-authority`, `tailwind-merge` and a `cn()` helper, plus `prettier-plugin-tailwindcss` for class ordering.
 - [ ] E0.19b Add a first set of atoms with `cva` variants (`Button`, `Input`, `Text`), with component tests.
-- [ ] E0.20 Add npm scripts: `test`, `typecheck`, `lint`, `format:check`, `check` (runs all of them).
+- [x] E0.20 Add npm scripts: `test`, `typecheck`, `lint`, `format:check`, `check` (runs all of them).
 - [ ] E0.21 Set up Playwright with one smoke test (home page loads) against the Docker stack.
 
 ### Docker & CI

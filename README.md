@@ -2,7 +2,7 @@
 
 Self-hosted supermarket price comparator and shared shopping list, inspired by [quefalta.es](https://quefalta.es/).
 
-> **Status:** foundation in progress (backend skeleton and Docker dev stack). Progress is tracked in [`docs/epics/`](docs/epics/README.md).
+> **Status:** foundation in progress (backend skeleton, frontend skeleton and Docker dev stack). Progress is tracked in [`docs/epics/`](docs/epics/README.md).
 
 ## What it does
 
@@ -47,7 +47,7 @@ Rationale for each choice and exact pinned versions: [`docs/architecture.md`](do
 ```text
 jolo-market/
 ├── backend/            # Symfony API, hexagonal architecture
-├── frontend/           # React + TypeScript SPA (placeholder, not bootstrapped yet)
+├── frontend/           # React + TypeScript SPA (Vite)
 ├── docker/             # Dockerfiles and nginx config
 ├── docs/
 │   ├── architecture.md # Stack, architecture, domain model, decisions
@@ -100,6 +100,20 @@ Run them inside the php container (`docker compose exec php composer <script>`):
 | `deptrac` | Hexagonal layer and context rules |
 | `cs` | PHP-CS-Fixer in dry-run mode |
 | `check` | All of the above. It must pass before a task is done |
+
+### Frontend checks
+
+The frontend needs Node 26 (see `frontend/.nvmrc`). Install the dependencies once with `npm ci` inside `frontend/`, then run:
+
+| Script | What it runs |
+| --- | --- |
+| `test` | Vitest (component and unit tests, MSW for HTTP) |
+| `typecheck` | `tsc --noEmit` in strict mode |
+| `lint` | ESLint, including the feature boundary rules |
+| `format:check` | Prettier in check mode (`format` rewrites the files) |
+| `check` | All of the above. It must pass before a task is done |
+
+`npm run dev` starts the Vite dev server on port 5173.
 
 ### Xdebug
 
