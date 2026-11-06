@@ -41,15 +41,17 @@ Decisions confirmed by the product owner. Changing any of them requires asking f
 | PD-13 | **TOTP two-factor authentication is mandatory for every user.** It is configured on first access, right after setting the password, and nobody can use the app without it. |
 | PD-14 | Roles: `ADMIN` (manages users and can also use the app) and `USER`. **First admin (setup):** while the platform has **no users**, the SPA redirects to `/setup`. Using it requires a **one-time setup code** that the backend prints in the container logs at startup, so whoever reaches the URL first cannot take over the instance. After entering the code and a username, the normal activation flow follows (password + TOTP). Once a user exists, `/setup` and its endpoints answer `404` forever. |
 | PD-15 | Admin areas are **hidden in the frontend** for non-admins: no links, menu entries or buttons are rendered. If a non-admin still reaches an admin route or endpoint, the API answers `404` and the SPA shows the not-found page. The real protection is the backend; hiding is UX only. |
+| PD-16 | Backend runtime: **PHP 8.5** and **MySQL 9.7 LTS** (newest stable PHP branch and newest MySQL LTS when E0 started). *(Supersedes the original PHP 8.4 and MySQL 8.4 LTS choice.)* |
+| PD-17 | `GET /api/health` is **public**. It answers `200 {"status":"ok"}` when the database answers, and `503 {"status":"unavailable"}` when it does not. No internal details are exposed. |
 
 ## Stack
 
 | Concern | Choice | Why |
 | --- | --- | --- |
-| Language (BE) | PHP 8.4 | Required stack. Readonly classes, enums and property hooks fit value objects well. |
+| Language (BE) | PHP 8.5 | Required stack. Readonly classes, enums and property hooks fit value objects well. Newest stable branch (PD-16). |
 | Framework (BE) | **Symfony 7.4 LTS** | Long-term support. Its DI container and components (Console, Scheduler, HttpClient, Messenger) can stay strictly in the infrastructure layer. It is less intrusive than Laravel for hexagonal design: no Active Record and no facades. |
 | Persistence | **Doctrine DBAL** + Doctrine Migrations | Explicit SQL in infrastructure repositories keeps domain classes free of ORM metadata. Bulk inserts for price snapshots are simple and fast. |
-| Database | **MySQL 8.4 LTS** | Required stack. `utf8mb4_0900_ai_ci` gives accent- and case-insensitive search. FULLTEXT indexes cover product search. |
+| Database | **MySQL 9.7 LTS** | Required stack (PD-16). `utf8mb4_0900_ai_ci` gives accent- and case-insensitive search. FULLTEXT indexes cover product search. |
 | HTTP client | Symfony HttpClient | Used only inside supermarket adapters. Supports retries and mock responses for tests. |
 | Scheduling | Symfony Scheduler + Console command | Ingestion runs as a console command, triggered by a scheduler worker container. |
 | Authentication | Symfony Security (session cookie) + `scheb/2fa-bundle` with `scheb/2fa-totp` + Symfony RateLimiter | The SPA and the API share the same origin (nginx), so an `HttpOnly`, `Secure`, `SameSite=Lax` session cookie is simpler and safer than JWT in browser storage. `scheb/2fa` is the standard Symfony TOTP integration. Login and 2FA attempts are rate-limited. Passwords are hashed with Symfony's `auto` hasher (bcrypt/argon2id). All of this lives in Infrastructure; the Identity domain is framework-free. |
@@ -63,7 +65,20 @@ Decisions confirmed by the product owner. Changing any of them requires asking f
 | FE quality | Vitest, Testing Library, MSW, Playwright, ESLint, Prettier, `tsc --noEmit` | |
 | Runtime | Docker Compose: `nginx`, `php` (fpm), `scheduler`, `mysql` | Single-host self-hosting. |
 
-Versions are pinned during [E0](epics/E0-foundation.md). Check the latest stable patch releases at that point.
+### Pinned versions
+
+Pinned in [E0](epics/E0-foundation.md) to the latest stable patch, checked on 2026-11-06 against the official sources. Bump them deliberately, one at a time, with the full `composer check` passing.
+
+| Component | Version | Pinned in | Source |
+| --- | --- | --- | --- |
+| PHP (fpm, Alpine image) | 8.5.12 | `docker/php/Dockerfile`, `config.platform` in `backend/composer.json` | [php.net](https://www.php.net/supported-versions.php) |
+| Symfony | 7.4 LTS (7.4.23 at pin time) | `extra.symfony.require: 7.4.*` in `backend/composer.json`; exact patch in `composer.lock` | [symfony.com/releases](https://symfony.com/releases) |
+| MySQL | 9.7.4 LTS | `compose.yaml`, `server_version` in `backend/config/packages/doctrine.yaml` | [dev.mysql.com](https://dev.mysql.com/doc/relnotes/mysql/9.7/en/) |
+| nginx | 1.30.6 (stable) | `compose.yaml` | [nginx.org](https://nginx.org/en/download.html) |
+| Composer | 2.11.1 | `docker/php/Dockerfile` | [getcomposer.org](https://getcomposer.org/download/) |
+| Xdebug (optional) | 3.5.3 | `docker/php/Dockerfile` | [pecl.php.net](https://pecl.php.net/package/xdebug) |
+
+Backend libraries (PHPUnit, PHPStan, PHP-CS-Fixer, Deptrac, Doctrine) are locked in `backend/composer.lock`. Frontend versions (Node LTS, React, Vite) are pinned when the frontend is bootstrapped.
 
 ## Architecture style
 
@@ -352,6 +367,7 @@ All routes require a fully authenticated session (login + 2FA) except those mark
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| GET | `/api/health` | **public** — `200 {"status":"ok"}` when the database answers, `503 {"status":"unavailable"}` otherwise (PD-17) |
 | POST | `/api/auth/login` | **public** — username + password → 2FA-pending session |
 | POST | `/api/auth/2fa` | 2FA-pending session — TOTP code → authenticated |
 | POST | `/api/auth/logout` | End session |
@@ -423,7 +439,7 @@ flowchart LR
         nginx["<b>nginx</b><br/>Serves the SPA build (static files)<br/>Proxies /api → php"]
         php["<b>php</b><br/>php-fpm + Symfony API"]
         scheduler["<b>scheduler</b><br/>Same image as php<br/>messenger:consume scheduler_default"]
-        mysql[("<b>mysql</b><br/>MySQL 8.4")]
+        mysql[("<b>mysql</b><br/>MySQL 9.7")]
         volume[("mysql-data<br/>named volume")]
     end
 
@@ -448,6 +464,31 @@ flowchart LR
 In development, a `frontend` service runs the Vite dev server (HMR), and nginx proxies to it instead of serving the static build.
 
 Configuration lives in `.env` (`APP_SECRET`, `DATABASE_URL`, `INSTANCE_POSTAL_CODE`, `ENABLED_SUPERMARKETS`, `INGESTION_SCHEDULE`, `TOTP_ENCRYPTION_KEY`, `ACTIVATION_LINK_TTL`). TLS is terminated by the user's own reverse proxy.
+
+### Development environment
+
+`compose.yaml` runs `nginx`, `php` (php-fpm, built from `docker/php/Dockerfile`) and `mysql`. The `frontend` service is added when the frontend is bootstrapped.
+
+| Variable (root `.env`, documented in `.env.example`) | Purpose |
+| --- | --- |
+| `HTTP_PORT` | Host port published by nginx (default `8080`). |
+| `MYSQL_ROOT_PASSWORD`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD` | MySQL credentials. Compose builds the backend `DATABASE_URL` from them, which overrides the default in `backend/.env`. |
+| `UID`, `GID` | Host user and group the php container runs as, so files written through the bind mount stay yours. |
+| `INSTALL_XDEBUG` | Build argument: `true` installs Xdebug in the php image (rebuild after changing it). |
+| `XDEBUG_MODE` | Xdebug mode at runtime (`off`, `debug`, `coverage`, `develop`). |
+
+Symfony variables (`backend/.env`, committed with non-secret defaults; real values in `backend/.env.local`):
+
+| Variable | Purpose |
+| --- | --- |
+| `APP_ENV` | Symfony environment (`dev` by default). |
+| `APP_SECRET` | Framework secret. Empty in `backend/.env`; public placeholders in `.env.dev` and `.env.test`. Required in production. |
+| `DATABASE_URL` | MySQL connection. Overridden by Compose in development. |
+| `DEFAULT_URI` | Base URI for absolute URLs generated outside HTTP requests (console commands). Default `http://localhost`. |
+
+- nginx routes only `/api` to Symfony (`backend/public/index.php`). Any other path answers `404` until the frontend exists.
+- MySQL starts with `utf8mb4` / `utf8mb4_0900_ai_ci`, and DBAL creates tables with the same default. On the first start of the `mysql-data` volume, `docker/mysql/init/01-create-test-database.sh` creates `<MYSQL_DATABASE>_test`. The test environment uses that database (Doctrine `dbname_suffix: _test`).
+- Backend quality commands run inside the php container: `composer test`, `composer test:unit`, `composer analyse`, `composer deptrac`, `composer cs` and `composer check` (runs all of them).
 
 ## Open questions
 

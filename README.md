@@ -2,7 +2,7 @@
 
 Self-hosted supermarket price comparator and shared shopping list, inspired by [quefalta.es](https://quefalta.es/).
 
-> **Status:** design phase. No code has been written yet. Progress is tracked in [`docs/epics/`](docs/epics/README.md).
+> **Status:** foundation in progress (backend skeleton and Docker dev stack). Progress is tracked in [`docs/epics/`](docs/epics/README.md).
 
 ## What it does
 
@@ -33,33 +33,79 @@ The full list of product decisions lives in [`docs/architecture.md`](docs/archit
 
 | Layer | Technology |
 | --- | --- |
-| Backend | PHP 8.4 + Symfony 7.4 LTS (API only) |
-| Persistence | MySQL 8.4 LTS, Doctrine DBAL + Doctrine Migrations |
+| Backend | PHP 8.5 + Symfony 7.4 LTS (API only) |
+| Persistence | MySQL 9.7 LTS, Doctrine DBAL + Doctrine Migrations |
 | Frontend | TypeScript + React + Vite (SPA), Tailwind CSS |
 | Backend tests | PHPUnit, PHPStan (max level), Deptrac, PHP-CS-Fixer |
 | Frontend tests | Vitest, Testing Library, MSW, Playwright |
 | Runtime | Docker Compose (nginx, php-fpm, mysql, scheduler) |
 
-Rationale for each choice: [`docs/architecture.md`](docs/architecture.md#stack).
+Rationale for each choice and exact pinned versions: [`docs/architecture.md`](docs/architecture.md#stack).
 
-## Repository layout (planned)
+## Repository layout
 
 ```text
 jolo-market/
 ├── backend/            # Symfony API, hexagonal architecture
-├── frontend/           # React + TypeScript SPA
+├── frontend/           # React + TypeScript SPA (placeholder, not bootstrapped yet)
 ├── docker/             # Dockerfiles and nginx config
 ├── docs/
 │   ├── architecture.md # Stack, architecture, domain model, decisions
 │   └── epics/          # Epics with task checklists (progress tracking)
-├── compose.yaml
-├── .env.example
+├── compose.yaml        # Development stack: nginx, php-fpm, mysql
+├── .env.example        # Documented Compose variables (copy to .env)
 └── AGENTS.md           # Rules for AI assistants (TDD, hexagonal, English code)
 ```
 
-## Getting started
+## Getting started (development)
 
-Not available yet. Setup instructions will be written as part of [E0 — Foundation](docs/epics/E0-foundation.md) and [E6 — Self-hosting](docs/epics/E6-self-hosting.md).
+Requirements: Docker with Docker Compose v2.
+
+1. Create your Compose environment file and review the values (passwords, `UID`/`GID`, port):
+
+   ```sh
+   cp .env.example .env
+   ```
+
+2. Backend secrets and machine-specific overrides go in `backend/.env.local`, which git ignores. `backend/.env` is committed and holds only non-secret defaults. Outside `dev` and `test`, set at least `APP_SECRET` there, for example:
+
+   ```sh
+   echo "APP_SECRET=$(openssl rand -hex 32)" >> backend/.env.local
+   ```
+
+3. Start the stack and install the backend dependencies:
+
+   ```sh
+   docker compose up -d --build
+   docker compose exec php composer install
+   ```
+
+4. Check that it works:
+
+   ```sh
+   curl http://localhost:8080/api/health   # {"status":"ok"}
+   ```
+
+The MySQL test database (`<MYSQL_DATABASE>_test`) is created automatically the first time the `mysql-data` volume is initialised. If you created the volume before that script existed, recreate it with `docker compose down -v`.
+
+### Backend checks
+
+Run them inside the php container (`docker compose exec php composer <script>`):
+
+| Script | What it runs |
+| --- | --- |
+| `test` | Every PHPUnit suite (Unit, Integration, Functional) |
+| `test:unit` | Unit suite only, no I/O |
+| `analyse` | PHPStan at max level |
+| `deptrac` | Hexagonal layer and context rules |
+| `cs` | PHP-CS-Fixer in dry-run mode |
+| `check` | All of the above. It must pass before a task is done |
+
+### Xdebug
+
+Set `INSTALL_XDEBUG=true` in `.env`, rebuild with `docker compose build php`, then choose the mode with `XDEBUG_MODE` (for example `debug` or `coverage`) and run `docker compose up -d`.
+
+Production setup is covered by [E6 — Self-hosting](docs/epics/E6-self-hosting.md).
 
 ## Development principles
 

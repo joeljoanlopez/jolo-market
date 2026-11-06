@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=../vendor/symfony/dependency-injection/Loader/schema/services.schema.json
+
+# Each bounded context registers its own services in config/services/<context>.yaml.
+imports:
+    - { resource: 'services/' }
+
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true

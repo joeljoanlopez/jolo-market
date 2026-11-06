@@ -1,0 +1,16 @@
+# DBAL only: no ORM, domain classes carry no persistence metadata.
+doctrine:
+    dbal:
+        url: '%env(resolve:DATABASE_URL)%'
+        server_version: '9.7.4'
+        charset: utf8mb4
+        default_table_options:
+            charset: utf8mb4
+            collation: utf8mb4_0900_ai_ci
+        profiling_collect_backtrace: '%kernel.debug%'
+
+when@test:
+    doctrine:
+        dbal:
+            # "TEST_TOKEN" is set by ParaTest when tests run in parallel.
+            dbname_suffix: '_test%env(default::TEST_TOKEN)%'
