@@ -50,5 +50,6 @@
 
 - [x] E0.22 Write dev `compose.yaml` with nginx, php-fpm (with Xdebug optional), mysql and the frontend dev server.
 - [x] E0.23 Environment files (PD-11): create the root `.env.example` for Compose with every variable documented, and keep the Symfony `backend/.env` committed with non-secret defaults only. Document `cp .env.example .env` and the use of `backend/.env.local` for secrets in the README.
-- [ ] E0.24 Set up a CI pipeline that runs backend `check` and frontend `check` on every push.
-- [ ] E0.25 Update `AGENTS.md` §6 with the real commands and the README with dev setup instructions.
+- [x] E0.24 Set up a CI pipeline that runs backend `check` and frontend `check` on every push.
+  - It also runs the Playwright smoke test against the full Docker stack, after both checks pass.
+- [x] E0.25 Update `AGENTS.md` §6 with the real commands and the README with dev setup instructions.
