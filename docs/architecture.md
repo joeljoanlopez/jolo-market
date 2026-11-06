@@ -45,6 +45,7 @@ Decisions confirmed by the product owner. Changing any of them requires asking f
 | PD-17 | `GET /api/health` is **public**. It answers `200 {"status":"ok"}` when the database answers, and `503 {"status":"unavailable"}` when it does not. No internal details are exposed. |
 | PD-18 | API errors map a small **domain error hierarchy** in `Shared\Domain\Exception` to HTTP: `NotFound` → `404`, `InvalidArgument` → `422`, `Conflict` → `409`. Symfony HTTP errors keep their status (unknown route `404`, wrong method `405`). Any other exception is a `500` with a generic title and **no internal details**, in every environment. Only domain errors include their message as `detail`. |
 | PD-19 | `Money` is **never negative**: amounts and multipliers below zero are rejected. A signed amount (price differences, discounts) needs its own decision. |
+| PD-20 | Each supermarket has its own color token, **inspired by its brand** so the chain is recognisable at a glance: Mercadona green, Bonpreu i Esclat orange, Aldi navy. The rest of the UI uses a neutral palette with one primary color. |
 
 ## Stack
 
@@ -318,6 +319,12 @@ Rules:
 - Containers hold state and data access. They contain no styling logic and no Tailwind classes beyond layout.
 - Styling uses Tailwind utilities **with theme tokens only**. Arbitrary values (`w-[13px]`, `text-[#3a3a3a]`) are not allowed. If a value is missing, add it to the theme.
 - Repeated class combinations become an atom or molecule (with `cva` variants), never a copy-pasted string. `@apply` is avoided.
+- Theme tokens live in `@theme` in `frontend/src/index.css`. Tailwind's default colors, font sizes, fonts and radii are **reset**, so only these tokens exist:
+  - Colors: `background`, `surface`, `border`, `foreground`, `muted`, `primary` (+ `-hover`, `-foreground`), `danger` (+ `-hover`, `-foreground`), `focus`, and one per supermarket with a readable foreground: `mercadona`, `bonpreu`, `aldi` (+ `-foreground`) (PD-20).
+  - Font sizes `xs`–`3xl`, font `sans`, radii `sm`, `md`, `lg`, `full`, and the spacing unit `--spacing: 0.25rem`.
+  - A new token must also be added to `cn()` (`shared/ui/lib/cn.ts`) so `tailwind-merge` resolves conflicts correctly.
+- `cn()` joins classes and lets the last conflicting utility win. Atoms (`shared/ui/atoms`): `Button` (`variant`: primary, secondary, danger; `size`: sm, md), `Input` (`invalid`), `Text` (`as`, `size`, `tone`, `weight`).
+- `prettier-plugin-tailwindcss` sorts classes, also inside `cva()` and `cn()`.
 - `domain/` has no React imports.
 - API DTOs are mapped to domain types in `infrastructure/`. Components never see raw API shapes.
 - All user-visible strings go through `t()`. No hard-coded Spanish in components.
