@@ -2,7 +2,7 @@
 
 Self-hosted supermarket price comparator and shared shopping list, inspired by [quefalta.es](https://quefalta.es/).
 
-> **Status:** foundation in progress (backend skeleton, frontend skeleton and Docker dev stack). Progress is tracked in [`docs/epics/`](docs/epics/README.md).
+> **Status:** foundation done (backend and frontend skeletons, Docker dev stack and CI). Feature work starts with E1. Progress is tracked in [`docs/epics/`](docs/epics/README.md).
 
 ## What it does
 
@@ -131,6 +131,16 @@ npm run test:e2e        # E2E_BASE_URL defaults to http://localhost:8080
 Set `INSTALL_XDEBUG=true` in `.env`, rebuild with `docker compose build php`, then choose the mode with `XDEBUG_MODE` (for example `debug` or `coverage`) and run `docker compose up -d`.
 
 Production setup is covered by [E6 — Self-hosting](docs/epics/E6-self-hosting.md).
+
+### Continuous integration
+
+GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push:
+
+| Job | What it runs |
+| --- | --- |
+| Backend check | `composer check` inside the same php and mysql containers as development |
+| Frontend check | `npm run check` on the Node version of `frontend/.nvmrc` |
+| End-to-end | The whole Docker stack plus `npm run test:e2e`, after both checks pass |
 
 ## Development principles
 

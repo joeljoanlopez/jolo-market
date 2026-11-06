@@ -74,13 +74,23 @@ Full description: [`docs/architecture.md`](docs/architecture.md#architecture-sty
 A task is done when all of these hold:
 
 - [ ] Tests were written first and cover every acceptance criterion of the task.
-- [ ] Backend: PHPUnit, PHPStan (max level), Deptrac and PHP-CS-Fixer pass.
-- [ ] Frontend: Vitest, `tsc --noEmit`, ESLint and Prettier pass. Playwright passes if the journey is affected.
+- [ ] Backend: PHPUnit, PHPStan (max level), Deptrac and PHP-CS-Fixer pass: `docker compose exec php composer check`.
+- [ ] Frontend: Vitest, `tsc --noEmit`, ESLint and Prettier pass: `npm run check` in `frontend/`. Playwright passes if the journey is affected: `npm run test:e2e` in `frontend/`, with the Docker stack running.
 - [ ] No hard-coded user-facing strings. Spanish copy lives in translation files.
 - [ ] Docs updated (architecture, README, epic checkbox).
 - [ ] No unanswered assumptions. Every new decision has been confirmed and recorded.
 
-Exact commands are defined in [E0](docs/epics/E0-foundation.md) and listed here once they exist.
+Commands:
+
+| Scope | Command | Runs |
+| --- | --- | --- |
+| Backend | `docker compose exec php composer check` | PHP-CS-Fixer (dry run), PHPStan max, Deptrac, every PHPUnit suite |
+| Backend | `docker compose exec php composer test:unit` | Unit suite only (fast TDD loop) |
+| Frontend | `npm run check` (in `frontend/`) | Prettier check, ESLint, `tsc --noEmit`, Vitest |
+| Frontend | `npm run test:watch` (in `frontend/`) | Vitest in watch mode (fast TDD loop) |
+| End to end | `npm run test:e2e` (in `frontend/`) | Playwright against the running Docker stack |
+
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the backend check, the frontend check and the end-to-end suite on every push. A red CI means the task is not done.
 
 ## 7. Git
 
