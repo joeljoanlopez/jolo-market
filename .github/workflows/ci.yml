@@ -83,6 +83,19 @@ jobs:
           echo "UID=$(id -u)" >> .env
           echo "GID=$(id -g)" >> .env
 
+      # Before the stack starts: otherwise Docker creates frontend/node_modules as root.
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Playwright
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
       - uses: actions/cache@v6
         with:
           path: backend/var/composer-cache
@@ -96,18 +109,6 @@ jobs:
           docker compose up -d
         env:
           COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ secrets.GITHUB_TOKEN }}"}}'
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: frontend/.nvmrc
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install Playwright
-        working-directory: frontend
-        run: |
-          npm ci --no-audit --no-fund
-          npx playwright install --with-deps chromium
 
       - name: Wait for the SPA and the API
         run: |
