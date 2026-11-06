@@ -49,7 +49,6 @@
 
 - [ ] E0.22 Write dev `compose.yaml` with nginx, php-fpm (with Xdebug optional), mysql and the frontend dev server.
   - Done for nginx, php-fpm (optional Xdebug) and mysql. Pending: the frontend dev server service, with the frontend bootstrap.
-- [ ] E0.23 Environment files (PD-11): create the root `.env.example` for Compose with every variable documented, and keep the Symfony `backend/.env` committed with non-secret defaults only. Document `cp .env.example .env` and the use of `backend/.env.local` for secrets in the README.
-  - Root `.env.example` is committed and documented, and the README documents `cp .env.example .env` and `backend/.env.local`. Pending: review and commit `backend/.env`, `backend/.env.dev` and `backend/.env.test` with non-secret defaults only.
+- [x] E0.23 Environment files (PD-11): create the root `.env.example` for Compose with every variable documented, and keep the Symfony `backend/.env` committed with non-secret defaults only. Document `cp .env.example .env` and the use of `backend/.env.local` for secrets in the README.
 - [ ] E0.24 Set up a CI pipeline that runs backend `check` and frontend `check` on every push.
 - [ ] E0.25 Update `AGENTS.md` §6 with the real commands and the README with dev setup instructions.

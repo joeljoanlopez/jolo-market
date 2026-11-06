@@ -477,6 +477,15 @@ Configuration lives in `.env` (`APP_SECRET`, `DATABASE_URL`, `INSTANCE_POSTAL_CO
 | `INSTALL_XDEBUG` | Build argument: `true` installs Xdebug in the php image (rebuild after changing it). |
 | `XDEBUG_MODE` | Xdebug mode at runtime (`off`, `debug`, `coverage`, `develop`). |
 
+Symfony variables (`backend/.env`, committed with non-secret defaults; real values in `backend/.env.local`):
+
+| Variable | Purpose |
+| --- | --- |
+| `APP_ENV` | Symfony environment (`dev` by default). |
+| `APP_SECRET` | Framework secret. Empty in `backend/.env`; public placeholders in `.env.dev` and `.env.test`. Required in production. |
+| `DATABASE_URL` | MySQL connection. Overridden by Compose in development. |
+| `DEFAULT_URI` | Base URI for absolute URLs generated outside HTTP requests (console commands). Default `http://localhost`. |
+
 - nginx routes only `/api` to Symfony (`backend/public/index.php`). Any other path answers `404` until the frontend exists.
 - MySQL starts with `utf8mb4` / `utf8mb4_0900_ai_ci`, and DBAL creates tables with the same default. On the first start of the `mysql-data` volume, `docker/mysql/init/01-create-test-database.sh` creates `<MYSQL_DATABASE>_test`. The test environment uses that database (Doctrine `dbname_suffix: _test`).
 - Backend quality commands run inside the php container: `composer test`, `composer test:unit`, `composer analyse`, `composer deptrac`, `composer cs` and `composer check` (runs all of them).
