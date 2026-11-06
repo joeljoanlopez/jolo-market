@@ -325,6 +325,7 @@ Rules:
   - A new token must also be added to `cn()` (`shared/ui/lib/cn.ts`) so `tailwind-merge` resolves conflicts correctly.
 - `cn()` joins classes and lets the last conflicting utility win. Atoms (`shared/ui/atoms`): `Button` (`variant`: primary, secondary, danger; `size`: sm, md), `Input` (`invalid`), `Text` (`as`, `size`, `tone`, `weight`).
 - `prettier-plugin-tailwindcss` sorts classes, also inside `cva()` and `cn()`.
+- HTTP: `createHttpClient({ baseUrl })` in `shared/http` wraps `fetch` (`get`, `post`, `patch`, `delete`). It sends same-origin cookies and JSON, resolves with the parsed body as `unknown` (`undefined` when empty) and rejects with typed errors: `UnauthorizedError` (401), `NotFoundError` (404), `ConflictError` (409), `ValidationError` (422), `ServerError` (5xx), `HttpError` for any other status, and `NetworkError` when no response arrives. Each error carries the parsed `problem` (falling back to the status when the body is not problem+json). Feature `infrastructure/` maps the `unknown` body to domain types; the UI picks Spanish copy from the error class, never from `problem.detail`.
 - `domain/` has no React imports.
 - API DTOs are mapped to domain types in `infrastructure/`. Components never see raw API shapes.
 - All user-visible strings go through `t()`. No hard-coded Spanish in components.
