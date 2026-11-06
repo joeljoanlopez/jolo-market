@@ -28,7 +28,7 @@
   - Proved locally: a `Catalog\Domain` class importing `Symfony\Component\HttpFoundation\Request` makes `composer deptrac` report 1 violation and exit 1; PHP built-ins (`\DateTimeImmutable`, `\InvalidArgumentException`) are allowed. The probe was reverted.
 - [x] E0.8 Set up Doctrine DBAL and Migrations, with `utf8mb4_0900_ai_ci` as the default collation.
 - [x] E0.9 Add the `GET /api/health` endpoint (functional test first). It checks DB connectivity.
-- [ ] E0.10 Add an RFC 9457 problem+json error listener, tested with a sample domain exception.
+- [x] E0.10 Add an RFC 9457 problem+json error listener, tested with a sample domain exception.
 - [x] E0.11 Add Composer scripts: `test`, `test:unit`, `analyse`, `deptrac`, `cs`, `check` (runs all of them).
 
 ### Frontend
