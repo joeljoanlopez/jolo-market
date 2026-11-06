@@ -28,8 +28,18 @@ jobs:
       - name: Start php and mysql
         run: docker compose up -d --build --wait php mysql
 
+      # Composer's download cache lives in the git-ignored backend/var/ so the runner can keep it.
+      - uses: actions/cache@v6
+        with:
+          path: backend/var/composer-cache
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-
+
+      # Authenticated downloads: anonymous api.github.com zipball requests are throttled.
       - name: Install dependencies
-        run: docker compose exec -T php composer install --no-interaction --no-progress
+        run: docker compose exec -T -e COMPOSER_AUTH -e COMPOSER_CACHE_DIR=/var/www/backend/var/composer-cache php composer install --no-interaction --no-progress
+        env:
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ secrets.GITHUB_TOKEN }}"}}'
 
       - name: composer check
         run: docker compose exec -T php composer check
@@ -73,11 +83,19 @@ jobs:
           echo "UID=$(id -u)" >> .env
           echo "GID=$(id -g)" >> .env
 
+      - uses: actions/cache@v6
+        with:
+          path: backend/var/composer-cache
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-
+
       - name: Start the stack
         run: |
           docker compose up -d --build --wait php mysql
-          docker compose exec -T php composer install --no-interaction --no-progress
+          docker compose exec -T -e COMPOSER_AUTH -e COMPOSER_CACHE_DIR=/var/www/backend/var/composer-cache php composer install --no-interaction --no-progress
           docker compose up -d
+        env:
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ secrets.GITHUB_TOKEN }}"}}'
 
       - uses: actions/setup-node@v7
         with:
