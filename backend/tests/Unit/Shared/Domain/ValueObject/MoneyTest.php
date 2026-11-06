@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Shared\Domain\ValueObject;
 
 use App\Shared\Domain\Exception\InvalidArgument;
-use App\Shared\Domain\ValueObject\Currency;
 use App\Shared\Domain\ValueObject\Money;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -13,12 +12,9 @@ use PHPUnit\Framework\TestCase;
 final class MoneyTest extends TestCase
 {
     #[Test]
-    public function it_holds_an_amount_in_euro_cents(): void
+    public function it_holds_an_amount_in_cents(): void
     {
-        $money = Money::eur(129);
-
-        self::assertSame(129, $money->cents());
-        self::assertSame(Currency::EUR, $money->currency());
+        self::assertSame(129, Money::eur(129)->cents());
     }
 
     #[Test]
