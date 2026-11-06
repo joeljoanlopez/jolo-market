@@ -43,6 +43,7 @@ Decisions confirmed by the product owner. Changing any of them requires asking f
 | PD-15 | Admin areas are **hidden in the frontend** for non-admins: no links, menu entries or buttons are rendered. If a non-admin still reaches an admin route or endpoint, the API answers `404` and the SPA shows the not-found page. The real protection is the backend; hiding is UX only. |
 | PD-16 | Backend runtime: **PHP 8.5** and **MySQL 9.7 LTS** (newest stable PHP branch and newest MySQL LTS when E0 started). *(Supersedes the original PHP 8.4 and MySQL 8.4 LTS choice.)* |
 | PD-17 | `GET /api/health` is **public**. It answers `200 {"status":"ok"}` when the database answers, and `503 {"status":"unavailable"}` when it does not. No internal details are exposed. |
+| PD-18 | API errors map a small **domain error hierarchy** in `Shared\Domain\Exception` to HTTP: `NotFound` → `404`, `InvalidArgument` → `422`, `Conflict` → `409`. Symfony HTTP errors keep their status (unknown route `404`, wrong method `405`). Any other exception is a `500` with a generic title and **no internal details**, in every environment. Only domain errors include their message as `detail`. |
 
 ## Stack
 
@@ -361,7 +362,21 @@ sequenceDiagram
 
 ## HTTP API (draft)
 
-JSON over REST under `/api`. Errors use RFC 9457 `application/problem+json`.
+JSON over REST under `/api`. Errors use RFC 9457 `application/problem+json` (PD-18):
+
+```json
+{ "type": "about:blank", "title": "Not Found", "status": 404, "detail": "Shopping list \"42\" was not found." }
+```
+
+| Thrown | Status | `detail` |
+| --- | --- | --- |
+| `Shared\Domain\Exception\NotFound` subclass | `404` | Exception message |
+| `Shared\Domain\Exception\InvalidArgument` subclass | `422` | Exception message |
+| `Shared\Domain\Exception\Conflict` subclass | `409` | Exception message |
+| Symfony `HttpException` (unknown route, wrong method...) | Its own status | — |
+| Anything else | `500` | — (never exposed; the error is logged) |
+
+Domain error messages are English and must be safe to show (no secrets, no internals). The SPA shows Spanish copy chosen from `status`, never the raw `detail`. The rendering lives in `Shared\Infrastructure\Http\ProblemJsonExceptionListener`.
 
 All routes require a fully authenticated session (login + 2FA) except those marked **public**.
 
