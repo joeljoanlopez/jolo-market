@@ -167,18 +167,16 @@ Product (aggregate root)
   id: ProductId                internal UUID
   supermarketId: SupermarketId
   externalId: ExternalProductId  id in the supermarket's store (unique per supermarket)
-  name: ProductName
-  brand: ?string
-  category: ?CategoryPath
-  imageUrl: ?Url
-  packaging: Packaging         quantity + unit (e.g. 1 L, 500 g, 6 units)
+  details: ProductDetails       name: ProductName, brand: ?string, category: ?CategoryPath, imageUrl: ?Url
+  packaging: ?Packaging        quantity + unit (e.g. 1 L, 500 g, 6 units); null when unknown
   currentPrice: Money
-  unitPrice: UnitPrice         Money per UnitOfMeasure (kg | L | unit)
+  unitPrice: ?UnitPrice        Money per UnitOfMeasure (kg | L | unit), always derived from
+                               currentPrice and packaging; null when packaging is unknown
   lastSeenAt: DateTimeImmutable
   available: bool              false when the last ingestion did not return it
 
-PriceSnapshot (entity, append-only)
-  productId, price: Money, unitPrice: UnitPrice, capturedAt
+PriceSnapshot (append-only, created by Product::captureSnapshot)
+  productId, price: Money, unitPrice: ?UnitPrice, capturedAt
 ```
 
 Value objects: `Money` (cents and currency, EUR only for now), `Packaging`, `UnitOfMeasure` (enum: `KILOGRAM`, `LITRE`, `UNIT`), `UnitPrice`, `ProductName`, `ExternalProductId`, `PostalCode`.
@@ -194,9 +192,11 @@ How it is modelled:
 
 **Ports (Catalog Domain):**
 
-- `ProductRepository`: save, find by `(supermarketId, externalId)`, search.
-- `PriceSnapshotRepository`: append, history by product.
-- `SupermarketCatalogSource`: `fetchCatalog(PostalCode): iterable<SourceProduct>`. **One adapter per chain.**
+- `ProductRepository`: `save` (insert or update), `findBySupermarketAndExternalId`, `findAvailableNotSeenSince(supermarketId, instant)` (the products a run did not see). Search is added in E2.
+- `PriceSnapshotRepository`: `append(...snapshots)` in one batch. History by product is added in E5.
+- `SupermarketCatalogSource`: `supermarketId()` and `fetchCatalog(PostalCode): iterable<SourceProduct>`. **One adapter per chain.** `SourceProduct` carries plain values (external id, name, price in cents, packaging text, brand, category segments, image URL), so one malformed product does not stop a source from returning the rest of its catalog.
+
+`Product` is created with `register` and changed only through `updateFromSource` (new details, price and packaging; makes it available again) and `markUnavailable`. `Supermarket` is created with `create(id, name, enabled)`; `SupermarketId` is a slug of lowercase letters, digits and inner hyphens.
 
 ### Identity
 

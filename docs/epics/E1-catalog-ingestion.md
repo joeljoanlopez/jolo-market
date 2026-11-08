@@ -20,9 +20,9 @@ Related decisions: PD-1, PD-5, PD-6. Open questions: OQ-1, OQ-5, OQ-6.
 - [x] E1.2 Add a `PackagingParser` domain service that parses source strings ("1 L", "6 x 1 L", "500 g", "pack 12 ud") into `Packaging` or an explicit "unknown". Build it from a table-driven test of real samples.
   - Note: the first version covers the formats in this task plus common variants. Each spike (E1.13, E1.15, E1.17) adds the real samples it finds to the table.
 - [x] E1.3 Add the `UnitPrice` value object and a `UnitPriceCalculator` (price ÷ normalized quantity, rounded to whole cents, with the rounding rule documented in the test).
-- [ ] E1.4 Add the `Supermarket` aggregate and the `SupermarketId` (slug) value object.
-- [ ] E1.5 Add the `Product` aggregate: `register`, `updateFromSource` (price, name, packaging changes) and `markUnavailable`.
-- [ ] E1.6 Add the `PriceSnapshot` entity and the ports `ProductRepository`, `PriceSnapshotRepository` and `SupermarketCatalogSource` (returning `SourceProduct` DTOs).
+- [x] E1.4 Add the `Supermarket` aggregate and the `SupermarketId` (slug) value object.
+- [x] E1.5 Add the `Product` aggregate: `register`, `updateFromSource` (price, name, packaging changes) and `markUnavailable`.
+- [x] E1.6 Add the `PriceSnapshot` entity and the ports `ProductRepository`, `PriceSnapshotRepository` and `SupermarketCatalogSource` (returning `SourceProduct` DTOs).
 - [x] E1.7 Add the `PostalCode` value object (Spanish 5-digit format).
 
 ### Application
