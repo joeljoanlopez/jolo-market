@@ -13,6 +13,7 @@ use App\Catalog\Domain\Port\SupermarketCatalogSource;
 use App\Catalog\Domain\Service\PackagingParser;
 use App\Catalog\Domain\ValueObject\CategoryPath;
 use App\Catalog\Domain\ValueObject\ExternalProductId;
+use App\Catalog\Domain\ValueObject\PostalCode;
 use App\Catalog\Domain\ValueObject\ProductDetails;
 use App\Catalog\Domain\ValueObject\ProductId;
 use App\Catalog\Domain\ValueObject\ProductName;
@@ -49,6 +50,7 @@ final readonly class IngestCatalogHandler
         private IngestionRunRepository $runs,
         private Clock $clock,
         private IdGenerator $ids,
+        private IngestionLogger $logger,
     ) {
         $bySlug = [];
         foreach ($sources as $source) {
@@ -58,11 +60,16 @@ final readonly class IngestCatalogHandler
         $this->packagingParser = new PackagingParser();
     }
 
+    /**
+     * @throws InvalidArgument when the configuration or the requested supermarket is invalid; nothing is ingested then
+     */
     public function __invoke(IngestCatalogCommand $command): IngestCatalogResult
     {
+        $postalCode = $this->settings->postalCode();
+
         $summaries = [];
         foreach ($this->supermarketsToIngest($command) as $supermarketId) {
-            $summaries[] = IngestionRunSummary::of($this->ingest($supermarketId));
+            $summaries[] = IngestionRunSummary::of($this->ingest($supermarketId, $postalCode));
         }
 
         return new IngestCatalogResult($summaries);
@@ -88,7 +95,7 @@ final readonly class IngestCatalogHandler
         throw SupermarketNotEnabled::named($command->supermarket);
     }
 
-    private function ingest(SupermarketId $supermarketId): IngestionRun
+    private function ingest(SupermarketId $supermarketId, PostalCode $postalCode): IngestionRun
     {
         $run = IngestionRun::start($this->ids->generate(), $supermarketId, $this->clock->now());
         $this->runs->save($run);
@@ -101,7 +108,7 @@ final readonly class IngestCatalogHandler
             $source = $this->sources[$supermarketId->value()]
                 ?? throw new \RuntimeException(\sprintf('No catalog source is configured for supermarket "%s".', $supermarketId->value()));
 
-            foreach ($source->fetchCatalog($this->settings->postalCode()) as $sourceProduct) {
+            foreach ($source->fetchCatalog($postalCode) as $sourceProduct) {
                 // A product listed in several categories is still one product: see it once.
                 if (isset($seen[$sourceProduct->externalId])) {
                     continue;
@@ -109,8 +116,9 @@ final readonly class IngestCatalogHandler
 
                 try {
                     $product = $this->upsert($supermarketId, $sourceProduct);
-                } catch (InvalidArgument) {
+                } catch (InvalidArgument $malformed) {
                     ++$skipped;
+                    $this->logger->productSkipped($supermarketId, $sourceProduct->externalId, $malformed->getMessage());
                     continue;
                 }
 
@@ -135,6 +143,7 @@ final readonly class IngestCatalogHandler
         }
 
         $this->runs->save($run);
+        $this->logger->runFinished($run);
 
         return $run;
     }

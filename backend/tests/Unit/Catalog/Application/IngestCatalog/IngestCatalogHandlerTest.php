@@ -19,6 +19,7 @@ use App\Shared\Domain\Exception\InvalidArgument;
 use App\Shared\Domain\ValueObject\Money;
 use App\Tests\Support\Catalog\FakeCatalogSource;
 use App\Tests\Support\Catalog\FixedIngestionSettings;
+use App\Tests\Support\Catalog\InMemoryIngestionLogger;
 use App\Tests\Support\Catalog\InMemoryIngestionRunRepository;
 use App\Tests\Support\Catalog\InMemoryPriceSnapshotRepository;
 use App\Tests\Support\Catalog\InMemoryProductRepository;
@@ -34,6 +35,7 @@ final class IngestCatalogHandlerTest extends TestCase
     private InMemoryIngestionRunRepository $runs;
     private FixedClock $clock;
     private SequentialIdGenerator $ids;
+    private InMemoryIngestionLogger $logger;
 
     protected function setUp(): void
     {
@@ -42,6 +44,7 @@ final class IngestCatalogHandlerTest extends TestCase
         $this->runs = new InMemoryIngestionRunRepository();
         $this->clock = FixedClock::at('2026-11-08 06:00:00');
         $this->ids = new SequentialIdGenerator();
+        $this->logger = new InMemoryIngestionLogger();
     }
 
     #[Test]
@@ -204,6 +207,33 @@ final class IngestCatalogHandlerTest extends TestCase
     }
 
     #[Test]
+    public function it_logs_why_a_malformed_product_was_skipped(): void
+    {
+        $this->ingest([new FakeCatalogSource('mercadona', [
+            new SourceProduct('7', 'Arroz', -5, '500 g'),
+            new SourceProduct('8', 'Leche', 99, '1 L'),
+        ])]);
+
+        self::assertSame(
+            [['supermarket' => 'mercadona', 'externalId' => '7', 'reason' => 'A money amount cannot be negative, got -5 cents.']],
+            $this->logger->skippedProducts,
+        );
+    }
+
+    #[Test]
+    public function it_logs_every_finished_run(): void
+    {
+        $this->ingest([
+            FakeCatalogSource::failing('mercadona', new \RuntimeException('Boom.')),
+            new FakeCatalogSource('aldi', [new SourceProduct('1', 'Pan', 50, '1 ud')]),
+        ]);
+
+        self::assertCount(2, $this->logger->finishedRuns);
+        self::assertSame(IngestionRunStatus::FAILED, $this->logger->finishedRuns[0]->status());
+        self::assertSame(IngestionRunStatus::SUCCEEDED, $this->logger->finishedRuns[1]->status());
+    }
+
+    #[Test]
     public function it_records_a_successful_run_with_its_counts_and_times(): void
     {
         $source = new class($this->clock) implements SupermarketCatalogSource {
@@ -357,6 +387,17 @@ final class IngestCatalogHandlerTest extends TestCase
     }
 
     #[Test]
+    public function it_rejects_an_invalid_instance_postal_code_before_ingesting_anything(): void
+    {
+        try {
+            $this->ingest([new FakeCatalogSource('mercadona', [new SourceProduct('1', 'Leche', 99, '1 L')])], postalCode: '');
+            self::fail('An invalid postal code was accepted.');
+        } catch (InvalidArgument) {
+            self::assertSame([], $this->runs->all());
+        }
+    }
+
+    #[Test]
     public function it_records_a_failed_run_for_an_enabled_supermarket_without_a_source(): void
     {
         $this->ingest([new FakeCatalogSource('aldi', [new SourceProduct('1', 'Pan', 50, '1 ud')])], enabled: ['mercadona', 'aldi']);
@@ -382,6 +423,8 @@ final class IngestCatalogHandlerTest extends TestCase
         self::assertSame(1, $result->runs[1]->productsSeen);
         self::assertSame(1, $result->runs[1]->productsSkipped);
         self::assertSame(0, $result->runs[1]->productsMarkedUnavailable);
+        self::assertEquals($this->clock->now(), $result->runs[1]->startedAt);
+        self::assertEquals($this->clock->now(), $result->runs[1]->finishedAt);
         self::assertFalse($result->allSucceeded());
     }
 
@@ -401,6 +444,7 @@ final class IngestCatalogHandlerTest extends TestCase
             $this->runs,
             $this->clock,
             $this->ids,
+            $this->logger,
         );
 
         return $handler(new IngestCatalogCommand($only));

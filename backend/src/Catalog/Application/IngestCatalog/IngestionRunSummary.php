@@ -13,6 +13,8 @@ final readonly class IngestionRunSummary
         public int $productsSkipped,
         public int $productsMarkedUnavailable,
         public ?string $error,
+        public \DateTimeImmutable $startedAt,
+        public ?\DateTimeImmutable $finishedAt,
     ) {
     }
 
@@ -25,6 +27,8 @@ final readonly class IngestionRunSummary
             $run->productsSkipped(),
             $run->productsMarkedUnavailable(),
             $run->error(),
+            $run->startedAt(),
+            $run->finishedAt(),
         );
     }
 }
