@@ -14,6 +14,7 @@ use App\Catalog\Domain\ValueObject\ProductId;
 use App\Catalog\Domain\ValueObject\ProductName;
 use App\Catalog\Domain\ValueObject\SupermarketId;
 use App\Catalog\Domain\ValueObject\UnitOfMeasure;
+use App\Catalog\Domain\ValueObject\UnitPrice;
 use App\Catalog\Domain\ValueObject\Url;
 use App\Shared\Domain\ValueObject\Money;
 use Doctrine\DBAL\Connection;
@@ -95,6 +96,11 @@ final readonly class DbalProductRepository implements ProductRepository
         $category = self::nullableString($row['category']);
         $imageUrl = self::nullableString($row['image_url']);
         $packageUnit = self::nullableString($row['package_unit']);
+        $unitPriceUnit = self::nullableString($row['unit_price_unit']);
+        // Without packaging, a stored unit price can only be the source's reference unit price (PD-29).
+        $referenceUnitPrice = null === $packageUnit && null !== $unitPriceUnit
+            ? UnitPrice::of(Money::eur(self::int($row['unit_price_cents'])), UnitOfMeasure::from($unitPriceUnit))
+            : null;
 
         return Product::reconstitute(
             ProductId::fromString(BinaryUuid::fromDatabase(self::string($row['id']))),
@@ -110,6 +116,7 @@ final readonly class DbalProductRepository implements ProductRepository
             null === $packageUnit ? null : Packaging::fromThousandths(UnitOfMeasure::from($packageUnit), self::int($row['package_quantity'])),
             DbalDateTime::fromDatabase(self::string($row['last_seen_at'])),
             1 === self::int($row['available']),
+            $referenceUnitPrice,
         );
     }
 

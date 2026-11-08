@@ -27,4 +27,9 @@ final class InvalidProductData extends InvalidArgument
     {
         return new self(\sprintf('"%s" is not an absolute http(s) URL.', $value));
     }
+
+    public static function unknownUnitOfMeasure(string $unit): self
+    {
+        return new self(\sprintf('"%s" is not a known unit of measure.', $unit));
+    }
 }

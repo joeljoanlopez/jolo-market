@@ -12,6 +12,8 @@ use App\Catalog\Domain\ValueObject\ProductDetails;
 use App\Catalog\Domain\ValueObject\ProductId;
 use App\Catalog\Domain\ValueObject\ProductName;
 use App\Catalog\Domain\ValueObject\SupermarketId;
+use App\Catalog\Domain\ValueObject\UnitOfMeasure;
+use App\Catalog\Domain\ValueObject\UnitPrice;
 use App\Catalog\Domain\ValueObject\Url;
 use App\Catalog\Infrastructure\Persistence\Dbal\DbalProductRepository;
 use App\Shared\Domain\ValueObject\Money;
@@ -59,6 +61,25 @@ final class DbalProductRepositoryTest extends DbalTestCase
         $this->repository->save($product);
 
         self::assertEquals($product, $this->find('mercadona', '1'));
+    }
+
+    #[Test]
+    public function it_saves_a_product_priced_by_its_reference_unit_price(): void
+    {
+        $product = Product::register(
+            ProductId::fromString('0192f3a4-7b1c-7d2e-8f30-4a5b6c7d8e9f'),
+            SupermarketId::fromString('mercadona'),
+            ExternalProductId::fromString('3819'),
+            ProductDetails::of(ProductName::fromString('Plátano'), null, null, null),
+            Money::eur(51),
+            null,
+            self::utc('2026-11-08 06:00:00'),
+            UnitPrice::of(Money::eur(320), UnitOfMeasure::KILOGRAM),
+        );
+
+        $this->repository->save($product);
+
+        self::assertEquals($product, $this->find('mercadona', '3819'));
     }
 
     #[Test]

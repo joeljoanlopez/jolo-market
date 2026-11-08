@@ -16,8 +16,9 @@ use App\Shared\Domain\ValueObject\Money;
 /**
  * A product of one supermarket, identified there by its external id.
  *
- * The unit price is always derived from the current price and packaging, so it can never
- * disagree with them. Unknown packaging means no unit price (an explicit state, not a guess).
+ * The unit price is derived from the current price and packaging, so it can never disagree
+ * with them. When the packaging is unknown, the reference unit price given by the source is
+ * used instead (PD-29); without one there is no unit price (an explicit state, not a guess).
  */
 final class Product
 {
@@ -33,8 +34,9 @@ final class Product
         private Money $currentPrice,
         private ?Packaging $packaging,
         private \DateTimeImmutable $lastSeenAt,
+        ?UnitPrice $referenceUnitPrice,
     ) {
-        $this->unitPrice = self::unitPriceFor($currentPrice, $packaging);
+        $this->unitPrice = self::unitPriceFor($currentPrice, $packaging, $referenceUnitPrice);
     }
 
     public static function register(
@@ -45,8 +47,9 @@ final class Product
         Money $price,
         ?Packaging $packaging,
         \DateTimeImmutable $seenAt,
+        ?UnitPrice $referenceUnitPrice = null,
     ): self {
-        return new self($id, $supermarketId, $externalId, $details, $price, $packaging, $seenAt);
+        return new self($id, $supermarketId, $externalId, $details, $price, $packaging, $seenAt, $referenceUnitPrice);
     }
 
     /**
@@ -61,8 +64,9 @@ final class Product
         ?Packaging $packaging,
         \DateTimeImmutable $lastSeenAt,
         bool $available,
+        ?UnitPrice $referenceUnitPrice = null,
     ): self {
-        $product = new self($id, $supermarketId, $externalId, $details, $currentPrice, $packaging, $lastSeenAt);
+        $product = new self($id, $supermarketId, $externalId, $details, $currentPrice, $packaging, $lastSeenAt, $referenceUnitPrice);
         $product->available = $available;
 
         return $product;
@@ -76,11 +80,12 @@ final class Product
         Money $price,
         ?Packaging $packaging,
         \DateTimeImmutable $seenAt,
+        ?UnitPrice $referenceUnitPrice = null,
     ): void {
         $this->details = $details;
         $this->currentPrice = $price;
         $this->packaging = $packaging;
-        $this->unitPrice = self::unitPriceFor($price, $packaging);
+        $this->unitPrice = self::unitPriceFor($price, $packaging, $referenceUnitPrice);
         $this->lastSeenAt = $seenAt;
         $this->available = true;
     }
@@ -143,8 +148,8 @@ final class Product
         return $this->available;
     }
 
-    private static function unitPriceFor(Money $price, ?Packaging $packaging): ?UnitPrice
+    private static function unitPriceFor(Money $price, ?Packaging $packaging, ?UnitPrice $referenceUnitPrice): ?UnitPrice
     {
-        return null === $packaging ? null : new UnitPriceCalculator()->calculate($price, $packaging);
+        return null === $packaging ? $referenceUnitPrice : new UnitPriceCalculator()->calculate($price, $packaging);
     }
 }

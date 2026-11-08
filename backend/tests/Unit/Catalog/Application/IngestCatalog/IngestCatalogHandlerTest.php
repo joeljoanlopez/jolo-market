@@ -158,6 +158,28 @@ final class IngestCatalogHandlerTest extends TestCase
     }
 
     #[Test]
+    public function it_uses_the_reference_unit_price_of_the_source_when_the_packaging_is_unknown(): void
+    {
+        $this->ingest([new FakeCatalogSource('mercadona', [
+            new SourceProduct('3819', 'Plátano', 51, referenceUnitPriceCents: 320, referenceUnit: 'kg'),
+        ])]);
+
+        self::assertEquals(UnitPrice::of(Money::eur(320), UnitOfMeasure::KILOGRAM), $this->products->get('mercadona', '3819')->unitPrice());
+        self::assertEquals(UnitPrice::of(Money::eur(320), UnitOfMeasure::KILOGRAM), $this->snapshots->all()[0]->unitPrice());
+    }
+
+    #[Test]
+    public function it_skips_a_product_whose_reference_unit_is_unknown(): void
+    {
+        $this->ingest([new FakeCatalogSource('mercadona', [
+            new SourceProduct('1', 'Huevos', 430, referenceUnitPriceCents: 430, referenceUnit: 'dozen'),
+            new SourceProduct('2', 'Leche', 99, '1 L'),
+        ])]);
+
+        self::assertSame(1, $this->runs->single()->productsSkipped());
+    }
+
+    #[Test]
     public function it_marks_the_products_a_successful_run_did_not_see_as_unavailable(): void
     {
         $this->ingest([new FakeCatalogSource('mercadona', [

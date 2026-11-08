@@ -64,6 +64,54 @@ final class ProductTest extends TestCase
     }
 
     #[Test]
+    public function it_uses_the_reference_unit_price_of_its_source_when_its_packaging_is_unknown(): void
+    {
+        $reference = UnitPrice::of(Money::eur(320), UnitOfMeasure::KILOGRAM);
+
+        $product = self::product(price: 51, packaging: null, referenceUnitPrice: $reference);
+
+        self::assertEquals($reference, $product->unitPrice());
+    }
+
+    #[Test]
+    public function it_prefers_its_own_unit_price_when_its_packaging_is_known(): void
+    {
+        $product = self::product(price: 125, packaging: Packaging::grams('500'), referenceUnitPrice: UnitPrice::of(Money::eur(999), UnitOfMeasure::KILOGRAM));
+
+        self::assertEquals(UnitPrice::of(Money::eur(250), UnitOfMeasure::KILOGRAM), $product->unitPrice());
+    }
+
+    #[Test]
+    public function it_takes_the_new_reference_unit_price_when_updated_from_its_source(): void
+    {
+        $product = self::product(packaging: null, referenceUnitPrice: UnitPrice::of(Money::eur(320), UnitOfMeasure::KILOGRAM));
+
+        $product->updateFromSource(self::details('Plátano'), Money::eur(53), null, new \DateTimeImmutable('2026-11-09'), UnitPrice::of(Money::eur(330), UnitOfMeasure::KILOGRAM));
+
+        self::assertEquals(UnitPrice::of(Money::eur(330), UnitOfMeasure::KILOGRAM), $product->unitPrice());
+    }
+
+    #[Test]
+    public function it_is_reconstituted_with_its_reference_unit_price(): void
+    {
+        $reference = UnitPrice::of(Money::eur(320), UnitOfMeasure::KILOGRAM);
+
+        $product = Product::reconstitute(
+            ProductId::fromString(self::PRODUCT_ID),
+            SupermarketId::fromString('mercadona'),
+            ExternalProductId::fromString('3819'),
+            self::details('Plátano'),
+            Money::eur(51),
+            null,
+            new \DateTimeImmutable('2026-11-01 06:00:00'),
+            true,
+            $reference,
+        );
+
+        self::assertEquals($reference, $product->unitPrice());
+    }
+
+    #[Test]
     public function it_takes_the_new_price_name_and_packaging_when_updated_from_its_source(): void
     {
         $product = self::product(price: 99, packaging: Packaging::litres('1'));
@@ -145,7 +193,7 @@ final class ProductTest extends TestCase
         self::assertFalse($product->isAvailable());
     }
 
-    private static function product(int $price = 99, ?Packaging $packaging = null): Product
+    private static function product(int $price = 99, ?Packaging $packaging = null, ?UnitPrice $referenceUnitPrice = null): Product
     {
         return Product::register(
             ProductId::fromString(self::PRODUCT_ID),
@@ -155,6 +203,7 @@ final class ProductTest extends TestCase
             Money::eur($price),
             $packaging,
             new \DateTimeImmutable('2026-11-08 06:00:00'),
+            $referenceUnitPrice,
         );
     }
 

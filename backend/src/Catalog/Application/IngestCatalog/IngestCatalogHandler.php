@@ -13,11 +13,14 @@ use App\Catalog\Domain\Port\SupermarketCatalogSource;
 use App\Catalog\Domain\Service\PackagingParser;
 use App\Catalog\Domain\ValueObject\CategoryPath;
 use App\Catalog\Domain\ValueObject\ExternalProductId;
+use App\Catalog\Domain\ValueObject\InvalidProductData;
 use App\Catalog\Domain\ValueObject\PostalCode;
 use App\Catalog\Domain\ValueObject\ProductDetails;
 use App\Catalog\Domain\ValueObject\ProductId;
 use App\Catalog\Domain\ValueObject\ProductName;
 use App\Catalog\Domain\ValueObject\SupermarketId;
+use App\Catalog\Domain\ValueObject\UnitOfMeasure;
+use App\Catalog\Domain\ValueObject\UnitPrice;
 use App\Catalog\Domain\ValueObject\Url;
 use App\Shared\Domain\Clock;
 use App\Shared\Domain\Exception\InvalidArgument;
@@ -162,6 +165,7 @@ final readonly class IngestCatalogHandler
         );
         $price = Money::eur($source->priceCents);
         $packaging = null === $source->packaging ? null : $this->packagingParser->parse($source->packaging);
+        $referenceUnitPrice = self::referenceUnitPrice($source);
         $seenAt = $this->clock->now();
 
         $product = $this->products->findBySupermarketAndExternalId($supermarketId, $externalId);
@@ -174,14 +178,30 @@ final readonly class IngestCatalogHandler
                 $price,
                 $packaging,
                 $seenAt,
+                $referenceUnitPrice,
             );
         } else {
-            $product->updateFromSource($details, $price, $packaging, $seenAt);
+            $product->updateFromSource($details, $price, $packaging, $seenAt, $referenceUnitPrice);
         }
 
         $this->products->save($product);
 
         return $product;
+    }
+
+    /**
+     * @throws InvalidArgument when the reference unit is not kg, l or unit
+     */
+    private static function referenceUnitPrice(SourceProduct $source): ?UnitPrice
+    {
+        if (null === $source->referenceUnitPriceCents || null === $source->referenceUnit) {
+            return null;
+        }
+
+        $unit = UnitOfMeasure::tryFrom($source->referenceUnit)
+            ?? throw InvalidProductData::unknownUnitOfMeasure($source->referenceUnit);
+
+        return UnitPrice::of(Money::eur($source->referenceUnitPriceCents), $unit);
     }
 
     private function markNotSeenAsUnavailable(SupermarketId $supermarketId, \DateTimeImmutable $runStartedAt): int

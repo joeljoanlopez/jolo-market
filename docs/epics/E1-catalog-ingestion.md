@@ -2,7 +2,7 @@
 
 **Goal:** periodically import the catalogs of Mercadona, Bonpreu i Esclat and Aldi for the instance postal code. Store products with a normalized unit price and append a price snapshot on every run.
 
-Related decisions: PD-1, PD-5, PD-6, PD-21, PD-22, PD-23, PD-24, PD-25, PD-26, PD-27. Open questions: OQ-5.
+Related decisions: PD-1, PD-5, PD-6, PD-21, PD-22, PD-23, PD-24, PD-25, PD-26, PD-27, PD-28, PD-29. Open questions: OQ-5.
 
 ## Acceptance criteria
 
