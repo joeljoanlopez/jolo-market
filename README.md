@@ -84,7 +84,10 @@ Requirements: Docker with Docker Compose v2.
    ```sh
    docker compose up -d --build
    docker compose exec php composer install
+   docker compose exec php bin/console doctrine:migrations:migrate --no-interaction
    ```
+
+   Run the migrations again whenever you pull new ones. `composer test` migrates the test database by itself.
 
 5. Check that it works:
 
@@ -102,7 +105,8 @@ Run them inside the php container (`docker compose exec php composer <script>`):
 
 | Script | What it runs |
 | --- | --- |
-| `test` | Every PHPUnit suite (Unit, Integration, Functional) |
+| `db:test` | Applies pending migrations to the test database |
+| `test` | `db:test`, then every PHPUnit suite (Unit, Integration, Functional) |
 | `test:unit` | Unit suite only, no I/O |
 | `analyse` | PHPStan at max level |
 | `deptrac` | Hexagonal layer and context rules |

@@ -71,7 +71,11 @@
         "post-update-cmd": [
             "@auto-scripts"
         ],
-        "test": "phpunit",
+        "db:test": "@php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=test",
+        "test": [
+            "@db:test",
+            "phpunit"
+        ],
         "test:unit": "phpunit --testsuite=Unit",
         "analyse": "phpstan analyse --no-progress --memory-limit=1G",
         "deptrac": "deptrac analyse --no-progress",
@@ -94,7 +98,8 @@
         }
     },
     "scripts-descriptions": {
-        "test": "Run every PHPUnit suite (Unit, Integration, Functional).",
+        "db:test": "Apply pending migrations to the test database.",
+        "test": "Migrate the test database, then run every PHPUnit suite (Unit, Integration, Functional).",
         "test:unit": "Run the Unit suite only (no I/O).",
         "analyse": "Run PHPStan at max level.",
         "deptrac": "Check hexagonal layer and context dependency rules.",
