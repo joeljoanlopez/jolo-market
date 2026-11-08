@@ -13,6 +13,7 @@ namespace App\Catalog\Domain\Port;
 final readonly class SourceProduct
 {
     /**
+     * @param int|null     $priceCents              null when the source gave no readable price
      * @param list<string> $categoryPath            from the root category down
      * @param string|null  $packaging               the packaging text the store shows, such as "6 x 1 L"
      * @param int|null     $referenceUnitPriceCents the store's own price per $referenceUnit; adapters set it
@@ -22,7 +23,7 @@ final readonly class SourceProduct
     public function __construct(
         public string $externalId,
         public string $name,
-        public int $priceCents,
+        public ?int $priceCents,
         public ?string $packaging = null,
         public ?string $brand = null,
         public array $categoryPath = [],

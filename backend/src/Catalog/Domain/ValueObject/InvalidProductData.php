@@ -32,4 +32,9 @@ final class InvalidProductData extends InvalidArgument
     {
         return new self(\sprintf('"%s" is not a known unit of measure.', $unit));
     }
+
+    public static function missingPrice(): self
+    {
+        return new self('A product price is missing or unreadable.');
+    }
 }

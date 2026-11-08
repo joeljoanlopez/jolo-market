@@ -256,6 +256,18 @@ final class IngestCatalogHandlerTest extends TestCase
     }
 
     #[Test]
+    public function it_skips_a_product_without_a_price(): void
+    {
+        $this->ingest([new FakeCatalogSource('mercadona', [
+            new SourceProduct('1', 'Leche', null, '1 L'),
+            new SourceProduct('2', 'Arroz', 125, '500 g'),
+        ])]);
+
+        self::assertSame(1, $this->runs->single()->productsSkipped());
+        self::assertSame(['A product price is missing or unreadable.'], array_column($this->logger->skippedProducts, 'reason'));
+    }
+
+    #[Test]
     public function it_records_a_successful_run_with_its_counts_and_times(): void
     {
         $source = new class($this->clock) implements SupermarketCatalogSource {

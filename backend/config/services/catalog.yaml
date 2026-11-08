@@ -45,11 +45,12 @@ when@test:
             alias: catalog.http_client
             public: true
         # Fake sources: functional tests never call a real supermarket.
+        # Decorates (replaces) the real adapter, which keeps its tag, so it is never called in tests.
         test.catalog_source.mercadona:
             class: App\Tests\Support\Catalog\ConfigurableCatalogSource
+            decorates: App\Catalog\Infrastructure\Source\Mercadona\MercadonaCatalogSource
             public: true
             arguments: ['mercadona']
-            tags: ['catalog.supermarket_source']
         test.catalog_source.aldi:
             class: App\Tests\Support\Catalog\ConfigurableCatalogSource
             public: true

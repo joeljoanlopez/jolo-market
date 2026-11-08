@@ -42,7 +42,8 @@ Related decisions: PD-1, PD-5, PD-6, PD-21, PD-22, PD-23, PD-24, PD-25, PD-26, P
 Each adapter: spike → record fixtures → TDD the mapping from fixture to `SourceProduct` → wire into DI.
 
 - [x] E1.13 ❓ OQ-5 **Spike Mercadona**: find the data source (public store API, postal code to warehouse resolution, category traversal), the rate limits and the terms of use. Write the findings here.
-- [ ] E1.14 Write the Mercadona adapter against recorded fixtures (including postal code handling).
+- [x] E1.14 Write the Mercadona adapter against recorded fixtures (including postal code handling).
+  - Note: first real run (postal code 46001, 2026-11-08): 4 396 products in 154 s, none skipped; 397 priced by reference (approximate size), 30 without unit price (for example saffron, finer than a gram).
 - [x] E1.15 ❓ OQ-5 **Spike Bonpreu i Esclat**: find the data source, whether location affects price, and the terms of use. Write the findings here.
 - [ ] E1.16 Write the Bonpreu i Esclat adapter against recorded fixtures.
 - [x] E1.17 ❓ OQ-5 **Spike Aldi**: find what the Spanish online catalog exposes (prices, packaging) and the terms of use. Write the findings here.

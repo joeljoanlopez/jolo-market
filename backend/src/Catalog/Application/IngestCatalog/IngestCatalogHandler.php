@@ -163,7 +163,7 @@ final readonly class IngestCatalogHandler
             [] === $source->categoryPath ? null : CategoryPath::fromSegments($source->categoryPath),
             null === $source->imageUrl ? null : Url::fromString($source->imageUrl),
         );
-        $price = Money::eur($source->priceCents);
+        $price = Money::eur($source->priceCents ?? throw InvalidProductData::missingPrice());
         $packaging = null === $source->packaging ? null : $this->packagingParser->parse($source->packaging);
         $referenceUnitPrice = self::referenceUnitPrice($source);
         $seenAt = $this->clock->now();
