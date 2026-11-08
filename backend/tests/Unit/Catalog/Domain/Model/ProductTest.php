@@ -122,6 +122,29 @@ final class ProductTest extends TestCase
         self::assertEquals($capturedAt, $snapshot->capturedAt());
     }
 
+    #[Test]
+    public function it_is_reconstituted_from_its_stored_state(): void
+    {
+        $lastSeenAt = new \DateTimeImmutable('2026-11-01 06:00:00');
+
+        $product = Product::reconstitute(
+            ProductId::fromString(self::PRODUCT_ID),
+            SupermarketId::fromString('aldi'),
+            ExternalProductId::fromString('A-1'),
+            self::details('Pan'),
+            Money::eur(125),
+            Packaging::grams('500'),
+            $lastSeenAt,
+            false,
+        );
+
+        self::assertSame('aldi', $product->supermarketId()->value());
+        self::assertSame('A-1', $product->externalId()->value());
+        self::assertEquals(UnitPrice::of(Money::eur(250), UnitOfMeasure::KILOGRAM), $product->unitPrice());
+        self::assertEquals($lastSeenAt, $product->lastSeenAt());
+        self::assertFalse($product->isAvailable());
+    }
+
     private static function product(int $price = 99, ?Packaging $packaging = null): Product
     {
         return Product::register(

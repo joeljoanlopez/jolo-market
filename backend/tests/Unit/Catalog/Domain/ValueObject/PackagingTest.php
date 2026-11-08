@@ -100,6 +100,20 @@ final class PackagingTest extends TestCase
     }
 
     #[Test]
+    public function it_is_rebuilt_from_its_normalized_form(): void
+    {
+        self::assertTrue(Packaging::centilitres('33')->equals(Packaging::fromThousandths(UnitOfMeasure::LITRE, 330)));
+    }
+
+    #[Test]
+    public function it_rejects_a_normalized_form_that_is_not_positive(): void
+    {
+        $this->expectException(InvalidArgument::class);
+
+        Packaging::fromThousandths(UnitOfMeasure::UNIT, 0);
+    }
+
+    #[Test]
     public function it_compares_by_unit_and_quantity(): void
     {
         self::assertTrue(Packaging::grams('1000')->equals(Packaging::kilograms('1')));

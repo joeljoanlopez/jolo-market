@@ -57,6 +57,14 @@ final readonly class Packaging
     }
 
     /**
+     * Rebuilds a packaging from its normalized form, for example when it is read from storage.
+     */
+    public static function fromThousandths(UnitOfMeasure $unit, int $thousandths): self
+    {
+        return new self($unit, $thousandths);
+    }
+
+    /**
      * A multipack: "6 x 33 cl" is 6 items of 33 cl each.
      */
     public function multipliedBy(int $items): self

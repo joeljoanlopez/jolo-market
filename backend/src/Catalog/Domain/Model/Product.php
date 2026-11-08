@@ -50,6 +50,25 @@ final class Product
     }
 
     /**
+     * Rebuilds a stored product. Only persistence adapters call it.
+     */
+    public static function reconstitute(
+        ProductId $id,
+        SupermarketId $supermarketId,
+        ExternalProductId $externalId,
+        ProductDetails $details,
+        Money $currentPrice,
+        ?Packaging $packaging,
+        \DateTimeImmutable $lastSeenAt,
+        bool $available,
+    ): self {
+        $product = new self($id, $supermarketId, $externalId, $details, $currentPrice, $packaging, $lastSeenAt);
+        $product->available = $available;
+
+        return $product;
+    }
+
+    /**
      * The source returned the product again: take its latest data and make it available.
      */
     public function updateFromSource(
