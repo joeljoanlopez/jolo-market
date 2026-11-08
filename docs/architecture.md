@@ -294,6 +294,7 @@ Test folders mirror `src/` (for example, `tests/Unit/Catalog/Domain/ValueObject/
 | `Shared\Domain\ValueObject\Money` | Integer cents, `Currency::EUR` only. `eur()`, `add()`, `multiply(int)`, `equals()`, `compareTo()`, `isGreaterThan()`, `isLessThan()`. Never negative (PD-19). |
 | `Shared\Domain\ValueObject\Uuid` | Canonical `8-4-4-4-12` hex string, normalized to lowercase. It only validates; generation belongs to an `IdGenerator` port. |
 | `Shared\Domain\Clock` | Port returning the current `DateTimeImmutable`. `Shared\Infrastructure\Clock\SystemClock` implements it in **UTC**; tests use `Tests\Support\FixedClock`. |
+| `Shared\Domain\IdGenerator` | Port returning a new `Uuid`. Tests use `Tests\Support\SequentialIdGenerator`. |
 
 ## Frontend structure
 
@@ -348,15 +349,22 @@ Rules:
 ```text
 scheduler → app:catalog:ingest [--supermarket=mercadona]
   → IngestCatalogHandler
-      for each enabled supermarket:
+      for each supermarket in ENABLED_SUPERMARKETS (or only the requested one, which must be enabled):
+        save IngestionRun (running)
         source = SupermarketCatalogSource(supermarket)
         for each SourceProduct from source.fetchCatalog(INSTANCE_POSTAL_CODE):
-          normalize packaging → unit price
+          skip it if its external id was already seen in this run
+          validate it; a malformed product is skipped and counted (PD-23)
+          parse packaging → unit price (unknown packaging → no unit price)
           upsert Product (by supermarketId + externalId)
-          append PriceSnapshot
-        mark products not seen in this run as unavailable
-      a failure in one supermarket does not abort the others; it is logged and reported
+          queue a PriceSnapshot (appended in batches of 500)
+        zero valid products → the run fails
+        mark products not seen in this run as unavailable (only on success, PD-25)
+        save IngestionRun (succeeded or failed, with counts and error)
+      a failure in one supermarket does not abort the others
 ```
+
+`IngestionRun` (Catalog Application, port `IngestionRunRepository`) records each run: supermarket, `startedAt`, `finishedAt`, status (`running`, `succeeded`, `failed`), `productsSeen`, `productsSkipped`, `productsMarkedUnavailable` and `error`. A run left as `running` was interrupted. `IngestionSettings` (Application port) gives the instance postal code and the enabled supermarkets. The handler returns an `IngestCatalogResult` with one summary per run.
 
 Adapter tests run against **recorded fixtures**. Tests never call a real supermarket.
 
@@ -460,7 +468,7 @@ Tables (draft, finalized in migrations):
 | `supermarket` | `id` (slug PK), `name` |
 | `product` | `id` (BINARY(16)), `supermarket_id`, `external_id`, `name`, `brand`, `category`, `image_url`, `package_quantity`, `package_unit`, `price_cents`, `unit_price_cents`, `unit_price_unit`, `available`, `last_seen_at` — UNIQUE(`supermarket_id`, `external_id`), FULLTEXT(`name`, `brand`) |
 | `price_snapshot` | `id`, `product_id`, `price_cents`, `unit_price_cents`, `captured_at` — INDEX(`product_id`, `captured_at`) |
-| `ingestion_run` | `id`, `supermarket_id`, `started_at`, `finished_at`, `status`, `products_seen`, `error` |
+| `ingestion_run` | `id`, `supermarket_id`, `started_at`, `finished_at`, `status`, `products_seen`, `products_skipped`, `products_marked_unavailable`, `error` |
 | `setup_code` | `code_hash`, `created_at` — at most one row, deleted when the first admin is created |
 | `user` | `id`, `username` UNIQUE, `role`, `status`, `password_hash`, `totp_secret_encrypted`, `totp_confirmed_at`, `activation_token_hash` UNIQUE, `activation_expires_at`, `created_at`, `created_by` |
 | `shopping_list` | `id`, `owner_id`, `share_token` UNIQUE, `name`, `version`, `created_at`, `updated_at` |
