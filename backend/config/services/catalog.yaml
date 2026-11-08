@@ -3,5 +3,33 @@ services:
         autowire: true
         autoconfigure: true
 
+    _instanceof:
+        # One adapter per supermarket chain (PD-1). Each one is picked up by the ingestion handler.
+        App\Catalog\Domain\Port\SupermarketCatalogSource:
+            tags: ['catalog.supermarket_source']
+
     App\Catalog\:
         resource: '../../src/Catalog/'
+
+    App\Catalog\Application\IngestCatalog\IngestCatalogHandler:
+        arguments:
+            $sources: !tagged_iterator catalog.supermarket_source
+
+    App\Catalog\Infrastructure\Ingestion\EnvIngestionSettings:
+        arguments:
+            $postalCode: '%env(string:INSTANCE_POSTAL_CODE)%'
+            $enabledSupermarkets: '%env(string:ENABLED_SUPERMARKETS)%'
+
+when@test:
+    services:
+        # Fake sources: functional tests never call a real supermarket.
+        test.catalog_source.mercadona:
+            class: App\Tests\Support\Catalog\ConfigurableCatalogSource
+            public: true
+            arguments: ['mercadona']
+            tags: ['catalog.supermarket_source']
+        test.catalog_source.aldi:
+            class: App\Tests\Support\Catalog\ConfigurableCatalogSource
+            public: true
+            arguments: ['aldi']
+            tags: ['catalog.supermarket_source']

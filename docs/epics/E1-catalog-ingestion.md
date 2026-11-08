@@ -51,9 +51,9 @@ Each adapter: spike → record fixtures → TDD the mapping from fixture to `Sou
 
 ### Driving adapters & scheduling
 
-- [ ] E1.20 Add the `app:catalog:ingest` console command (`--supermarket`), with a functional test using fake sources.
+- [x] E1.20 Add the `app:catalog:ingest` console command (`--supermarket`), with a functional test using fake sources.
 - [ ] E1.21 ❓ OQ-1 Add a Symfony Scheduler entry driven by `INGESTION_SCHEDULE`, run by the `scheduler` container.
-- [ ] E1.22 Add structured logging of each run (counts, duration, errors).
+- [x] E1.22 Add structured logging of each run (counts, duration, errors).
 
 ## Spike notes
 

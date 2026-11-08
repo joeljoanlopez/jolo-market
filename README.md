@@ -89,7 +89,14 @@ Requirements: Docker with Docker Compose v2.
 
    Run the migrations again whenever you pull new ones. `composer test` migrates the test database by itself.
 
-5. Check that it works:
+5. Set the postal code whose prices are imported, then import the catalogs (see [Catalog ingestion](#catalog-ingestion)):
+
+   ```sh
+   echo "INSTANCE_POSTAL_CODE=08001" >> backend/.env.local
+   docker compose exec php bin/console app:catalog:ingest
+   ```
+
+6. Check that it works:
 
    ```sh
    curl http://localhost:8080/api/health   # {"status":"ok"}
@@ -98,6 +105,17 @@ Requirements: Docker with Docker Compose v2.
    Open <http://localhost:8080> for the SPA. nginx serves `/api` from Symfony and everything else from the Vite dev server, with hot reload.
 
 The MySQL test database (`<MYSQL_DATABASE>_test`) is created automatically the first time the `mysql-data` volume is initialised. If you created the volume before that script existed, recreate it with `docker compose down -v`.
+
+### Catalog ingestion
+
+`app:catalog:ingest` imports the catalog of every supermarket in `ENABLED_SUPERMARKETS` for `INSTANCE_POSTAL_CODE` (both in `backend/.env`, override them in `backend/.env.local`):
+
+```sh
+docker compose exec php bin/console app:catalog:ingest                         # every enabled supermarket
+docker compose exec php bin/console app:catalog:ingest --supermarket=mercadona # only one
+```
+
+It prints a summary per supermarket and exits with `0` when every run succeeded, `1` when any failed and `2` for invalid input or configuration. Each run is stored in the `ingestion_run` table and logged on the `ingestion` channel.
 
 ### Backend checks
 
