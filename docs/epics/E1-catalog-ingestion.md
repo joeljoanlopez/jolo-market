@@ -33,8 +33,9 @@ Related decisions: PD-1, PD-5, PD-6, PD-21, PD-22, PD-23, PD-24, PD-25. Open que
 
 ### Infrastructure — persistence
 
-- [ ] E1.11 Add migrations for the `supermarket`, `product`, `price_snapshot` and `ingestion_run` tables, plus seed data for the 3 supermarkets.
-- [ ] E1.12 Add DBAL `ProductRepository` and `PriceSnapshotRepository`, with integration tests against MySQL (including batch insert of snapshots).
+- [x] E1.11 Add migrations for the `supermarket`, `product`, `price_snapshot` and `ingestion_run` tables, plus seed data for the 3 supermarkets.
+- [x] E1.12 Add DBAL `ProductRepository` and `PriceSnapshotRepository`, with integration tests against MySQL (including batch insert of snapshots).
+  - Note: the DBAL `IngestionRunRepository` (port from E1.9) is added here too, so run status is persisted.
 
 ### Infrastructure — sources (one per chain)
 
