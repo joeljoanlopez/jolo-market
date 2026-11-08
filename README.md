@@ -115,6 +115,8 @@ docker compose exec php bin/console app:catalog:ingest                         #
 docker compose exec php bin/console app:catalog:ingest --supermarket=mercadona # only one
 ```
 
+Requests to the stores identify themselves with `CATALOG_HTTP_USER_AGENT`, wait at least 1 s between each other and retry rate limits and server errors.
+
 It prints a summary per supermarket and exits with `0` when every run succeeded, `1` when any failed and `2` for invalid input or configuration. Each run is stored in the `ingestion_run` table and logged on the `ingestion` channel.
 
 ### Backend checks

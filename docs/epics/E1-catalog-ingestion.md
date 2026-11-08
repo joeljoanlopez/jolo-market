@@ -47,7 +47,7 @@ Each adapter: spike → record fixtures → TDD the mapping from fixture to `Sou
 - [ ] E1.16 Write the Bonpreu i Esclat adapter against recorded fixtures.
 - [ ] E1.17 ❓ OQ-5 **Spike Aldi**: find what the Spanish online catalog exposes (prices, packaging) and the terms of use. Write the findings here.
 - [ ] E1.18 Write the Aldi adapter against recorded fixtures.
-- [ ] E1.19 Add shared HTTP adapter concerns: an identifying User-Agent, a polite delay between requests, retry with backoff on 5xx/429, and timeouts.
+- [x] E1.19 Add shared HTTP adapter concerns: an identifying User-Agent, a polite delay between requests, retry with backoff on 5xx/429, and timeouts.
 
 ### Driving adapters & scheduling
 

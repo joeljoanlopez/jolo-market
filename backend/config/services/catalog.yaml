@@ -15,6 +15,25 @@ services:
         arguments:
             $sources: !tagged_iterator catalog.supermarket_source
 
+    # HTTP client for supermarket adapters (E1.19, PD-26). Adapters receive '@catalog.http_client'.
+    App\Catalog\Infrastructure\Http\CatalogHttpOptions:
+        arguments:
+            $userAgent: '%env(string:CATALOG_HTTP_USER_AGENT)%'
+            $delayBetweenRequestsInMilliseconds: 1000
+            $maxRetries: 3
+            $firstRetryDelayInMilliseconds: 1000
+            $timeoutInSeconds: 10.0
+            $maxDurationInSeconds: 30.0
+
+    catalog.http_client:
+        class: Symfony\Contracts\HttpClient\HttpClientInterface
+        factory: ['App\Catalog\Infrastructure\Http\CatalogHttpClientFactory', 'create']
+        arguments:
+            - '@http_client'
+            - '@App\Catalog\Infrastructure\Http\CatalogHttpOptions'
+            - '@App\Shared\Domain\Clock'
+            - '@App\Catalog\Infrastructure\Http\Sleeper'
+
     App\Catalog\Infrastructure\Ingestion\EnvIngestionSettings:
         arguments:
             $postalCode: '%env(string:INSTANCE_POSTAL_CODE)%'
@@ -22,6 +41,9 @@ services:
 
 when@test:
     services:
+        test.catalog_http_client:
+            alias: catalog.http_client
+            public: true
         # Fake sources: functional tests never call a real supermarket.
         test.catalog_source.mercadona:
             class: App\Tests\Support\Catalog\ConfigurableCatalogSource
