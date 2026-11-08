@@ -55,6 +55,7 @@ Decisions confirmed by the product owner. Changing any of them requires asking f
 | PD-27 | Catalogs are ingested **daily at 05:00 Europe/Madrid** by default. `INGESTION_SCHEDULE` (cron expression, evaluated in Europe/Madrid) changes it per instance. *(Answers OQ-1.)* |
 | PD-28 | **Mercadona** is ingested from the internal JSON API of `tienda.mercadona.es`, accepted for **private, self-hosted use** (one instance, one run a day, identifying User-Agent) even though its `robots.txt` disallows `/api`. The operator takes that risk. *(Partly answers OQ-5.)* |
 | PD-29 | When a product's size is **approximate** (loose fruit and vegetables) and the source gives its own price per kg, L or unit, that **reference price is the unit price**. Otherwise the unit price is always computed by us. Adapters pass a reference price only for approximate sizes. |
+| PD-30 | The **Bonpreu i Esclat** and **Aldi** adapters are **deferred**. Bonpreu's WAF blocks product and category pages for an identifying User-Agent and its `robots.txt` disallows `/api/`. Aldi publishes no price for its food catalog (0 of 30 sampled food products). They stay seeded but out of the default `ENABLED_SUPERMARKETS`, and are retried when that changes. *(Answers OQ-5 for both; with PD-28, OQ-5 is closed.)* |
 
 ## Stack
 
@@ -553,7 +554,7 @@ Symfony variables (`backend/.env`, committed with non-secret defaults; real valu
 | `DATABASE_URL` | MySQL connection. Overridden by Compose in development. |
 | `DEFAULT_URI` | Base URI for absolute URLs generated outside HTTP requests (console commands). Default `http://localhost`. |
 | `INSTANCE_POSTAL_CODE` | Spanish postal code whose prices are imported (PD-5). Empty in `backend/.env`: set it in `backend/.env.local`. `app:catalog:ingest` refuses to run without a valid one. |
-| `ENABLED_SUPERMARKETS` | Comma-separated slugs of the supermarkets to import and show (PD-24). Default `mercadona,bonpreu,aldi`. |
+| `ENABLED_SUPERMARKETS` | Comma-separated slugs of the supermarkets to import and show (PD-24). Default `mercadona` (PD-30). |
 | `CATALOG_HTTP_USER_AGENT` | User-Agent sent to the supermarkets (PD-26). |
 | `INGESTION_SCHEDULE` | Cron expression for catalog ingestion, evaluated in Europe/Madrid (PD-27). Default `0 5 * * *`. |
 
@@ -579,7 +580,6 @@ These have **not** been decided. Implementation must stop and ask before coding 
 | OQ-2 | Price history retention: keep forever, or downsample/prune after N months? | E5 |
 | OQ-3 | Concurrent edits on the same item (two people check/uncheck at once): is last-write-wins acceptable? | E4 |
 | OQ-4 | Can a list be deleted (by whom, and what do members see)? Can a member leave a list on their own? Can ownership be transferred? | E4 |
-| OQ-5 | Data source and terms of use for each supermarket (public API vs HTML scraping). Each adapter starts with a spike. | E1 |
 | OQ-7 | Search ranking ties and filters (brand, category, supermarket) needed in the MVP? | E2 |
 | OQ-8 | Activation link lifetime (proposal: 72 h), and can the admin regenerate it for a pending user? | E3 |
 | OQ-9 | Lost password or lost 2FA device: without email, the proposal is that the admin resets the user (new activation link → new password + new TOTP). Also, do users get TOTP recovery codes? | E3 |

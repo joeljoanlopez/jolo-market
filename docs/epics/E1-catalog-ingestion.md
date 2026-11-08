@@ -2,7 +2,7 @@
 
 **Goal:** periodically import the catalogs of Mercadona, Bonpreu i Esclat and Aldi for the instance postal code. Store products with a normalized unit price and append a price snapshot on every run.
 
-Related decisions: PD-1, PD-5, PD-6, PD-21, PD-22, PD-23, PD-24, PD-25, PD-26, PD-27, PD-28, PD-29. Open questions: OQ-5.
+Related decisions: PD-1, PD-5, PD-6, PD-21, PD-22, PD-23, PD-24, PD-25, PD-26, PD-27, PD-28, PD-29, PD-30. Open questions: none.
 
 ## Acceptance criteria
 
@@ -41,13 +41,15 @@ Related decisions: PD-1, PD-5, PD-6, PD-21, PD-22, PD-23, PD-24, PD-25, PD-26, P
 
 Each adapter: spike → record fixtures → TDD the mapping from fixture to `SourceProduct` → wire into DI.
 
-- [x] E1.13 ❓ OQ-5 **Spike Mercadona**: find the data source (public store API, postal code to warehouse resolution, category traversal), the rate limits and the terms of use. Write the findings here.
+- [x] E1.13 OQ-5 (answered by PD-28): **Spike Mercadona**: find the data source (public store API, postal code to warehouse resolution, category traversal), the rate limits and the terms of use. Write the findings here.
 - [x] E1.14 Write the Mercadona adapter against recorded fixtures (including postal code handling).
   - Note: first real run (postal code 46001, 2026-11-08): 4 396 products in 154 s, none skipped; 397 priced by reference (approximate size), 30 without unit price (for example saffron, finer than a gram).
-- [x] E1.15 ❓ OQ-5 **Spike Bonpreu i Esclat**: find the data source, whether location affects price, and the terms of use. Write the findings here.
+- [x] E1.15 OQ-5 (answered by PD-30): **Spike Bonpreu i Esclat**: find the data source, whether location affects price, and the terms of use. Write the findings here.
 - [ ] E1.16 Write the Bonpreu i Esclat adapter against recorded fixtures.
-- [x] E1.17 ❓ OQ-5 **Spike Aldi**: find what the Spanish online catalog exposes (prices, packaging) and the terms of use. Write the findings here.
+  - Deferred (PD-30): the store's WAF answers 403 to an identifying User-Agent and `robots.txt` disallows `/api/`. Retry if that changes or if Bonpreu grants access.
+- [x] E1.17 OQ-5 (answered by PD-30): **Spike Aldi**: find what the Spanish online catalog exposes (prices, packaging) and the terms of use. Write the findings here.
 - [ ] E1.18 Write the Aldi adapter against recorded fixtures.
+  - Deferred (PD-30): aldi.es shows no price for food products (0 of 30 sampled on 2026-11-08). Retry if Aldi starts publishing prices.
 - [x] E1.19 Add shared HTTP adapter concerns: an identifying User-Agent, a polite delay between requests, retry with backoff on 5xx/429, and timeouts.
 
 ### Driving adapters & scheduling
@@ -85,6 +87,6 @@ Run on 2026-11-08 with a handful of spaced requests and the PD-26 User-Agent. Ra
 
 - **Source:** `www.aldi.es` (Next.js). Product pages embed their data in `__NEXT_DATA__` (`name`, `brandName`, `salesUnit` such as "1/40/56 unidades unidad / pack", `currentPrice.priceValue`, promotion validity dates). The products sitemap lists 2 824 products.
 - **robots.txt:** allows product pages.
-- **Prices:** a promoted non-food item had a price. A permanent food item ("Cogollos") had **no price** in the page data: Aldi Spain does not sell groceries online, so most of the food catalog seems to have no public price. Checked on only two products: to be confirmed.
+- **Prices:** a promoted non-food item had a price. **None of 30 sampled food products** (milk, yogurt, rice, cheese, wine, fruit…) had a price or a sales unit in the page data: Aldi Spain does not sell groceries online. Category pages embed no product list.
 - **Cost:** one request per product (about 2 800 requests, around 47 minutes per run with the 1 s delay). No postal code: prices are national.
 - **Terms of use:** not read yet.
