@@ -11,6 +11,20 @@ services:
       - ./backend/public:/var/www/backend/public:ro
     depends_on:
       - php
+      - frontend
+
+  # Vite dev server with HMR. nginx proxies every non-/api path to it.
+  frontend:
+    image: node:26.13.0-alpine
+    working_dir: /app
+    # Runs as root so it can write the named node_modules volume; it writes nothing else
+    # to the bind mount.
+    command: ["sh", "-c", "npm ci --no-audit --no-fund && exec npm run dev"]
+    volumes:
+      - ./frontend:/app
+      # Keeps the container's Linux node_modules apart from the host's. If frontend/node_modules
+      # does not exist yet, Docker creates it on the host as root: run `npm ci` on the host first.
+      - frontend-node-modules:/app/node_modules
 
   php:
     build:
@@ -52,3 +66,4 @@ services:
 
 volumes:
   mysql-data:
+  frontend-node-modules:

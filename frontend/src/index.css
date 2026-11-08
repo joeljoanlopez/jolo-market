@@ -1,0 +1,71 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens (docs/architecture.md#frontend-structure). Default Tailwind scales are
+ * reset, so only the tokens below can be used. Arbitrary values ([13px], [#hex]) are not
+ * allowed in components: add a token here instead.
+ */
+@theme {
+  --color-*: initial;
+  --font-*: initial;
+  --text-*: initial;
+  --radius-*: initial;
+
+  /* Neutrals */
+  --color-background: #ffffff;
+  --color-surface: #f4f6f8;
+  --color-border: #d5dae0;
+  --color-foreground: #1b1f24;
+  --color-muted: #5a6470;
+
+  /* Actions and states */
+  --color-primary: #1d6b5a;
+  --color-primary-hover: #155244;
+  --color-primary-foreground: #ffffff;
+  --color-danger: #b42318;
+  --color-danger-hover: #8f1c13;
+  --color-danger-foreground: #ffffff;
+  --color-focus: #2f80ed;
+
+  /* One color per supermarket (PD-20), inspired by each chain, with a readable foreground. */
+  --color-mercadona: #007a3d;
+  --color-mercadona-foreground: #ffffff;
+  --color-bonpreu: #f39200;
+  --color-bonpreu-foreground: #1b1f24;
+  --color-aldi: #00205b;
+  --color-aldi-foreground: #ffffff;
+
+  /* Typography */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
+
+  /* Spacing: every p-*, m-*, gap-*, w-* step is a multiple of this unit. */
+  --spacing: 0.25rem;
+
+  /* Radii */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-full: 9999px;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+}

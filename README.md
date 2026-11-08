@@ -2,7 +2,7 @@
 
 Self-hosted supermarket price comparator and shared shopping list, inspired by [quefalta.es](https://quefalta.es/).
 
-> **Status:** foundation in progress (backend skeleton and Docker dev stack). Progress is tracked in [`docs/epics/`](docs/epics/README.md).
+> **Status:** foundation done (backend and frontend skeletons, Docker dev stack and CI). Feature work starts with E1. Progress is tracked in [`docs/epics/`](docs/epics/README.md).
 
 ## What it does
 
@@ -47,12 +47,12 @@ Rationale for each choice and exact pinned versions: [`docs/architecture.md`](do
 ```text
 jolo-market/
 ├── backend/            # Symfony API, hexagonal architecture
-├── frontend/           # React + TypeScript SPA (placeholder, not bootstrapped yet)
+├── frontend/           # React + TypeScript SPA (Vite)
 ├── docker/             # Dockerfiles and nginx config
 ├── docs/
 │   ├── architecture.md # Stack, architecture, domain model, decisions
 │   └── epics/          # Epics with task checklists (progress tracking)
-├── compose.yaml        # Development stack: nginx, php-fpm, mysql
+├── compose.yaml        # Development stack: nginx, php-fpm, mysql, Vite dev server
 ├── .env.example        # Documented Compose variables (copy to .env)
 └── AGENTS.md           # Rules for AI assistants (TDD, hexagonal, English code)
 ```
@@ -73,18 +73,26 @@ Requirements: Docker with Docker Compose v2.
    echo "APP_SECRET=$(openssl rand -hex 32)" >> backend/.env.local
    ```
 
-3. Start the stack and install the backend dependencies:
+3. If you will also run the frontend tooling on your machine (checks, Playwright), install its dependencies **before** the first `docker compose up`. Otherwise Docker creates `frontend/node_modules` as root (it is the mount point of the container's own `node_modules` volume) and `npm ci` fails with `EACCES` (fix it with `sudo chown -R "$(id -u):$(id -g)" frontend/node_modules`):
+
+   ```sh
+   (cd frontend && npm ci)
+   ```
+
+4. Start the stack and install the backend dependencies (the `frontend` service installs its own with `npm ci` on start):
 
    ```sh
    docker compose up -d --build
    docker compose exec php composer install
    ```
 
-4. Check that it works:
+5. Check that it works:
 
    ```sh
    curl http://localhost:8080/api/health   # {"status":"ok"}
    ```
+
+   Open <http://localhost:8080> for the SPA. nginx serves `/api` from Symfony and everything else from the Vite dev server, with hot reload.
 
 The MySQL test database (`<MYSQL_DATABASE>_test`) is created automatically the first time the `mysql-data` volume is initialised. If you created the volume before that script existed, recreate it with `docker compose down -v`.
 
@@ -101,11 +109,44 @@ Run them inside the php container (`docker compose exec php composer <script>`):
 | `cs` | PHP-CS-Fixer in dry-run mode |
 | `check` | All of the above. It must pass before a task is done |
 
+### Frontend checks
+
+The frontend needs Node 26 (see `frontend/.nvmrc`). Install the dependencies once with `npm ci` inside `frontend/`, then run:
+
+| Script | What it runs |
+| --- | --- |
+| `test` | Vitest (component and unit tests, MSW for HTTP) |
+| `typecheck` | `tsc --noEmit` in strict mode |
+| `lint` | ESLint, including the feature boundary rules |
+| `format:check` | Prettier in check mode (`format` rewrites the files) |
+| `check` | All of the above. It must pass before a task is done |
+
+`npm run dev` starts the Vite dev server on port 5173 (the Docker stack already runs it).
+
+### End-to-end tests
+
+Playwright runs against the running Docker stack. Install the browser once, then run the suite from `frontend/`:
+
+```sh
+npx playwright install chromium
+npm run test:e2e        # E2E_BASE_URL defaults to http://localhost:8080
+```
+
 ### Xdebug
 
 Set `INSTALL_XDEBUG=true` in `.env`, rebuild with `docker compose build php`, then choose the mode with `XDEBUG_MODE` (for example `debug` or `coverage`) and run `docker compose up -d`.
 
 Production setup is covered by [E6 — Self-hosting](docs/epics/E6-self-hosting.md).
+
+### Continuous integration
+
+GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push:
+
+| Job | What it runs |
+| --- | --- |
+| Backend check | `composer check` inside the same php and mysql containers as development |
+| Frontend check | `npm run check` on the Node version of `frontend/.nvmrc` |
+| End-to-end | The whole Docker stack plus `npm run test:e2e`, after both checks pass |
 
 ## Development principles
 
