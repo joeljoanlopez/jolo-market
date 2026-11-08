@@ -30,7 +30,7 @@ Related decisions: PD-2, PD-4, PD-7. Open questions: OQ-3, OQ-4.
 
 - [ ] E4.8 Add use cases, each receiving an explicit `actorId`: `CreateList`, `JoinList`, `RenameList`, `RegenerateShareToken`, `RemoveMember`, `AddItem`, `UpdateItem`, `RemoveItem`, `ClearCheckedItems`. Unit tests use in-memory fakes and cover authorization (non-member → not found).
 - [ ] E4.9 Add a `ProductCatalog` port (read product name, price and supermarket by id) and a `UserDirectory` port (member usernames), both owned by ShoppingList.
-- [ ] E4.10 Add the `GetList` query: items, members and per-supermarket totals, including handling of products that are no longer available.
+- [ ] E4.10 Add the `GetList` query: items, members and per-supermarket totals, including products that are no longer available (shown flagged and left out of the totals, PD-22).
 - [ ] E4.11 Add the `GetMyLists` query: lists owned or joined by the actor, with the role in each.
 
 ### Infrastructure

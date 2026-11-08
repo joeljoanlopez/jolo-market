@@ -47,6 +47,10 @@ Decisions confirmed by the product owner. Changing any of them requires asking f
 | PD-19 | `Money` is **never negative**: amounts and multipliers below zero are rejected. A signed amount (price differences, discounts) needs its own decision. |
 | PD-20 | Each supermarket has its own color token, **inspired by its brand** so the chain is recognisable at a glance: Mercadona green, Bonpreu i Esclat orange, Aldi navy. The rest of the UI uses a neutral palette with one primary color. |
 | PD-21 | The unit price (price ÷ normalized quantity) is rounded to whole cents **half-up**: 2.6533 €/L → 2.65 €/L, 2.655 €/L → 2.66 €/L. It is computed with integers only. |
+| PD-22 | Products that disappear from their supermarket's catalog are marked **unavailable**. Search returns **only available products**. A shopping list that already contains one keeps showing it, flagged as unavailable and **not counted in the totals**. It becomes available again when its supermarket returns it. *(Answers OQ-6.)* |
+| PD-23 | During ingestion, a **malformed product** (blank name, negative price, invalid image URL…) is **skipped**: it is not imported, a warning is logged and it is counted in the run (`products_skipped`). The rest of the catalog is imported. |
+| PD-24 | Which supermarkets are enabled is decided **only by `ENABLED_SUPERMARKETS`** in `.env` (comma-separated slugs). The `supermarket` table stores id and name only, with no `enabled` column. |
+| PD-25 | Products not seen in a run are marked unavailable **only when the run succeeds**. A run that fails half-way or returns **zero products** is recorded as **failed**: what it imported before failing is kept (with its snapshots), and every other product keeps its previous state. |
 
 ## Stack
 
@@ -160,8 +164,7 @@ Solid arrows are calls, and dashed arrows are interface implementations. Every d
 ```text
 Supermarket (aggregate root)
   id: SupermarketId            e.g. "mercadona", "bonpreu", "aldi" (stable slug)
-  name: string
-  enabled: bool
+  name: string                 enabled or not is configuration (PD-24), not state
 
 Product (aggregate root)
   id: ProductId                internal UUID
@@ -196,7 +199,7 @@ How it is modelled:
 - `PriceSnapshotRepository`: `append(...snapshots)` in one batch. History by product is added in E5.
 - `SupermarketCatalogSource`: `supermarketId()` and `fetchCatalog(PostalCode): iterable<SourceProduct>`. **One adapter per chain.** `SourceProduct` carries plain values (external id, name, price in cents, packaging text, brand, category segments, image URL), so one malformed product does not stop a source from returning the rest of its catalog.
 
-`Product` is created with `register` and changed only through `updateFromSource` (new details, price and packaging; makes it available again) and `markUnavailable`. `Supermarket` is created with `create(id, name, enabled)`; `SupermarketId` is a slug of lowercase letters, digits and inner hyphens.
+`Product` is created with `register` and changed only through `updateFromSource` (new details, price and packaging; makes it available again) and `markUnavailable`. `Supermarket` is created with `create(id, name)`; `SupermarketId` is a slug of lowercase letters, digits and inner hyphens.
 
 ### Identity
 
@@ -359,7 +362,7 @@ Adapter tests run against **recorded fixtures**. Tests never call a real superma
 
 ### 2. Search and compare
 
-`GET /api/products?q=leche entera` → FULLTEXT search over available products of enabled supermarkets → ranked by `unitPrice` ascending (products without a unit price go last) → paginated.
+`GET /api/products?q=leche entera` → FULLTEXT search over available products (PD-22) of enabled supermarkets → ranked by `unitPrice` ascending (products without a unit price go last) → paginated.
 
 ### 3. User onboarding
 
@@ -454,7 +457,7 @@ Tables (draft, finalized in migrations):
 
 | Table | Key columns |
 | --- | --- |
-| `supermarket` | `id` (slug PK), `name`, `enabled` |
+| `supermarket` | `id` (slug PK), `name` |
 | `product` | `id` (BINARY(16)), `supermarket_id`, `external_id`, `name`, `brand`, `category`, `image_url`, `package_quantity`, `package_unit`, `price_cents`, `unit_price_cents`, `unit_price_unit`, `available`, `last_seen_at` — UNIQUE(`supermarket_id`, `external_id`), FULLTEXT(`name`, `brand`) |
 | `price_snapshot` | `id`, `product_id`, `price_cents`, `unit_price_cents`, `captured_at` — INDEX(`product_id`, `captured_at`) |
 | `ingestion_run` | `id`, `supermarket_id`, `started_at`, `finished_at`, `status`, `products_seen`, `error` |
@@ -555,7 +558,6 @@ These have **not** been decided. Implementation must stop and ask before coding 
 | OQ-3 | Concurrent edits on the same item (two people check/uncheck at once): is last-write-wins acceptable? | E4 |
 | OQ-4 | Can a list be deleted (by whom, and what do members see)? Can a member leave a list on their own? Can ownership be transferred? | E4 |
 | OQ-5 | Data source and terms of use for each supermarket (public API vs HTML scraping). Each adapter starts with a spike. | E1 |
-| OQ-6 | Should products that disappear from a catalog be hidden from search or shown as "unavailable"? | E1/E2 |
 | OQ-7 | Search ranking ties and filters (brand, category, supermarket) needed in the MVP? | E2 |
 | OQ-8 | Activation link lifetime (proposal: 72 h), and can the admin regenerate it for a pending user? | E3 |
 | OQ-9 | Lost password or lost 2FA device: without email, the proposal is that the admin resets the user (new activation link → new password + new TOTP). Also, do users get TOTP recovery codes? | E3 |

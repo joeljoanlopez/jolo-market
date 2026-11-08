@@ -13,21 +13,12 @@ use PHPUnit\Framework\TestCase;
 final class SupermarketTest extends TestCase
 {
     #[Test]
-    public function it_is_created_with_an_id_a_name_and_whether_it_is_enabled(): void
+    public function it_is_created_with_an_id_and_a_name(): void
     {
-        $supermarket = Supermarket::create(SupermarketId::fromString('bonpreu'), 'Bonpreu i Esclat', true);
+        $supermarket = Supermarket::create(SupermarketId::fromString('bonpreu'), 'Bonpreu i Esclat');
 
         self::assertTrue(SupermarketId::fromString('bonpreu')->equals($supermarket->id()));
         self::assertSame('Bonpreu i Esclat', $supermarket->name());
-        self::assertTrue($supermarket->isEnabled());
-    }
-
-    #[Test]
-    public function it_can_be_disabled(): void
-    {
-        $supermarket = Supermarket::create(SupermarketId::fromString('aldi'), 'Aldi', false);
-
-        self::assertFalse($supermarket->isEnabled());
     }
 
     #[Test]
@@ -35,6 +26,6 @@ final class SupermarketTest extends TestCase
     {
         $this->expectException(InvalidArgument::class);
 
-        Supermarket::create(SupermarketId::fromString('aldi'), '  ', true);
+        Supermarket::create(SupermarketId::fromString('aldi'), '  ');
     }
 }

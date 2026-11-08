@@ -2,7 +2,7 @@
 
 **Goal:** periodically import the catalogs of Mercadona, Bonpreu i Esclat and Aldi for the instance postal code. Store products with a normalized unit price and append a price snapshot on every run.
 
-Related decisions: PD-1, PD-5, PD-6. Open questions: OQ-1, OQ-5, OQ-6.
+Related decisions: PD-1, PD-5, PD-6, PD-21, PD-22, PD-23, PD-24, PD-25. Open questions: OQ-1, OQ-5.
 
 ## Acceptance criteria
 
@@ -29,7 +29,7 @@ Related decisions: PD-1, PD-5, PD-6. Open questions: OQ-1, OQ-5, OQ-6.
 
 - [ ] E1.8 Add the `IngestCatalogHandler` use case, tested with in-memory repositories and a fake source: upsert, snapshot, unavailability, per-supermarket error isolation.
 - [ ] E1.9 Add the `IngestionRun` record and its port, so run status is persisted.
-- [ ] E1.10 ❓ OQ-6: decide how products that disappear from a catalog are treated (hidden or flagged as unavailable).
+- [ ] E1.10 OQ-6 (answered by PD-22): decide how products that disappear from a catalog are treated (hidden or flagged as unavailable).
 
 ### Infrastructure — persistence
 

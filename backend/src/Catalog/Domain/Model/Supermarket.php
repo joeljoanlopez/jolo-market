@@ -6,21 +6,23 @@ namespace App\Catalog\Domain\Model;
 
 use App\Catalog\Domain\ValueObject\SupermarketId;
 
+/**
+ * A supermarket chain. Whether it is enabled is instance configuration (ENABLED_SUPERMARKETS, PD-24), not stored state.
+ */
 final class Supermarket
 {
     private function __construct(
         private readonly SupermarketId $id,
         private readonly string $name,
-        private readonly bool $enabled,
     ) {
         if ('' === trim($name)) {
             throw InvalidSupermarket::blankName();
         }
     }
 
-    public static function create(SupermarketId $id, string $name, bool $enabled): self
+    public static function create(SupermarketId $id, string $name): self
     {
-        return new self($id, $name, $enabled);
+        return new self($id, $name);
     }
 
     public function id(): SupermarketId
@@ -31,10 +33,5 @@ final class Supermarket
     public function name(): string
     {
         return $this->name;
-    }
-
-    public function isEnabled(): bool
-    {
-        return $this->enabled;
     }
 }
