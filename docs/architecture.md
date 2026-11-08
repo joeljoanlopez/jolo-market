@@ -531,6 +531,7 @@ Symfony variables (`backend/.env`, committed with non-secret defaults; real valu
 
 - nginx routes `/api` to Symfony (`backend/public/index.php`) and every other path to the Vite dev server (`frontend:5173`), including the HMR websocket. The SPA and the API share the origin `http://localhost:${HTTP_PORT}`.
 - MySQL starts with `utf8mb4` / `utf8mb4_0900_ai_ci`, and DBAL creates tables with the same default. On the first start of the `mysql-data` volume, `docker/mysql/init/01-create-test-database.sh` creates `<MYSQL_DATABASE>_test`. The test environment uses that database (Doctrine `dbname_suffix: _test`).
+- CI (`.github/workflows/ci.yml`, GitHub Actions) runs on every push: the backend `composer check` inside the Compose php and mysql containers, the frontend `npm run check`, and then the Playwright suite against the full stack.
 - End-to-end tests (Playwright, `frontend/e2e/`) run against the running stack: `npm run test:e2e` in `frontend/`. `E2E_BASE_URL` overrides the target (default `http://localhost:8080`).
 - Frontend quality commands run in `frontend/` with Node 26 (`npm ci` first): `npm run test`, `npm run typecheck`, `npm run lint`, `npm run format:check` and `npm run check` (runs all of them).
 - Backend quality commands run inside the php container: `composer test`, `composer test:unit`, `composer analyse`, `composer deptrac`, `composer cs` and `composer check` (runs all of them).
