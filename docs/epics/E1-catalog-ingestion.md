@@ -2,7 +2,7 @@
 
 **Goal:** periodically import the catalogs of Mercadona, Bonpreu i Esclat and Aldi for the instance postal code. Store products with a normalized unit price and append a price snapshot on every run.
 
-Related decisions: PD-1, PD-5, PD-6, PD-21, PD-22, PD-23, PD-24, PD-25. Open questions: OQ-1, OQ-5.
+Related decisions: PD-1, PD-5, PD-6, PD-21, PD-22, PD-23, PD-24, PD-25, PD-26, PD-27. Open questions: OQ-5.
 
 ## Acceptance criteria
 
@@ -52,7 +52,7 @@ Each adapter: spike → record fixtures → TDD the mapping from fixture to `Sou
 ### Driving adapters & scheduling
 
 - [x] E1.20 Add the `app:catalog:ingest` console command (`--supermarket`), with a functional test using fake sources.
-- [ ] E1.21 ❓ OQ-1 Add a Symfony Scheduler entry driven by `INGESTION_SCHEDULE`, run by the `scheduler` container.
+- [x] E1.21 OQ-1 (answered by PD-27): Add a Symfony Scheduler entry driven by `INGESTION_SCHEDULE`, run by the `scheduler` container.
 - [x] E1.22 Add structured logging of each run (counts, duration, errors).
 
 ## Spike notes

@@ -52,7 +52,7 @@ jolo-market/
 ├── docs/
 │   ├── architecture.md # Stack, architecture, domain model, decisions
 │   └── epics/          # Epics with task checklists (progress tracking)
-├── compose.yaml        # Development stack: nginx, php-fpm, mysql, Vite dev server
+├── compose.yaml        # Development stack: nginx, php-fpm, scheduler, mysql, Vite dev server
 ├── .env.example        # Documented Compose variables (copy to .env)
 └── AGENTS.md           # Rules for AI assistants (TDD, hexagonal, English code)
 ```
@@ -116,6 +116,8 @@ docker compose exec php bin/console app:catalog:ingest --supermarket=mercadona #
 ```
 
 Requests to the stores identify themselves with `CATALOG_HTTP_USER_AGENT`, wait at least 1 s between each other and retry rate limits and server errors.
+
+The `scheduler` service runs it automatically on `INGESTION_SCHEDULE` (daily at 05:00 Europe/Madrid by default; `docker compose exec php bin/console debug:scheduler` shows the next run).
 
 It prints a summary per supermarket and exits with `0` when every run succeeded, `1` when any failed and `2` for invalid input or configuration. Each run is stored in the `ingestion_run` table and logged on the `ingestion` channel.
 
