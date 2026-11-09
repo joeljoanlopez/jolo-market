@@ -67,6 +67,7 @@ final class ProfileApiTest extends IdentityApiTestCase
         $secret = $this->json()['secret'];
         self::assertIsString($secret);
         self::assertIsString($this->json()['provisioningUri']);
+        $this->forgetUsedCodes();
 
         $this->postJson('/api/me/totp/confirm', ['code' => self::codeFor($secret)]);
         self::assertResponseStatusCodeSame(204);

@@ -29,7 +29,7 @@ final class AdminUsersApiTest extends IdentityApiTestCase
         self::assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/', $created['activationToken']);
         self::assertIsString($created['activationExpiresAt']);
 
-        $this->client->request('GET', '/api/auth/activation/'.$created['activationToken']);
+        $this->postJson('/api/auth/activation', ['token' => $created['activationToken']]);
         self::assertResponseStatusCodeSame(200);
     }
 
@@ -83,9 +83,9 @@ final class AdminUsersApiTest extends IdentityApiTestCase
         self::assertResponseStatusCodeSame(200);
         $token = $this->json()['activationToken'];
         self::assertIsString($token);
-        $this->client->request('GET', '/api/auth/activation/activation-token-0000000000000000000042');
+        $this->postJson('/api/auth/activation', ['token' => 'activation-token-0000000000000000000042']);
         self::assertResponseStatusCodeSame(404);
-        $this->client->request('GET', '/api/auth/activation/'.$token);
+        $this->postJson('/api/auth/activation', ['token' => $token]);
         self::assertResponseStatusCodeSame(200);
     }
 
