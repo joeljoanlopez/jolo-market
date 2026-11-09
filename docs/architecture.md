@@ -58,6 +58,7 @@ Decisions confirmed by the product owner. Changing any of them requires asking f
 | PD-30 | *(Replaced by PD-31 for Aldi and PD-32 for Bonpreu i Esclat.)* The Bonpreu i Esclat and Aldi adapters were deferred: Bonpreu's WAF blocks an identifying User-Agent and Aldi seemed to publish no food prices. |
 | PD-31 | **Aldi** is ingested from the public category pages of `www.aldi.es` (allowed by its `robots.txt`), which embed their products and prices in `__NEXT_DATA__`. Prices are the **peninsula** ones (`/can/` and `/bal/` are disallowed), and they are used for every postal code, Baleares and Canarias included, so the postal code is not used. Canned food is sized by its **drained weight** (`peso esc.`), the only size Aldi gives. Products without a published price (mostly loose fresh produce) are stored without one. Aldi is in the default `ENABLED_SUPERMARKETS`. *(Replaces the Aldi part of PD-30, whose spike sample was wrong: on 2026-11-09, 2 480 of 2 666 products had a price. Peninsula prices for every postal code and drained weight as the size confirmed by the product owner on 2026-11-09.)* |
 | PD-32 | **Bonpreu i Esclat** is ingested from the internal JSON API of `www.compraonline.bonpreuesclat.cat` (Ocado Smart Platform), with a **browser User-Agent**: its WAF rejects any other client. This overrides PD-26 for Bonpreu only, and like PD-28 it is accepted for **private, self-hosted use** even though `robots.txt` disallows `/api/`. The operator takes that risk. The WAF challenges the seventh API request within about five minutes, and only a browser running its JavaScript can pass a challenge, so the adapter **waits 90 seconds between API requests** instead of trying to pass it, and after a challenge waits six minutes and retries, up to twice (a run takes about an hour and a half). The online store has one price region (Catalunya): every postal code gets the same price, so the postal code is not used. Bonpreu is in the default `ENABLED_SUPERMARKETS`. *(Replaces the Bonpreu part of PD-30; with PD-28 and PD-31, OQ-5 is closed. One price for every postal code confirmed by the product owner on 2026-11-09.)* |
+| PD-33 | Search has **one filter in the MVP: supermarket** (brand and category later). Results are **grouped by unit price unit** (kg, L, unit): the unit with the most results for the query comes first, and each group is ordered by unit price ascending. Products without a unit price go last. Ties on unit price are broken by the **lower shelf price**, then name, then id, so pages are stable. The cheapest unit price is highlighted **within each unit group**. Units with as many results go in the order kg, L, unit. Every query word must match the **start of a word** in the name or brand, short words ("de", "xl") included, so search works while a word is still being typed. *(Answers OQ-7.)* |
 
 ## Stack
 
@@ -267,13 +268,16 @@ backend/
 │   │   ├── Application/
 │   │   │   ├── IngestCatalog/   # IngestCatalogCommand + IngestCatalogHandler
 │   │   │   ├── SearchProducts/  # SearchProductsQuery + handler + result DTO
+│   │   │   ├── GetProduct/      # GetProductQuery + handler + ProductView
+│   │   │   ├── ListSupermarkets/ # ListSupermarketsQuery + handler
 │   │   │   └── GetPriceHistory/
 │   │   └── Infrastructure/
 │   │       ├── Persistence/Dbal/
 │   │       ├── Source/Mercadona/
 │   │       ├── Source/BonpreuEsclat/
 │   │       ├── Source/Aldi/
-│   │       ├── Http/            # controllers
+│   │       ├── Api/             # controllers
+│   │       ├── Http/            # HTTP client of the supermarket sources
 │   │       └── Console/         # app:catalog:ingest
 │   ├── Identity/
 │   │   ├── Domain/ Application/ Infrastructure/   # same layout; Symfony Security + scheb/2fa adapters live in Infrastructure/Security
@@ -312,7 +316,7 @@ Feature-first (screaming) folders. Each feature has a light hexagonal split. Sha
 frontend/src/
 ├── features/
 │   ├── catalog/
-│   │   ├── domain/          # types + pure functions (formatUnitPrice, rankByUnitPrice)
+│   │   ├── domain/          # types + pure functions (formatUnitPrice, isCheapest)
 │   │   ├── application/     # hooks/use cases (useProductSearch) depending on ports
 │   │   ├── infrastructure/  # API client implementing the port (fetch), DTO mappers
 │   │   └── ui/
@@ -343,9 +347,18 @@ Rules:
   - Colors: `background`, `surface`, `border`, `foreground`, `muted`, `primary` (+ `-hover`, `-foreground`), `danger` (+ `-hover`, `-foreground`), `focus`, and one per supermarket with a readable foreground: `mercadona`, `bonpreu`, `aldi` (+ `-foreground`) (PD-20).
   - Font sizes `xs`–`3xl`, font `sans`, radii `sm`, `md`, `lg`, `full`, and the spacing unit `--spacing: 0.25rem`.
   - A new token must also be added to `cn()` (`shared/ui/lib/cn.ts`) so `tailwind-merge` resolves conflicts correctly.
-- `cn()` joins classes and lets the last conflicting utility win. Atoms (`shared/ui/atoms`): `Button` (`variant`: primary, secondary, danger; `size`: sm, md), `Input` (`invalid`), `Text` (`as`, `size`, `tone`, `weight`).
+- `cn()` joins classes and lets the last conflicting utility win. Atoms (`shared/ui/atoms`): `Button` (`variant`: primary, secondary, danger; `size`: sm, md), `Input` (`invalid`), `Label`, `Select` (native, same look as `Input`), `Text` (`as`, `size`, `tone`, `weight`). Molecules (`shared/ui/molecules`): `SearchBox` (controlled `role="search"` form with a labelled search box; a submit button only when `onSubmit` is given; Enter never reloads) and `Pagination` (previous / next and a status text; the caller passes the copy). Shared components take their copy as props; feature components read it with `t()`.
 - `prettier-plugin-tailwindcss` sorts classes, also inside `cva()` and `cn()`.
 - HTTP: `createHttpClient({ baseUrl })` in `shared/http` wraps `fetch` (`get`, `post`, `patch`, `delete`). It sends same-origin cookies and JSON, resolves with the parsed body as `unknown` (`undefined` when empty) and rejects with typed errors: `UnauthorizedError` (401), `NotFoundError` (404), `ConflictError` (409), `ValidationError` (422), `ServerError` (5xx), `HttpError` for any other status, and `NetworkError` when no response arrives. Each error carries the parsed `problem` (falling back to the status when the body is not problem+json). Feature `infrastructure/` maps the `unknown` body to domain types; the UI picks Spanish copy from the error class, never from `problem.detail`.
+- Unexpected API bodies: feature `infrastructure/` rejects a successful response whose body does not have the expected shape with `UnexpectedResponseError` (`shared/http/errors.ts`).
+- Ports of a feature live in its `application/` and are injected with a React context (e.g. `ProductCatalogContext`), so hooks never import `infrastructure/` and tests pass an in-memory fake.
+- Catalog feature (`features/catalog`):
+  - `domain/`: types (`Product`, `ProductDetail`, `ProductSearchPage`, `Supermarket`, `Packaging`, `UnitPrice`, `Unit`, `CheapestUnitPriceCents`) and pure functions `formatPrice(cents)` (`1,25 €`), `formatUnitPrice(unitPrice, unitSymbols)` (`0,83 €/L`, `9,00 €/kg`, `0,30 €/ud`), `formatPackaging(packaging, unitSymbols)` (`1,5 L`, `0,5 kg`, `6 ud`) and `isCheapest(product, cheapestUnitPriceCents)` (lowest unit price of its unit over the whole query, PD-33). Formats use `Intl` with `es-ES`. The unit symbols (`kg`, `L`, `ud`) are UI copy: they live in `es.json` (`catalog.units`) and `ui/useUnitSymbols()` reads them for the formatters.
+  - `application/`: port `ProductCatalog` (`searchProducts`, `getProduct`, `listSupermarkets`), `ProductCatalogContext` / `useProductCatalog()` (the app provides `createCatalogApi(createHttpClient({ baseUrl: window.location.origin }))` through `App`'s `productCatalog` prop), `useSupermarkets()` (enabled supermarkets for the filter; an empty list while loading or on failure, so the filter offers only "all"), and `useProductSearch({ text, supermarket?, page? })` on TanStack Query. The initial text is searched at once (landing on a search URL); later changes of the text wait 300 ms without typing (`SEARCH_DEBOUNCE_MS`); the filter and the page apply at once. A trimmed text shorter than 2 characters (`MIN_SEARCH_LENGTH`) does not query and is `idle` at once, without the debounce (clearing the box); a valid text still waiting for the debounce is `loading`. Pagination is page-based (`page` input, `keepPreviousData` keeps the previous page on screen while the next loads); the caller resets the page when the text or the filter changes. It returns `{ status: 'idle' | 'loading' | 'error' | 'success' }`, with `error` and `retry()` on error, and `data` and `isFetching` on success.
+  - `infrastructure/`: `createCatalogApi(httpClient)` implements `ProductCatalog` over `GET /api/products`, `GET /api/products/{id}` and `GET /api/supermarkets`, validating every body into domain types.
+  - `ui/components/`: `SupermarketBadge` (atom; the chain's theme colors, neutral for any other), `SupermarketFilter` (molecule; "Todos" + the enabled supermarkets), `PriceTag` (molecule; shelf price and unit price, `highlighted` variant with a "Más barato" label), `ProductCard` (organism; image or a placeholder, name, brand, badge, packaging, `PriceTag`) and `ProductResultList` (organism; a labelled list that highlights each product for which `isCheapest(product, cheapestUnitPriceCents)` holds, PD-33).
+  - `ui/containers/SearchPageContainer` is the `/search?q=&supermarket=&page=` page. The URL is the source of truth: typing writes `q` with a history *replace* and drops `page`; choosing a supermarket ("Todos" removes the param) and changing page push a new entry, and the filter also drops `page`. The first page is never written as `page=1`. The search box keeps its text in local state (the URL commits a moment after each key press) and follows the URL on Back / Forward. States: idle (type at least 2 characters), loading, error (with retry), empty ("No hay resultados para «…»"), results (total, list, pagination; the previous page stays on screen with `aria-busy` while the next loads).
+- Home (`features/home`): the home page has a search box that opens `/search?q=…`.
 - `domain/` has no React imports.
 - API DTOs are mapped to domain types in `infrastructure/`. Components never see raw API shapes.
 - All user-visible strings go through `t()`. No hard-coded Spanish in components.
@@ -378,7 +391,39 @@ Adapter tests run against **recorded fixtures**. Tests never call a real superma
 
 ### 2. Search and compare
 
-`GET /api/products?q=leche entera` → FULLTEXT search over available products (PD-22) of enabled supermarkets → ranked by `unitPrice` ascending (products without a unit price go last) → paginated.
+`GET /api/products?q=leche entera` → FULLTEXT search over available products (PD-22) of enabled supermarkets → grouped by unit and ranked by `unitPrice` ascending (PD-33, products without a unit price go last) → paginated, 20 per page.
+
+`SearchProductsHandler` (Catalog Application) takes a `SearchProductsQuery` (`text` of at least 2 characters after trimming, optional `supermarket` slug, `page` ≥ 1, `perPage` ≥ 1; `InvalidSearchProductsQuery` otherwise). It searches the supermarkets of `ENABLED_SUPERMARKETS` (port `EnabledSupermarkets`, PD-24), or only the one of the filter, which must be enabled (`SupermarketNotEnabled` otherwise). The port `ProductSearchReadModel` (adapter `DbalProductSearchReadModel`) returns a `ProductSearchPage`: the `ProductSearchResult` DTOs of the page, the `total` of the whole query and `cheapestUnitPriceCentsByUnit` (lowest unit price per unit over the whole query, for the highlight of PD-33).
+
+- **Matching:** every word of the text must match the start of a word of the name or brand, ignoring case and accents. Words are split on anything that is not a letter or a digit, so FULLTEXT operators typed by the user are ignored. Each word becomes a required prefix term (`+word*`) of `MATCH (name, brand) AGAINST (… IN BOOLEAN MODE)` on the `utf8mb4_0900_ai_ci` columns. Words InnoDB does not index (shorter than `innodb_ft_min_token_size` = 3, or a default stopword such as "de" or "la") are matched with `LIKE '% word%'` on the name and brand instead.
+- **Order (PD-33), in SQL so pages are stable:** products without a unit price last; units with more results first (units with as many results as `kg`, `l`, `unit`); then unit price, shelf price, name and id ascending.
+
+`SearchProductsController` (Catalog Infrastructure `Api`) maps `q`, `supermarket` and `page` to the query with a fixed page size of 20; a `page` that is not an integer is an `InvalidQueryParameter` (422). Search results and the product detail share one JSON shape (`ProductJson`):
+
+```json
+{
+  "items": [
+    {
+      "id": "0190f3c2-…", "name": "Leche entera", "brand": "Hacendado",
+      "supermarket": { "id": "mercadona", "name": "Mercadona" },
+      "packaging": { "quantity": 1.5, "unit": "l" },
+      "priceCents": 125,
+      "unitPrice": { "cents": 83, "unit": "l" },
+      "imageUrl": "https://…"
+    }
+  ],
+  "page": 1, "perPage": 20, "total": 37,
+  "cheapestUnitPriceCents": { "l": 70, "kg": 900 }
+}
+```
+
+`brand`, `packaging`, `unitPrice` and `imageUrl` may be `null`. Units are `kg`, `l` or `unit`. `packaging.quantity` is a decimal number (stored in thousandths). `cheapestUnitPriceCents` holds the lowest unit price of each unit over the whole query, so the SPA highlights the cheapest of each group (PD-33); it is `{}` when nothing matches.
+
+`GET /api/products/{id}` → `GetProductHandler` (`GetProductQuery`, port `ProductViewReadModel`, adapter `DbalProductViewReadModel`) returns the same shape plus `"available": bool`. It returns a product **even when it is unavailable**, because lists still show it (PD-22). An unknown or malformed id is a `ProductNotFound` (404).
+
+`GET /api/supermarkets` → `ListSupermarketsHandler` returns the supermarkets of `ENABLED_SUPERMARKETS` (port `EnabledSupermarkets`, PD-24) in that order, with their names from the `supermarket` table (port `SupermarketNames`, adapter `DbalSupermarketNames`): `[{"id":"mercadona","name":"Mercadona"}, …]`. An enabled slug without a `supermarket` row is left out.
+
+These three endpoints are **public** until E3.21 puts them behind login.
 
 ### 3. User onboarding
 
@@ -449,9 +494,9 @@ All routes require a fully authenticated session (login + 2FA) except those mark
 | POST | `/api/auth/activation/{token}/totp` | **public** — confirm TOTP code, activates user and logs in |
 | GET | `/api/admin/users` | ADMIN — list users and their status |
 | POST | `/api/admin/users` | ADMIN — create user → activation link |
-| GET | `/api/supermarkets` | Enabled supermarkets |
-| GET | `/api/products?q=&supermarket=&page=` | Search, ranked by unit price |
-| GET | `/api/products/{id}` | Product detail |
+| GET | `/api/supermarkets` | **public until E3.21** — enabled supermarkets, in `ENABLED_SUPERMARKETS` order: `[{id, name}]` |
+| GET | `/api/products?q=&supermarket=&page=` | **public until E3.21** — search available products, grouped by unit and ranked by unit price (PD-33), 20 per page. `q` (≥ 2 characters after trimming) is required; `page` ≥ 1 defaults to 1; `supermarket` must be enabled. Invalid input → `422` |
+| GET | `/api/products/{id}` | **public until E3.21** — product detail with `available`, also for unavailable products (PD-22). Unknown or malformed id → `404` |
 | GET | `/api/products/{id}/price-history` | Price snapshots |
 | GET | `/api/lists` | Lists the current user owns or is a member of |
 | POST | `/api/lists` | Create list (current user is the owner) |
@@ -562,8 +607,9 @@ Symfony variables (`backend/.env`, committed with non-secret defaults; real valu
 
 - nginx routes `/api` to Symfony (`backend/public/index.php`) and every other path to the Vite dev server (`frontend:5173`), including the HMR websocket. The SPA and the API share the origin `http://localhost:${HTTP_PORT}`.
 - MySQL starts with `utf8mb4` / `utf8mb4_0900_ai_ci`, and DBAL creates tables with the same default. On the first start of the `mysql-data` volume, `docker/mysql/init/01-create-test-database.sh` creates `<MYSQL_DATABASE>_test`. The test environment uses that database (Doctrine `dbname_suffix: _test`).
-- CI (`.github/workflows/ci.yml`, GitHub Actions) runs on every push: the backend `composer check` inside the Compose php and mysql containers, the frontend `npm run check`, and then the Playwright suite against the full stack.
+- CI (`.github/workflows/ci.yml`, GitHub Actions) runs on every push: the backend `composer check` inside the Compose php and mysql containers, the frontend `npm run check`, and then the Playwright suite against the stack (without the scheduler) loaded with the e2e catalog.
 - End-to-end tests (Playwright, `frontend/e2e/`) run against the running stack: `npm run test:e2e` in `frontend/`. `E2E_BASE_URL` overrides the target (default `http://localhost:8080`).
+- The journeys need a known catalog and must never reach the real supermarkets, so the e2e stack runs without the `scheduler` service and, after `doctrine:migrations:migrate`, loads the SQL fixture `backend/tests/Fixtures/e2e/catalog.sql` with the `mysql` client of the `mysql` container. It adds no production code. The fixture deletes and inserts only its own rows (external ids `e2e-…`), so it can be loaded again. Locally it goes into a separate Compose project (`COMPOSE_PROJECT_NAME`, `HTTP_PORT`), never the development database (README → End-to-end tests). The search journey (`search.spec.ts`) searches "leche" and checks the PD-33 order: the L group by ascending unit price, then kg, then unit, then the product without a unit price; the cheapest of each group highlighted; the unavailable product absent.
 - Frontend quality commands run in `frontend/` with Node 26 (`npm ci` first): `npm run test`, `npm run typecheck`, `npm run lint`, `npm run format:check` and `npm run check` (runs all of them).
 - Schema changes are Doctrine migrations in `backend/migrations/` (raw SQL, UTC `DATETIME(6)`, UUIDs as `BINARY(16)`). Apply them with `bin/console doctrine:migrations:migrate`. `composer test` first runs `composer db:test`, which migrates the test database.
 - Catalog ingestion: `bin/console app:catalog:ingest [--supermarket=<slug>]`. It prints one row per run (status, seen, skipped, marked unavailable, duration, error). Exit code `0` when every run succeeded, `1` when any run failed, `2` for invalid input or configuration (unknown or disabled `--supermarket`, invalid `INSTANCE_POSTAL_CODE`), in which case nothing is ingested. Supermarket adapters implement `SupermarketCatalogSource` and are collected through the `catalog.supermarket_source` tag (`_instanceof` in `config/services/catalog.yaml`). In the test environment two `ConfigurableCatalogSource` fakes replace them.
@@ -582,7 +628,6 @@ These have **not** been decided. Implementation must stop and ask before coding 
 | OQ-2 | Price history retention: keep forever, or downsample/prune after N months? | E5 |
 | OQ-3 | Concurrent edits on the same item (two people check/uncheck at once): is last-write-wins acceptable? | E4 |
 | OQ-4 | Can a list be deleted (by whom, and what do members see)? Can a member leave a list on their own? Can ownership be transferred? | E4 |
-| OQ-7 | Search ranking ties and filters (brand, category, supermarket) needed in the MVP? | E2 |
 | OQ-8 | Activation link lifetime (proposal: 72 h), and can the admin regenerate it for a pending user? | E3 |
 | OQ-9 | Lost password or lost 2FA device: without email, the proposal is that the admin resets the user (new activation link → new password + new TOTP). Also, do users get TOTP recovery codes? | E3 |
 | OQ-10 | Admin user management beyond creation: disable/enable, delete (what happens to their lists?), change role? | E3 |

@@ -106,9 +106,16 @@ jobs:
         run: |
           docker compose up -d --build --wait php mysql
           docker compose exec -T -e COMPOSER_AUTH -e COMPOSER_CACHE_DIR=/var/www/backend/var/composer-cache php composer install --no-interaction --no-progress
-          docker compose up -d
+          # nginx pulls in php and the frontend. The scheduler stays down: it would ingest from
+          # the real supermarkets.
+          docker compose up -d nginx
         env:
           COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ secrets.GITHUB_TOKEN }}"}}'
+
+      - name: Load the end-to-end catalog
+        run: |
+          docker compose exec -T php bin/console doctrine:migrations:migrate --no-interaction
+          docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" "$MYSQL_DATABASE"' < backend/tests/Fixtures/e2e/catalog.sql
 
       - name: Wait for the SPA and the API
         run: |

@@ -5,14 +5,16 @@ declare(strict_types=1);
 namespace App\Catalog\Infrastructure\Ingestion;
 
 use App\Catalog\Application\IngestCatalog\IngestionSettings;
+use App\Catalog\Application\SearchProducts\EnabledSupermarkets;
 use App\Catalog\Domain\ValueObject\PostalCode;
 use App\Catalog\Domain\ValueObject\SupermarketId;
 
 /**
  * Reads INSTANCE_POSTAL_CODE and ENABLED_SUPERMARKETS. Values are validated when used,
  * so a wrong value fails the ingestion command with a clear message instead of the whole container.
+ * Search reads the same ENABLED_SUPERMARKETS (PD-24).
  */
-final readonly class EnvIngestionSettings implements IngestionSettings
+final readonly class EnvIngestionSettings implements IngestionSettings, EnabledSupermarkets
 {
     public function __construct(
         private string $postalCode,
