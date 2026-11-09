@@ -22,7 +22,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * cookies and a CSRF token; then every top category is read in pages of 1000 products, about
  * 40 requests per run. The WAF challenges the seventh request within about five minutes, and a
  * challenge can only be passed by running its JavaScript, so the adapter waits 90 seconds between
- * API requests (a run takes about an hour) and, if a request is challenged anyway, waits for the
+ * API requests (a run takes about an hour and a half) and, if a request is challenged anyway, waits for the
  * challenge to lift and tries again. The online store has a single price region
  * (Catalunya), so the postal code is not used.
  */

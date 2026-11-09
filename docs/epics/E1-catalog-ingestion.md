@@ -91,7 +91,7 @@ Re-checked on 2026-11-09 with a browser User-Agent, following the reverse-engine
 - **robots.txt:** `Disallow: /api/`.
 - **Protection:** AWS WAF. It answers `403 Request blocked` to an identifying User-Agent and `200` to a browser one. Without an `aws-waf-token` cookie (only set by running the challenge JavaScript), the seventh API request within about five minutes gets `202` with `x-amzn-waf-action: challenge` and an empty body, whatever the pace, category or session. The challenge lifts after about five minutes.
 - **Location and price:** anonymous sessions get the region `Catalunya` (`retailerRegionId` 31001) and the store reports a `CENTRALIZED` business model. The postal code is only used to check delivery (`/ecomdeliverydestinations/v2/deliverability`). Assumed: one price for every postal code.
-- **Cost:** about 40 pages of up to 12 MB each, so about 300 MB per run, and about an hour with one API request every 90 seconds.
+- **Cost:** about 40 pages of up to 12 MB each, so about 300 MB per run, and about an hour and a half with one API request every 90 seconds.
 - **Loose products:** variable-weight products have `catchweight` and a range size ("150g - 400g"); products sold by the piece have no size and a unit price per each. Their `unitPrice` is the store's price per kg or per piece.
 - **Terms of use:** not found through search.
 
