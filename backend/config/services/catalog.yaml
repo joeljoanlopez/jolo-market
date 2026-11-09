@@ -53,6 +53,6 @@ when@test:
             arguments: ['mercadona']
         test.catalog_source.aldi:
             class: App\Tests\Support\Catalog\ConfigurableCatalogSource
+            decorates: App\Catalog\Infrastructure\Source\Aldi\AldiCatalogSource
             public: true
             arguments: ['aldi']
-            tags: ['catalog.supermarket_source']
