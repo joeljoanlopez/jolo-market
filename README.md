@@ -108,7 +108,7 @@ The MySQL test database (`<MYSQL_DATABASE>_test`) is created automatically the f
 
 ### Catalog ingestion
 
-`app:catalog:ingest` imports the catalog of every supermarket in `ENABLED_SUPERMARKETS` (only `mercadona` has an adapter for now) for `INSTANCE_POSTAL_CODE` (both in `backend/.env`, override them in `backend/.env.local`):
+`app:catalog:ingest` imports the catalog of every supermarket in `ENABLED_SUPERMARKETS` (`mercadona`, `aldi` and `bonpreu` have an adapter) for `INSTANCE_POSTAL_CODE` (both in `backend/.env`, override them in `backend/.env.local`):
 
 ```sh
 docker compose exec php bin/console app:catalog:ingest                         # every enabled supermarket

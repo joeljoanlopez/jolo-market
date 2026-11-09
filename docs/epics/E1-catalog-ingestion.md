@@ -2,7 +2,7 @@
 
 **Goal:** periodically import the catalogs of Mercadona, Bonpreu i Esclat and Aldi for the instance postal code. Store products with a normalized unit price and append a price snapshot on every run.
 
-Related decisions: PD-1, PD-5, PD-6, PD-21, PD-22, PD-23, PD-24, PD-25, PD-26, PD-27, PD-28, PD-29, PD-30. Open questions: none.
+Related decisions: PD-1, PD-5, PD-6, PD-21, PD-22, PD-23, PD-24, PD-25, PD-26, PD-27, PD-28, PD-29, PD-30, PD-31, PD-32. Open questions: none.
 
 ## Acceptance criteria
 
@@ -44,12 +44,16 @@ Each adapter: spike → record fixtures → TDD the mapping from fixture to `Sou
 - [x] E1.13 OQ-5 (answered by PD-28): **Spike Mercadona**: find the data source (public store API, postal code to warehouse resolution, category traversal), the rate limits and the terms of use. Write the findings here.
 - [x] E1.14 Write the Mercadona adapter against recorded fixtures (including postal code handling).
   - Note: first real run (postal code 46001, 2026-11-08): 4 396 products in 154 s, none skipped; 397 priced by reference (approximate size), 30 without unit price (for example saffron, finer than a gram).
-- [x] E1.15 OQ-5 (answered by PD-30): **Spike Bonpreu i Esclat**: find the data source, whether location affects price, and the terms of use. Write the findings here.
-- [ ] E1.16 Write the Bonpreu i Esclat adapter against recorded fixtures.
-  - Deferred (PD-30): the store's WAF answers 403 to an identifying User-Agent and `robots.txt` disallows `/api/`. Retry if that changes or if Bonpreu grants access.
-- [x] E1.17 OQ-5 (answered by PD-30): **Spike Aldi**: find what the Spanish online catalog exposes (prices, packaging) and the terms of use. Write the findings here.
-- [ ] E1.18 Write the Aldi adapter against recorded fixtures.
-  - Deferred (PD-30): aldi.es shows no price for food products (0 of 30 sampled on 2026-11-08). Retry if Aldi starts publishing prices.
+- [x] E1.15 OQ-5 (answered by PD-32): **Spike Bonpreu i Esclat**: find the data source, whether location affects price, and the terms of use. Write the findings here.
+- [x] E1.16 Write the Bonpreu i Esclat adapter against recorded fixtures.
+  - Note: it sends a browser User-Agent, the only one the store's WAF accepts, waits 90 seconds between API requests to stay under the WAF allowance, and retries a challenged request after six minutes (PD-32).
+  - Note: a first real run with one request a minute was challenged on its ninth request (6 168 products in 503 s), hence the longer pause and the retry.
+  - Note: second real run (2026-11-09): 21 415 products in 5 824 s (about 97 minutes), none skipped; 21 357 with a unit price, 512 priced by weight and 7 119 by the piece (mostly non-food items sold as one unit), 58 without unit price.
+  - Note: products sold by variable weight ("150g - 400g") or by the piece with no size are priced by the store's own unit price (PD-29).
+- [x] E1.17 OQ-5 (answered by PD-31): **Spike Aldi**: find what the Spanish online catalog exposes (prices, packaging) and the terms of use. Write the findings here.
+- [x] E1.18 Write the Aldi adapter against recorded fixtures.
+  - Note: the first spike (PD-30) sampled product pages and found no food prices. Category pages do carry them (PD-31).
+  - Note: first real run (2026-11-09): 2 478 products in 167 s, 2 222 with a unit price; 187 skipped because Aldi publishes no price for them, and 1 because of a broken image URL (since fixed: the image is left out).
 - [x] E1.19 Add shared HTTP adapter concerns: an identifying User-Agent, a polite delay between requests, retry with backoff on 5xx/429, and timeouts.
 
 ### Driving adapters & scheduling
@@ -77,16 +81,32 @@ Run on 2026-11-08 with a handful of spaced requests and the PD-26 User-Agent. Ra
 
 ### E1.15 Bonpreu i Esclat
 
-- **Source:** `www.compraonline.bonpreuesclat.cat` (Next.js-style store with an internal `/api/`). The sitemaps list 21 457 products and 2 868 categories.
-- **robots.txt:** `Disallow: /api/`. Product and category pages are allowed.
-- **Protection:** the home page answers `200`, but product and category pages answer `403 Request blocked` (CloudFront WAF) to our User-Agent. With an identifying User-Agent there is no usable source today.
-- **Location and price:** not checked, because product pages are blocked.
+Re-checked on 2026-11-09 with a browser User-Agent, following the reverse-engineered notes of [bonpreu-cli](https://github.com/pmontp19/bonpreu-cli/blob/main/docs/bonpreu-api-discovery.md) and the store's own JavaScript.
+
+- **Source:** `www.compraonline.bonpreuesclat.cat`, a white-labelled Ocado Smart Platform store with an internal JSON API under `/api/webproductpagews/`. The sitemaps list 21 457 products and 2 868 categories.
+  - `GET /` gives the session cookies and a CSRF token in `window.__INITIAL_STATE__.session.csrf.token`. Every API call sends both, plus `ecom-request-source: web`.
+  - `GET /api/webproductpagews/v1/categories?decoration=false&categoryDepth=4` returns the tree: 19 top categories, 1 478 leaves. Some top categories are virtual (Ofertes, Novetats, Productes Km0…).
+  - `GET /api/webproductpagews/v6/product-pages?maxProductsToDecorate=1000&maxPageSize=1000&tag=web&tag=category-item&categoryId={id}` returns every product under a category, up to 1000 per page (the store caps larger sizes), all decorated, in `productGroups[].decoratedProducts`. `metadata.nextPageToken` gives the next page (`pageToken={token}`).
+- **Product data:** `retailerProductId`, `name` (brand inside), `brand`, `packSizeDescription` ("1L", "6 x 1L", "0.5kg", "12 per paquet"), `price.amount`, `unitPrice` (their own price per litre, kg, dozen or each), `categoryPath`, `image.src`. A product on offer has a promotion path ("Ofertes > Preu rebaixat") instead of its real one.
+- **robots.txt:** `Disallow: /api/`.
+- **Protection:** AWS WAF. It answers `403 Request blocked` to an identifying User-Agent and `200` to a browser one. Without an `aws-waf-token` cookie (only set by running the challenge JavaScript), the seventh API request within about five minutes gets `202` with `x-amzn-waf-action: challenge` and an empty body, whatever the pace, category or session. The challenge lifts after about five minutes.
+- **Location and price:** anonymous sessions get the region `Catalunya` (`retailerRegionId` 31001) and the store reports a `CENTRALIZED` business model. The postal code is only used to check delivery (`/ecomdeliverydestinations/v2/deliverability`). Assumed: one price for every postal code.
+- **Cost:** about 40 pages of up to 12 MB each, so about 300 MB per run, and about an hour with one API request every 90 seconds.
+- **Loose products:** variable-weight products have `catchweight` and a range size ("150g - 400g"); products sold by the piece have no size and a unit price per each. Their `unitPrice` is the store's price per kg or per piece.
 - **Terms of use:** not found through search.
 
 ### E1.17 Aldi
 
-- **Source:** `www.aldi.es` (Next.js). Product pages embed their data in `__NEXT_DATA__` (`name`, `brandName`, `salesUnit` such as "1/40/56 unidades unidad / pack", `currentPrice.priceValue`, promotion validity dates). The products sitemap lists 2 824 products.
-- **robots.txt:** allows product pages.
-- **Prices:** a promoted non-food item had a price. **None of 30 sampled food products** (milk, yogurt, rice, cheese, wine, fruit…) had a price or a sales unit in the page data: Aldi Spain does not sell groceries online. Category pages embed no product list.
-- **Cost:** one request per product (about 2 800 requests, around 47 minutes per run with the 1 s delay). No postal code: prices are national.
+Re-checked on 2026-11-09 with a full crawl (the first sample, below, was wrong).
+
+- **Source:** `www.aldi.es` (Next.js). Every page embeds its data in `__NEXT_DATA__`:
+  - `/productos.html` and each section page (`/productos/despensa.html`) list their sub-categories in `apiData`, under the `PRODUCT_MGNL_CATEGORY_CHILDREN_GET` request (`reference.path`).
+  - Each leaf page (`/productos/despensa/conservas-de-pescado.html`) embeds its Algolia results (`algoliaState.initialResults.an_prd_es_es_pen_products2`, `hitsPerPage` 1000, one page): `objectID`, `name`, `brandName`, `salesUnit` ("1 l unidad", "pack de 6 x 200 ml", "63 g peso esc. unidad", "precio kg (a granel)"), `currentPrice.priceValue` and `basePrice` (their price per kg or L), `hierarchicalCategories`, `assets`.
+  - A product is listed in its category and in its brand's (`/productos/marcas/...`): the adapter returns it once, with the category from `hierarchicalCategories`.
+- **Prices:** 2 480 of 2 666 products had a price. Most of the ones without are loose fresh produce. Prices are the peninsula ones ("Precios válidos según región"; Baleares and Canarias may differ, and in Cataluña sugary drinks exclude the sugar tax).
+- **Packaging:** 2 168 priced products have a size the parser reads, 68 are approximate or loose (priced by `basePrice`, PD-29), 244 have no usable size (capsules, washes, plain "unidad").
+- **robots.txt:** allows `/productos/`; disallows the Canarias and Baleares versions (`/can/`, `/bal/`).
+- **Cost:** 163 pages, about 3 minutes per run with the 1 s delay.
 - **Terms of use:** not read yet.
+
+First sample (2026-11-08): 30 food product pages, none with a price. That sample was not representative.

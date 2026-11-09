@@ -56,3 +56,8 @@ when@test:
             decorates: App\Catalog\Infrastructure\Source\Aldi\AldiCatalogSource
             public: true
             arguments: ['aldi']
+        test.catalog_source.bonpreu:
+            class: App\Tests\Support\Catalog\ConfigurableCatalogSource
+            decorates: App\Catalog\Infrastructure\Source\BonpreuEsclat\BonpreuEsclatCatalogSource
+            public: true
+            arguments: ['bonpreu']

@@ -1,0 +1,108 @@
+{
+ "productGroups": [
+  {
+   "type": "ungrouped",
+   "decoratedProducts": [
+    {
+     "productId": "84f98e3c-f572-424a-8634-3352ef4b42c7",
+     "retailerProductId": "01811",
+     "type": "CATCHWEIGHT",
+     "name": " Pera Conference extra 1 u.",
+     "brand": "",
+     "packSizeDescription": "150g - 400g",
+     "price": {
+      "amount": "0.90",
+      "currency": "EUR"
+     },
+     "unitPrice": {
+      "price": {
+       "amount": "3.29",
+       "currency": "EUR"
+      },
+      "unit": "fop.price.per.kg",
+      "unitName": "PER_1KG"
+     },
+     "available": true,
+     "isVerifiedPurchase": false,
+     "quantityInBasket": 0,
+     "maxQuantityReached": false,
+     "taxCodesDisplayNames": [],
+     "image": {
+      "src": "https://www.compraonline.bonpreuesclat.cat/images-v3/dcbcfd72-cf23-44a2-8e14-8a38edd645a3/aa48f34b-9117-4ad6-8834-c520321c2644/300x300.jpg"
+     },
+     "iconAttributes": [],
+     "icons": [],
+     "timeRestricted": false,
+     "isInShoppingList": false,
+     "isInCurrentCatalog": true,
+     "retailerFinancingPlanIds": [],
+     "alcohol": false,
+     "categoryPath": [
+      "Frescos",
+      "Fruites i verdures",
+      "De temporada",
+      "Fruita"
+     ],
+     "isNew": false,
+     "catchweight": {
+      "minQuantity": {
+       "value": "150",
+       "uom": "G"
+      },
+      "typicalQuantity": {
+       "value": "0.275",
+       "uom": "KG"
+      },
+      "maxQuantity": {
+       "value": "400",
+       "uom": "G"
+      }
+     }
+    },
+    {
+     "productId": "1445d52b-198d-4fd0-93da-6b78a4158240",
+     "retailerProductId": "90041",
+     "type": "REGULAR",
+     "name": " Poma Pink Lady 1 u.",
+     "brand": "",
+     "price": {
+      "amount": "0.59",
+      "currency": "EUR"
+     },
+     "unitPrice": {
+      "price": {
+       "amount": "0.59",
+       "currency": "EUR"
+      },
+      "unit": "fop.price.per.each",
+      "unitName": "EACH"
+     },
+     "available": true,
+     "isVerifiedPurchase": false,
+     "quantityInBasket": 0,
+     "maxQuantityReached": false,
+     "taxCodesDisplayNames": [],
+     "image": {
+      "src": "https://www.compraonline.bonpreuesclat.cat/images-v3/dcbcfd72-cf23-44a2-8e14-8a38edd645a3/3019dac1-caec-4c38-953a-916462ec81b6/300x300.jpg"
+     },
+     "iconAttributes": [],
+     "icons": [],
+     "timeRestricted": false,
+     "isInShoppingList": false,
+     "isInCurrentCatalog": true,
+     "retailerFinancingPlanIds": [],
+     "alcohol": false,
+     "categoryPath": [
+      "Frescos",
+      "Fruites i verdures",
+      "De temporada",
+      "Fruita"
+     ],
+     "isNew": false
+    }
+   ],
+   "otherProductIds": []
+  }
+ ],
+ "metadata": {}
+}
