@@ -24,6 +24,7 @@ final class ActivationApiTest extends IdentityApiTestCase
 
         $this->postJson('/api/auth/activation/'.self::TOKEN.'/password', ['password' => 'New-password-1!']);
         self::assertResponseStatusCodeSame(200);
+        self::assertStringContainsString('no-store', (string) $this->client->getResponse()->headers->get('Cache-Control'));
         $enrollment = $this->json();
         self::assertIsString($enrollment['secret']);
         self::assertIsString($enrollment['provisioningUri']);

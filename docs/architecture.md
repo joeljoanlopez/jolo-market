@@ -486,7 +486,7 @@ Security wiring (E3.17 to E3.19, technical decision confirmed by the product own
 - The `main` firewall (`^/api/`) has no request authenticator: the controllers call the Identity use cases and then `Security::login()`, backed by `ProgrammaticLoginAuthenticator`. `SessionUserProvider` reloads the `SecurityUser` (id, username, role, session version) through `FindSessionUserHandler` on every request; a user who is no longer active, or whose `sessionVersion` changed, loses the session. `ProblemJsonAuthenticationEntryPoint` answers `401`.
 - Session cookie: `HttpOnly`, `SameSite=Lax`, `Secure` on HTTPS (`auto`), 7 days. `SessionInactivityListener` ends a session after 7 days without requests and re-sends the cookie at most once an hour (PD-37).
 - CSRF (E3.18): `RequireCustomHeaderListener` rejects every `POST`/`PUT`/`PATCH`/`DELETE` under `/api/` without `X-Requested-With: XMLHttpRequest` (`403`). Another site cannot add that header without a CORS preflight, which the API never allows.
-- Rate limits (E3.19, `config/packages/rate_limiter.yaml`, sliding windows of 15 minutes): login 5 per username and 20 per IP; 2FA code 5 per user and 20 per IP; activation code 20 per IP. Every attempt counts and a successful login clears the per-user counter. Over the limit: `429` with `Retry-After`.
+- Rate limits (E3.19, `config/packages/rate_limiter.yaml`, sliding windows of 15 minutes): login 5 per username and 20 per IP; 2FA code 5 per user and 20 per IP; profile changes (`/api/me/*`) 5 per user and 20 per IP; activation code 20 per IP. Every attempt counts and a successful login clears the per-user counter. Over the limit: `429` with `Retry-After`.
 
 ### 5. Shared list via secret link
 
@@ -529,8 +529,16 @@ All routes require a fully authenticated session (login + 2FA) except those mark
 | GET | `/api/auth/activation/{token}` | **public** — `{username, expiresAt}` of a valid link; unknown, expired or used → `404` |
 | POST | `/api/auth/activation/{token}/password` | **public** — `{password}` (PD-37, else `422`) → `{secret, provisioningUri}` (`Cache-Control: no-store`) |
 | POST | `/api/auth/activation/{token}/totp` | **public** — `{code}` → activates the user, logs them in and answers `200 {id, username, role}`; wrong code → `422`; rate-limited |
-| GET | `/api/admin/users` | ADMIN — list users and their status |
-| POST | `/api/admin/users` | ADMIN — create user → activation link |
+| GET | `/api/admin/users` | ADMIN — `[{id, username, role, status, createdAt, activationExpiresAt}]`, ordered by username |
+| POST | `/api/admin/users` | ADMIN — `{username, role}` → `201 {id, username, activationToken, activationExpiresAt}` (shown once, `no-store`; the SPA builds `/activate/{token}`). Taken username → `409`; invalid → `422` |
+| POST | `/api/admin/users/{id}/activation-link` | ADMIN — new link for a pending user (PD-34) → `{id, username, activationToken, activationExpiresAt}`; not pending → `409` |
+| POST | `/api/admin/users/{id}/reset` | ADMIN — reset (PD-35) → same shape as above; own account or disabled user → `409` |
+| POST | `/api/admin/users/{id}/disable` | ADMIN — `204`; own account, last active admin or not active → `409` (PD-36) |
+| POST | `/api/admin/users/{id}/enable` | ADMIN — `204`; not disabled → `409` |
+| PUT | `/api/admin/users/{id}/role` | ADMIN — `{role}` → `204`; demoting the last active admin → `409` |
+| POST | `/api/me/password` | `{currentPassword, code, newPassword}` → `204`; other sessions end, this one stays (PD-38). Wrong password or code → `422`; rate-limited |
+| POST | `/api/me/totp` | `{currentPassword, code}` → `{secret, provisioningUri}` of the new device (`no-store`); rate-limited |
+| POST | `/api/me/totp/confirm` | `{code}` from the new device → `204`; other sessions end, this one stays |
 | GET | `/api/supermarkets` | **public until E3.21** — enabled supermarkets, in `ENABLED_SUPERMARKETS` order: `[{id, name}]` |
 | GET | `/api/products?q=&supermarket=&page=` | **public until E3.21** — search available products, grouped by unit and ranked by unit price (PD-33), 20 per page. `q` (≥ 2 characters after trimming) is required; `page` ≥ 1 defaults to 1; `supermarket` must be enabled. Invalid input → `422` |
 | GET | `/api/products/{id}` | **public until E3.21** — product detail with `available`, also for unavailable products (PD-22). Unknown or malformed id → `404` |
