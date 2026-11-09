@@ -6,8 +6,8 @@ namespace App\Tests\Integration\Catalog\Infrastructure\Persistence\Dbal;
 
 use App\Catalog\Application\GetProduct\ProductView;
 use App\Catalog\Domain\ValueObject\ProductId;
-use App\Catalog\Infrastructure\Persistence\Dbal\BinaryUuid;
 use App\Catalog\Infrastructure\Persistence\Dbal\DbalProductViewReadModel;
+use App\Shared\Infrastructure\Persistence\Dbal\BinaryUuid;
 use Doctrine\DBAL\ParameterType;
 use PHPUnit\Framework\Attributes\Test;
 

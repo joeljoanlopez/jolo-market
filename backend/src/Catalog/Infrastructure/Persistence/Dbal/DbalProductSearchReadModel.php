@@ -8,6 +8,7 @@ use App\Catalog\Application\SearchProducts\ProductSearchPage;
 use App\Catalog\Application\SearchProducts\ProductSearchReadModel;
 use App\Catalog\Application\SearchProducts\ProductSearchResult;
 use App\Catalog\Domain\ValueObject\SupermarketId;
+use App\Shared\Infrastructure\Persistence\Dbal\BinaryUuid;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
