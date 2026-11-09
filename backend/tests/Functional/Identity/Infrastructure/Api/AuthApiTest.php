@@ -200,17 +200,29 @@ final class AuthApiTest extends IdentityApiTestCase
     }
 
     #[Test]
-    public function the_role_change_of_a_logged_in_user_is_seen_on_the_next_request(): void
+    public function a_role_change_ends_the_session_so_its_roles_are_never_stale(): void
     {
-        $maria = $this->activeUser('maria');
+        $maria = $this->activeUser('maria', Role::ADMIN);
         $this->logIn('maria');
 
-        $maria->changeRole(Role::ADMIN);
+        $maria->changeRole(Role::USER);
         $this->users()->save($maria);
         $this->client->request('GET', '/api/auth/me');
 
-        self::assertResponseStatusCodeSame(200);
-        self::assertSame('ADMIN', $this->json()['role']);
+        self::assertResponseStatusCodeSame(401);
+    }
+
+    #[Test]
+    public function a_login_code_cannot_be_used_twice(): void
+    {
+        $this->activeUser('maria');
+        $this->logIn('maria', forgetUsedCode: false);
+        $this->postJson('/api/auth/logout');
+
+        $this->postJson('/api/auth/login', ['username' => 'maria', 'password' => self::PASSWORD]);
+        $this->postJson('/api/auth/2fa', ['code' => self::codeFor()]);
+
+        self::assertResponseStatusCodeSame(401);
     }
 
     #[Test]

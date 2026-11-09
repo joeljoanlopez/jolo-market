@@ -23,7 +23,7 @@ security:
     access_control:
         - { path: ^/api/health$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/(login|2fa)$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/auth/activation/, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/activation(/password|/totp)?$, roles: PUBLIC_ACCESS }
         # The catalog stays public until E3.21.
         - { path: ^/api/(products|supermarkets)(/|$), roles: PUBLIC_ACCESS }
         - { path: ^/api/, roles: IS_AUTHENTICATED_FULLY }

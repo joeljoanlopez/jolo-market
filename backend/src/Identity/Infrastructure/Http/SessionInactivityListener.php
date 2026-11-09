@@ -39,8 +39,9 @@ final readonly class SessionInactivityListener
 
         $renewedAt = $session->get(self::COOKIE_RENEWED);
         if ($this->inactivity->cookieNeedsRenewal(\is_int($renewedAt) ? $renewedAt : null)) {
-            // A new session id comes with a new cookie, valid for cookie_lifetime (7 days).
-            $session->migrate(false, SessionInactivity::LIFETIME_SECONDS);
+            // A new session id comes with a new cookie, valid for 7 days. The old id is destroyed,
+            // so a copy of the previous cookie cannot outlive a logout.
+            $session->migrate(true, SessionInactivity::LIFETIME_SECONDS);
             $session->set(self::COOKIE_RENEWED, $this->inactivity->now());
         }
         $session->set(self::LAST_ACTIVITY, $this->inactivity->now());

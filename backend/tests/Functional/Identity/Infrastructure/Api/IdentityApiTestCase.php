@@ -70,6 +70,7 @@ abstract class IdentityApiTestCase extends WebTestCase
             new \DateTimeImmutable('2026-11-09 10:00:00'),
             null,
             1,
+            null,
         );
         $this->users()->save($user);
 
@@ -116,12 +117,22 @@ abstract class IdentityApiTestCase extends WebTestCase
         $this->client->request('POST', $uri, server: $server, content: json_encode($body, \JSON_THROW_ON_ERROR));
     }
 
-    protected function logIn(string $username): void
+    /**
+     * @param bool $forgetUsedCode the current code can be used once only (no replay); forgetting
+     *                             it lets the test use the same code again within its 30 seconds
+     */
+    protected function logIn(string $username, bool $forgetUsedCode = true): void
     {
         $this->postJson('/api/auth/login', ['username' => $username, 'password' => self::PASSWORD]);
         self::assertResponseStatusCodeSame(202);
         $this->postJson('/api/auth/2fa', ['code' => self::codeFor()]);
         self::assertResponseIsSuccessful();
+
+        if ($forgetUsedCode) {
+            $connection = self::getContainer()->get(Connection::class);
+            self::assertInstanceOf(Connection::class, $connection);
+            $connection->executeStatement('UPDATE user SET totp_last_used_step = NULL');
+        }
     }
 
     /**

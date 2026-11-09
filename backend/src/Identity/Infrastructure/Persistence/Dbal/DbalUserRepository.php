@@ -22,7 +22,7 @@ use Doctrine\DBAL\ParameterType;
 final readonly class DbalUserRepository implements UserRepository
 {
     private const string COLUMNS = 'id, username, role, status, password_hash, totp_secret_encrypted, totp_confirmed_at,
-        pending_totp_secret_encrypted, activation_token_hash, activation_expires_at, session_version, created_at, created_by';
+        pending_totp_secret_encrypted, activation_token_hash, activation_expires_at, session_version, totp_last_used_step, created_at, created_by';
 
     public function __construct(private Connection $connection)
     {
@@ -47,6 +47,7 @@ final readonly class DbalUserRepository implements UserRepository
             'activation_token_hash' => $activation?->hash(),
             'activation_expires_at' => null === $activation ? null : DbalDateTime::toDatabase($activation->expiresAt()),
             'session_version' => $user->sessionVersion(),
+            'totp_last_used_step' => $user->lastTotpStep(),
         ];
 
         $exists = false !== $this->connection->fetchOne('SELECT 1 FROM user WHERE id = ?', [$id], [ParameterType::BINARY]);
@@ -155,6 +156,7 @@ final readonly class DbalUserRepository implements UserRepository
             DbalDateTime::fromDatabase(self::string($row['created_at'])),
             null === $createdBy ? null : UserId::fromString(BinaryUuid::fromDatabase($createdBy)),
             is_numeric($row['session_version']) ? (int) $row['session_version'] : throw new \UnexpectedValueException('session_version is not a number.'),
+            is_numeric($row['totp_last_used_step']) ? (int) $row['totp_last_used_step'] : null,
         );
     }
 

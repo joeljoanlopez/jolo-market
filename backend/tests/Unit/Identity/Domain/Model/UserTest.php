@@ -165,6 +165,7 @@ final class UserTest extends TestCase
             self::at(self::CREATED_AT),
             UserId::fromString(self::ADMIN_ID),
             3,
+            null,
         );
 
         self::assertSame(UserStatus::ACTIVE, $user->status());
