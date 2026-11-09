@@ -33,4 +33,4 @@ Related decisions: PD-3, PD-8, PD-22, PD-33. Open questions: none.
 - [x] E2.10 Add presentational components: `SearchBox` (molecule), `PriceTag` (molecule), `ProductCard` (organism), `ProductResultList` (organism), `SupermarketBadge` (atom).
 - [x] E2.11 Add the `SearchPageContainer` and the `/search?q=` route, with loading, empty, error and results states.
 - [x] E2.12 Highlight the cheapest unit price in each unit group of the result set (PD-33).
-- [ ] E2.13 Add a Playwright journey: search "leche", results ordered by unit price.
+- [x] E2.13 Add a Playwright journey: search "leche", results ordered by unit price.

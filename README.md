@@ -161,12 +161,23 @@ The frontend needs Node 26 (see `frontend/.nvmrc`). Install the dependencies onc
 
 ### End-to-end tests
 
-Playwright runs against the running Docker stack. Install the browser once, then run the suite from `frontend/`:
+Playwright runs against a running Docker stack that holds a known catalog, [`backend/tests/Fixtures/e2e/catalog.sql`](backend/tests/Fixtures/e2e/catalog.sql). The journeys expect exactly those products, so run them against a **separate Compose project** with its own database: loading the fixture into your development database would mix it with the real catalog (the fixture only replaces its own `e2e-` rows, but real "leche" products would change the results). Leave the `scheduler` service down, so nothing is ingested from the real supermarkets:
+
+```sh
+export COMPOSE_PROJECT_NAME=jolo-market-e2e HTTP_PORT=8081
+docker compose up -d --wait nginx
+docker compose exec php bin/console doctrine:migrations:migrate --no-interaction
+docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" "$MYSQL_DATABASE"' < backend/tests/Fixtures/e2e/catalog.sql
+```
+
+Install the browser once, then run the suite from `frontend/`:
 
 ```sh
 npx playwright install chromium
-npm run test:e2e        # E2E_BASE_URL defaults to http://localhost:8080
+E2E_BASE_URL=http://localhost:8081 npm run test:e2e   # E2E_BASE_URL defaults to http://localhost:8080
 ```
+
+`docker compose down -v` (with the same `COMPOSE_PROJECT_NAME`) removes that stack and its database.
 
 ### Xdebug
 
@@ -182,7 +193,7 @@ GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on 
 | --- | --- |
 | Backend check | `composer check` inside the same php and mysql containers as development |
 | Frontend check | `npm run check` on the Node version of `frontend/.nvmrc` |
-| End-to-end | The whole Docker stack plus `npm run test:e2e`, after both checks pass |
+| End-to-end | The Docker stack without the scheduler, migrated and loaded with the e2e catalog, plus `npm run test:e2e`, after both checks pass |
 
 ## Development principles
 
