@@ -1,0 +1,24 @@
+# Rate limits of the credential checks (E3.19). Every attempt counts; a successful login clears
+# the per-user counter. Over the limit, the API answers 429 with Retry-After.
+framework:
+    rate_limiter:
+        identity_login_username:
+            policy: sliding_window
+            limit: 5
+            interval: '15 minutes'
+        identity_login_ip:
+            policy: sliding_window
+            limit: 20
+            interval: '15 minutes'
+        identity_two_factor_user:
+            policy: sliding_window
+            limit: 5
+            interval: '15 minutes'
+        identity_two_factor_ip:
+            policy: sliding_window
+            limit: 20
+            interval: '15 minutes'
+        identity_activation_ip:
+            policy: sliding_window
+            limit: 20
+            interval: '15 minutes'

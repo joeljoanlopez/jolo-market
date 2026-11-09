@@ -477,9 +477,16 @@ sequenceDiagram
 
 ### 4. Login
 
-1. `POST /api/auth/login` with username and password. On success, the session is created in a **2FA-pending** state.
-2. `POST /api/auth/2fa` with the TOTP code. On success, the session is fully authenticated.
-3. Every other `/api` route requires a fully authenticated session. Otherwise it returns `401`, and the SPA redirects to `/login`.
+1. `POST /api/auth/login` `{username, password}` → `LogInHandler`. On success the API answers `202 {"twoFactorRequired": true}`, gives the session a new id and remembers the user as **2FA-pending** for five minutes. Unknown user, wrong password, pending or disabled user: the same `401` (`InvalidCredentials`, detail `Invalid credentials.`).
+2. `POST /api/auth/2fa` `{code}` → `VerifyLoginCodeHandler`. On success the session is fully authenticated (`Security::login()`) and the API answers `200 {id, username, role}`. A wrong code or no pending login: the same `401`.
+3. Every other `/api` route requires a fully authenticated session. Otherwise it returns `401` problem+json, and the SPA redirects to `/login`.
+
+Security wiring (E3.17 to E3.19, technical decision confirmed by the product owner on 2026-11-09: no `scheb/2fa-bundle`):
+
+- The `main` firewall (`^/api/`) has no request authenticator: the controllers call the Identity use cases and then `Security::login()`, backed by `ProgrammaticLoginAuthenticator`. `SessionUserProvider` reloads the `SecurityUser` (id, username, role, session version) through `FindSessionUserHandler` on every request; a user who is no longer active, or whose `sessionVersion` changed, loses the session. `ProblemJsonAuthenticationEntryPoint` answers `401`.
+- Session cookie: `HttpOnly`, `SameSite=Lax`, `Secure` on HTTPS (`auto`), 7 days. `SessionInactivityListener` ends a session after 7 days without requests and re-sends the cookie at most once an hour (PD-37).
+- CSRF (E3.18): `RequireCustomHeaderListener` rejects every `POST`/`PUT`/`PATCH`/`DELETE` under `/api/` without `X-Requested-With: XMLHttpRequest` (`403`). Another site cannot add that header without a CORS preflight, which the API never allows.
+- Rate limits (E3.19, `config/packages/rate_limiter.yaml`, sliding windows of 15 minutes): login 5 per username and 20 per IP; 2FA code 5 per user and 20 per IP; activation code 20 per IP. Every attempt counts and a successful login clears the per-user counter. Over the limit: `429` with `Retry-After`.
 
 ### 5. Shared list via secret link
 
@@ -499,6 +506,7 @@ JSON over REST under `/api`. Errors use RFC 9457 `application/problem+json` (PD-
 
 | Thrown | Status | `detail` |
 | --- | --- | --- |
+| `Shared\Domain\Exception\Unauthorized` subclass | `401` | Exception message |
 | `Shared\Domain\Exception\NotFound` subclass | `404` | Exception message |
 | `Shared\Domain\Exception\InvalidArgument` subclass | `422` | Exception message |
 | `Shared\Domain\Exception\Conflict` subclass | `409` | Exception message |
@@ -507,20 +515,20 @@ JSON over REST under `/api`. Errors use RFC 9457 `application/problem+json` (PD-
 
 Domain error messages are English and must be safe to show (no secrets, no internals). The SPA shows Spanish copy chosen from `status`, never the raw `detail`. The rendering lives in `Shared\Infrastructure\Http\ProblemJsonExceptionListener`.
 
-All routes require a fully authenticated session (login + 2FA) except those marked **public**.
+All routes require a fully authenticated session (login + 2FA) except those marked **public**. Every `POST`/`PUT`/`PATCH`/`DELETE` needs the header `X-Requested-With: XMLHttpRequest` (CSRF, E3.18), or the API answers `403`. A wrong JSON body is a `422`.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/health` | **public** — `200 {"status":"ok"}` when the database answers, `503 {"status":"unavailable"}` otherwise (PD-17) |
-| POST | `/api/auth/login` | **public** — username + password → 2FA-pending session |
-| POST | `/api/auth/2fa` | 2FA-pending session — TOTP code → authenticated |
-| POST | `/api/auth/logout` | End session |
+| POST | `/api/auth/login` | **public** — `{username, password}` → `202`, 2FA-pending session; `401` on any failure; rate-limited |
+| POST | `/api/auth/2fa` | **public**, needs a 2FA-pending session — `{code}` → `200 {id, username, role}`, authenticated; `401` otherwise; rate-limited |
+| POST | `/api/auth/logout` | End session → `204` |
 | GET | `/api/auth/me` | Current user (id, username, role) |
 | GET | `/api/setup` | **public** — `{ required: bool }` (true only while there are no users) |
 | POST | `/api/setup` | **public**, only while there are no users — setup code + username → creates the first `ADMIN` and returns its activation token |
-| GET | `/api/auth/activation/{token}` | **public** — check that an activation link is valid |
-| POST | `/api/auth/activation/{token}/password` | **public** — set password, returns TOTP enrollment data |
-| POST | `/api/auth/activation/{token}/totp` | **public** — confirm TOTP code, activates user and logs in |
+| GET | `/api/auth/activation/{token}` | **public** — `{username, expiresAt}` of a valid link; unknown, expired or used → `404` |
+| POST | `/api/auth/activation/{token}/password` | **public** — `{password}` (PD-37, else `422`) → `{secret, provisioningUri}` (`Cache-Control: no-store`) |
+| POST | `/api/auth/activation/{token}/totp` | **public** — `{code}` → activates the user, logs them in and answers `200 {id, username, role}`; wrong code → `422`; rate-limited |
 | GET | `/api/admin/users` | ADMIN — list users and their status |
 | POST | `/api/admin/users` | ADMIN — create user → activation link |
 | GET | `/api/supermarkets` | **public until E3.21** — enabled supermarkets, in `ENABLED_SUPERMARKETS` order: `[{id, name}]` |

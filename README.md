@@ -135,6 +135,20 @@ The link starts with `DEFAULT_URI` (`backend/.env`), so set it to the public add
 php -r "echo base64_encode(random_bytes(32)), PHP_EOL;"
 ```
 
+### Authentication API
+
+The instance is closed: every `/api` route except health, login and activation needs a session opened with the password **and** a TOTP code. State-changing requests must send `X-Requested-With: XMLHttpRequest`.
+
+```sh
+curl -c jar -H 'Content-Type: application/json' -H 'X-Requested-With: XMLHttpRequest' \
+  -d '{"username":"maria","password":"…"}' http://localhost:8080/api/auth/login   # 202
+curl -b jar -c jar -H 'Content-Type: application/json' -H 'X-Requested-With: XMLHttpRequest' \
+  -d '{"code":"123456"}' http://localhost:8080/api/auth/2fa                        # 200 {id, username, role}
+curl -b jar http://localhost:8080/api/auth/me
+```
+
+Failed logins answer the same `401`, and repeated attempts get `429`. The full list of endpoints is in [docs/architecture.md](docs/architecture.md#http-api-draft).
+
 ### Catalog API
 
 Search and product endpoints (public until login lands in E3). Full shapes in [`docs/architecture.md`](docs/architecture.md#2-search-and-compare):

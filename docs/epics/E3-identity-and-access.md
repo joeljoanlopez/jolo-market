@@ -40,10 +40,12 @@ Related decisions: PD-2, PD-9, PD-12, PD-13, PD-14, PD-15, PD-34, PD-35, PD-36, 
 - [x] E3.14 Add a migration for the `user` table.
 - [x] E3.15 Add a DBAL `UserRepository` (integration tests).
 - [x] E3.16 Add adapters: `PasswordHasher` (Symfony `auto` hasher), `TotpService` (`spomky-labs/otphp`, the TOTP library scheb/2fa-totp is built on), `SecretEncrypter` (libsodium with `TOTP_ENCRYPTION_KEY`), and a secure `ActivationTokenGenerator`. Each has its own tests.
-- [ ] E3.17 Configure Symfony Security: a JSON login firewall with a session cookie (`HttpOnly`, `Secure`, `SameSite=Lax`), a user provider backed by the Identity application layer, and `scheb/2fa-bundle` making TOTP mandatory after password.
-- [ ] E3.18 Add CSRF protection for state-changing requests (SameSite plus a required custom header or a token). Functional tests prove that a cross-site request is rejected.
-- [ ] E3.19 Rate-limit login and 2FA attempts per username and per IP (Symfony RateLimiter). Functional tests check the lockout response.
+- [x] E3.17 Configure Symfony Security: a JSON login firewall with a session cookie (`HttpOnly`, `Secure`, `SameSite=Lax`), a user provider backed by the Identity application layer, and TOTP mandatory after password.
+  - Note: confirmed on 2026-11-09 to use our own two-step flow (use cases + `Security::login()`) instead of `scheb/2fa-bundle`.
+- [x] E3.18 Add CSRF protection for state-changing requests (SameSite plus a required custom header or a token). Functional tests prove that a cross-site request is rejected.
+- [x] E3.19 Rate-limit login and 2FA attempts per username and per IP (Symfony RateLimiter). Functional tests check the lockout response.
 - [ ] E3.20 Add the endpoints `/api/auth/*`, `/api/me/*` and `/api/admin/users/*`, with functional tests for each: happy path, wrong credentials, wrong code, expired/used token, non-admin access → 404.
+  - Note: `/api/auth/*` (login, 2fa, logout, me, activation) are done; `/api/admin/users/*` and `/api/me/*` come in the next PR.
 - [ ] E3.21 Protect every existing `/api` route (catalog endpoints from E2 included) and update their functional tests to use an authenticated test client helper.
 - [ ] E3.22 Add first-admin setup (PD-14). At container startup, `app:setup:ensure-code` generates a setup code **only if there are no users**, stores its hash and prints the plain code in the logs (a new code on each start replaces the old one). Add a `CompleteSetup` use case (valid code + no users → ADMIN pending activation) and the `GET/POST /api/setup` endpoints. Functional tests cover: wrong code, users already exist (→ 404), and that the code cannot be reused.
 - [ ] E3.22b Add the frontend `/setup` page: the app redirects there when `GET /api/setup` says it is required. It asks for the code and username, then continues to `/activate/:token`.
