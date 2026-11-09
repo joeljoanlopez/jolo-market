@@ -237,7 +237,16 @@ Lifecycle: `PENDING_ACTIVATION` → (valid activation link → set password → 
 
 Value objects: `Username` (PD-39), `PlainPassword` (a new password, checked against PD-37; its errors never include the password), `TotpCode` (six digits, spaces ignored), `ActivationToken`, `PasswordHash`, `EncryptedTotpSecret`.
 
-Ports (`Identity\Domain\Port`): `UserRepository` (`save`, `findById`, `findByUsername`, `findByActivationTokenHash`, `hasAnyUser`), `PasswordHasher` (`hash(PlainPassword)`, `verify(hash, typed text)`), `TotpService` (`generateSecret`, `provisioningUri`, `verify(secret, code, now)`), `SecretEncrypter` (`encrypt`, `decrypt`) and `ActivationTokenGenerator` (`generate(): string`).
+Ports (`Identity\Domain\Port`): `UserRepository` (`save`, `findById`, `findByUsername`, `findByIds`, `findAll` ordered by username, `findByActivationTokenHash`, `hasAnyUser`), `PasswordHasher` (`hash(PlainPassword)`, `verify(hash, typed text)`), `TotpService` (`generateSecret`, `provisioningUri`, `verify(secret, code, now)`), `SecretEncrypter` (`encrypt`, `decrypt`) and `ActivationTokenGenerator` (`generate(): string`).
+
+Use cases (`Identity\Application`). Admin use cases first check the actor through `AdminActor`: anyone but an active admin gets `AdminRequired` (404, PD-15).
+
+- `CreateUserHandler` (admin): username + role → user pending activation; returns the **plain activation token once** with its expiry. A taken username (any case) is a `UsernameAlreadyTaken` (409).
+- `ValidateActivationTokenHandler`: token → username and expiry of a valid link.
+- `SetInitialPasswordHandler`: token + password (PD-37) → stores the hash and starts the TOTP enrollment; returns the secret and the `otpauth://` provisioning URI. Calling it again gives a new secret.
+- `ConfirmTotpEnrollmentHandler`: token + code → checks the code against the pending secret (`TotpCodeRejected`, 422, when wrong), activates the user and returns its id.
+- `ListUsersHandler` (admin): every user, ordered by username, with role, status and the expiry of a pending activation link.
+- `FindUsernamesHandler`: the query API other contexts use (E3.9): user ids → usernames; unknown or malformed ids are left out.
 
 **Ports (Identity):** `UserRepository`, `PasswordHasher`, `TotpService` (generate secret, verify code), `ActivationTokenGenerator`, `SecretEncrypter`.
 

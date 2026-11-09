@@ -26,10 +26,10 @@ Related decisions: PD-2, PD-9, PD-12, PD-13, PD-14, PD-15, PD-34, PD-35, PD-36, 
 
 ### Application
 
-- [ ] E3.6 Add the `CreateUser` use case (admin only, via an explicit actor check), which returns the plain activation token once.
-- [ ] E3.7 Add the `ValidateActivationToken`, `SetInitialPassword` (returns TOTP provisioning URI) and `ConfirmTotpEnrollment` use cases.
-- [ ] E3.8 Add the `ListUsers` query (admin).
-- [ ] E3.9 Add a `UserDirectory` query service (id → username) for other contexts.
+- [x] E3.6 Add the `CreateUser` use case (admin only, via an explicit actor check), which returns the plain activation token once.
+- [x] E3.7 Add the `ValidateActivationToken`, `SetInitialPassword` (returns TOTP provisioning URI) and `ConfirmTotpEnrollment` use cases.
+- [x] E3.8 Add the `ListUsers` query (admin).
+- [x] E3.9 Add a `UserDirectory` query service (id → username) for other contexts.
 - [ ] E3.10 Activation links last 72 hours (PD-34). Add the `RegenerateActivationLink` use case (admin, pending users only; the old link stops working).
 - [ ] E3.11 Add the `ResetUser` use case (PD-35): admin only, back to pending activation, password and TOTP removed, sessions ended, new activation link. Add the `app:user:reset <username>` console command for the server operator.
 - [ ] E3.12 Add the `DisableUser`, `EnableUser` and `ChangeUserRole` use cases (PD-36): no delete, the last active admin cannot be disabled or demoted, an admin cannot disable themselves; disabling ends the user's sessions.

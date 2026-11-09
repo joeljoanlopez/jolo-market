@@ -176,7 +176,10 @@ final class User
         return $this->createdBy;
     }
 
-    private function assertActivationLinkIsValid(string $plainToken, \DateTimeImmutable $now): void
+    /**
+     * @throws ActivationLinkNotValid when the link is not this user's current one, has expired or was used
+     */
+    public function assertActivationLinkIsValid(#[\SensitiveParameter] string $plainToken, \DateTimeImmutable $now): void
     {
         if (UserStatus::PENDING_ACTIVATION !== $this->status
             || null === $this->activation
