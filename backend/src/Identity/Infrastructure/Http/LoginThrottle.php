@@ -21,6 +21,7 @@ final readonly class LoginThrottle
         private RateLimiterFactoryInterface $identityTwoFactorUserLimiter,
         private RateLimiterFactoryInterface $identityTwoFactorIpLimiter,
         private RateLimiterFactoryInterface $identityActivationIpLimiter,
+        private RateLimiterFactoryInterface $identitySetupIpLimiter,
     ) {
     }
 
@@ -54,6 +55,11 @@ final readonly class LoginThrottle
     public function activationCodeAttempt(Request $request): void
     {
         self::consume($this->identityActivationIpLimiter->create(self::ip($request)));
+    }
+
+    public function setupAttempt(Request $request): void
+    {
+        self::consume($this->identitySetupIpLimiter->create(self::ip($request)));
     }
 
     private static function consume(LimiterInterface ...$limiters): void
