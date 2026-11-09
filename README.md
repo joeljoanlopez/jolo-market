@@ -121,6 +121,20 @@ The `scheduler` service runs it automatically on `INGESTION_SCHEDULE` (daily at 
 
 It prints a summary per supermarket and exits with `0` when every run succeeded, `1` when any failed and `2` for invalid input or configuration. Each run is stored in the `ingestion_run` table and logged on the `ingestion` channel.
 
+### User reset
+
+If a user, for example the only admin, loses their password or their two-factor device, the server operator resets them. The command ends their sessions and prints a new activation link (valid 72 hours, shown once) to set a new password and enroll a new device:
+
+```sh
+docker compose exec php bin/console app:user:reset <username>
+```
+
+The link starts with `DEFAULT_URI` (`backend/.env`), so set it to the public address of the instance. TOTP secrets are encrypted with `TOTP_ENCRYPTION_KEY`: development and tests use a public key from `backend/.env.dev` and `backend/.env.test`; production must set its own in `backend/.env.local`:
+
+```sh
+php -r "echo base64_encode(random_bytes(32)), PHP_EOL;"
+```
+
 ### Catalog API
 
 Search and product endpoints (public until login lands in E3). Full shapes in [`docs/architecture.md`](docs/architecture.md#2-search-and-compare):

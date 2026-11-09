@@ -31,16 +31,15 @@ Related decisions: PD-2, PD-9, PD-12, PD-13, PD-14, PD-15, PD-34, PD-35, PD-36, 
 - [x] E3.8 Add the `ListUsers` query (admin).
 - [x] E3.9 Add a `UserDirectory` query service (id → username) for other contexts.
 - [x] E3.10 Activation links last 72 hours (PD-34). Add the `RegenerateActivationLink` use case (admin, pending users only; the old link stops working).
-- [ ] E3.11 Add the `ResetUser` use case (PD-35): admin only, back to pending activation, password and TOTP removed, sessions ended, new activation link. Add the `app:user:reset <username>` console command for the server operator.
-  - Note: the use cases (`ResetUserHandler`, `ResetUserByUsernameHandler`) are done; the console command comes with the infrastructure (E3.14–E3.16).
+- [x] E3.11 Add the `ResetUser` use case (PD-35): admin only, back to pending activation, password and TOTP removed, sessions ended, new activation link. Add the `app:user:reset <username>` console command for the server operator.
 - [x] E3.12 Add the `DisableUser`, `EnableUser` and `ChangeUserRole` use cases (PD-36): no delete, the last active admin cannot be disabled or demoted, an admin cannot disable themselves; disabling ends the user's sessions.
 - [x] E3.13 Add the `ChangePassword` and `StartTotpReEnrollment` / `ConfirmTotpReEnrollment` use cases (PD-38). Both end every other session of the user and keep the current one.
 
 ### Infrastructure
 
-- [ ] E3.14 Add a migration for the `user` table.
-- [ ] E3.15 Add a DBAL `UserRepository` (integration tests).
-- [ ] E3.16 Add adapters: `PasswordHasher` (Symfony `auto` hasher), `TotpService` (scheb/2fa-totp), `SecretEncrypter` (libsodium with `TOTP_ENCRYPTION_KEY`), and a secure `ActivationTokenGenerator`. Each has its own tests.
+- [x] E3.14 Add a migration for the `user` table.
+- [x] E3.15 Add a DBAL `UserRepository` (integration tests).
+- [x] E3.16 Add adapters: `PasswordHasher` (Symfony `auto` hasher), `TotpService` (`spomky-labs/otphp`, the TOTP library scheb/2fa-totp is built on), `SecretEncrypter` (libsodium with `TOTP_ENCRYPTION_KEY`), and a secure `ActivationTokenGenerator`. Each has its own tests.
 - [ ] E3.17 Configure Symfony Security: a JSON login firewall with a session cookie (`HttpOnly`, `Secure`, `SameSite=Lax`), a user provider backed by the Identity application layer, and `scheb/2fa-bundle` making TOTP mandatory after password.
 - [ ] E3.18 Add CSRF protection for state-changing requests (SameSite plus a required custom header or a token). Functional tests prove that a cross-site request is rejected.
 - [ ] E3.19 Rate-limit login and 2FA attempts per username and per IP (Symfony RateLimiter). Functional tests check the lockout response.

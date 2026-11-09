@@ -1,0 +1,45 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\Identity\:
+        resource: '../../src/Identity/'
+
+    App\Identity\Domain\Port\UserRepository: '@App\Identity\Infrastructure\Persistence\Dbal\DbalUserRepository'
+    App\Identity\Domain\Port\PasswordHasher: '@App\Identity\Infrastructure\Security\SymfonyPasswordHasher'
+    App\Identity\Domain\Port\TotpService: '@App\Identity\Infrastructure\Security\OtphpTotpService'
+    App\Identity\Domain\Port\SecretEncrypter: '@App\Identity\Infrastructure\Security\SodiumSecretEncrypter'
+    App\Identity\Domain\Port\ActivationTokenGenerator: '@App\Identity\Infrastructure\Security\RandomActivationTokenGenerator'
+
+    # Symfony's "auto" algorithm: bcrypt or Argon2id with their default cost.
+    identity.native_password_hasher:
+        class: Symfony\Component\PasswordHasher\Hasher\NativePasswordHasher
+
+    App\Identity\Infrastructure\Security\SymfonyPasswordHasher:
+        arguments:
+            $hasher: '@identity.native_password_hasher'
+
+    App\Identity\Infrastructure\Security\SodiumSecretEncrypter:
+        arguments:
+            $base64Key: '%env(string:TOTP_ENCRYPTION_KEY)%'
+
+    App\Identity\Infrastructure\Console\ActivationLinkUrl:
+        arguments:
+            $baseUri: '%env(string:DEFAULT_URI)%'
+
+when@test:
+    services:
+        # A cheap cost keeps functional tests fast; production uses the default cost.
+        identity.native_password_hasher:
+            class: Symfony\Component\PasswordHasher\Hasher\NativePasswordHasher
+            arguments:
+                $cost: 4
+
+        test.identity.secret_encrypter:
+            alias: App\Identity\Domain\Port\SecretEncrypter
+            public: true
+
+        test.identity.password_hasher:
+            alias: App\Identity\Domain\Port\PasswordHasher
+            public: true
