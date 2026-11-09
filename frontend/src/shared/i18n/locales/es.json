@@ -10,5 +10,12 @@
     "title": "Página no encontrada",
     "description": "La página que buscas no existe.",
     "backHome": "Volver al inicio"
+  },
+  "catalog": {
+    "units": {
+      "kg": "kg",
+      "l": "L",
+      "unit": "ud"
+    }
   }
 }
