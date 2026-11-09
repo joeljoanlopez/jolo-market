@@ -70,6 +70,11 @@ final class InMemoryUserRepository implements UserRepository
         return null;
     }
 
+    public function countActiveAdmins(): int
+    {
+        return \count(array_filter($this->users, static fn (User $user): bool => $user->isActive() && $user->isAdmin()));
+    }
+
     public function hasAnyUser(): bool
     {
         return [] !== $this->users;

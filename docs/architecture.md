@@ -237,7 +237,7 @@ Lifecycle: `PENDING_ACTIVATION` → (valid activation link → set password → 
 
 Value objects: `Username` (PD-39), `PlainPassword` (a new password, checked against PD-37; its errors never include the password), `TotpCode` (six digits, spaces ignored), `ActivationToken`, `PasswordHash`, `EncryptedTotpSecret`.
 
-Ports (`Identity\Domain\Port`): `UserRepository` (`save`, `findById`, `findByUsername`, `findByIds`, `findAll` ordered by username, `findByActivationTokenHash`, `hasAnyUser`), `PasswordHasher` (`hash(PlainPassword)`, `verify(hash, typed text)`), `TotpService` (`generateSecret`, `provisioningUri`, `verify(secret, code, now)`), `SecretEncrypter` (`encrypt`, `decrypt`) and `ActivationTokenGenerator` (`generate(): string`).
+Ports (`Identity\Domain\Port`): `UserRepository` (`save`, `findById`, `findByUsername`, `findByIds`, `findAll` ordered by username, `findByActivationTokenHash`, `countActiveAdmins`, `hasAnyUser`), `PasswordHasher` (`hash(PlainPassword)`, `verify(hash, typed text)`), `TotpService` (`generateSecret`, `provisioningUri`, `verify(secret, code, now)`), `SecretEncrypter` (`encrypt`, `decrypt`) and `ActivationTokenGenerator` (`generate(): string`).
 
 Use cases (`Identity\Application`). Admin use cases first check the actor through `AdminActor`: anyone but an active admin gets `AdminRequired` (404, PD-15).
 
@@ -247,6 +247,12 @@ Use cases (`Identity\Application`). Admin use cases first check the actor throug
 - `ConfirmTotpEnrollmentHandler`: token + code → checks the code against the pending secret (`TotpCodeRejected`, 422, when wrong), activates the user and returns its id.
 - `ListUsersHandler` (admin): every user, ordered by username, with role, status and the expiry of a pending activation link.
 - `FindUsernamesHandler`: the query API other contexts use (E3.9): user ids → usernames; unknown or malformed ids are left out.
+- `RegenerateActivationLinkHandler` (admin, PD-34): pending users only (`UserStateConflict`, 409, otherwise). The new link has a fresh 72 h and drops a half-finished activation.
+- `ResetUserHandler` (admin, PD-35): back to pending activation, credentials removed, sessions ended; returns the new link. Not on oneself (`CannotManageYourself`, 409) and not on a disabled user (enable first). `ResetUserByUsernameHandler` does the same for the server operator, without an actor (console only).
+- `DisableUserHandler`, `EnableUserHandler`, `ChangeUserRoleHandler` (admin, PD-36): only an active user can be disabled and only a disabled one enabled. Disabling ends the user's sessions. Disabling or demoting the last active admin is a `LastActiveAdmin` (409); an admin cannot disable themselves.
+- `ChangePasswordHandler`, `StartTotpReEnrollmentHandler`, `ConfirmTotpReEnrollmentHandler` (the user themselves, PD-38): changing the password and starting a re-enrollment ask for the current password and a code (`CredentialsRejected`, 422, the same for both). The old device works until a code from the new one is confirmed. Both changes return the new session version.
+
+**Ending sessions.** `User` has a `sessionVersion` (starting at 1) that a reset, disabling, a new password or a new TOTP device increases. A session stores the version it started with and stops working when it no longer matches; the session that changed its own password or device moves to the new version and stays logged in.
 
 **Ports (Identity):** `UserRepository`, `PasswordHasher`, `TotpService` (generate secret, verify code), `ActivationTokenGenerator`, `SecretEncrypter`.
 

@@ -164,9 +164,11 @@ final class UserTest extends TestCase
             null,
             self::at(self::CREATED_AT),
             UserId::fromString(self::ADMIN_ID),
+            3,
         );
 
         self::assertSame(UserStatus::ACTIVE, $user->status());
+        self::assertSame(3, $user->sessionVersion());
         self::assertSame(Role::ADMIN, $user->role());
         self::assertSame('cipher-1', $user->totpSecret()?->value());
         self::assertEquals(self::at('2026-11-10 09:00:00'), $user->totpConfirmedAt());

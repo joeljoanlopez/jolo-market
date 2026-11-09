@@ -37,6 +37,11 @@ interface UserRepository
     public function findByActivationTokenHash(string $hash): ?User;
 
     /**
+     * Active users with the ADMIN role; the last one must stay (PD-36).
+     */
+    public function countActiveAdmins(): int;
+
+    /**
      * Whether any user exists at all; first-admin setup is possible only while none does (PD-14).
      */
     public function hasAnyUser(): bool;
