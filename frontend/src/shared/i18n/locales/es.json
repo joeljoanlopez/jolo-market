@@ -4,7 +4,9 @@
   },
   "home": {
     "title": "Compara precios y comparte tu lista de la compra",
-    "description": "Muy pronto podrás buscar productos en varios supermercados y ver cuál sale más barato."
+    "description": "Busca productos en varios supermercados y compara su precio por kilo, litro o unidad.",
+    "searchLabel": "Buscar productos",
+    "searchSubmit": "Buscar"
   },
   "notFound": {
     "title": "Página no encontrada",
@@ -16,6 +18,31 @@
       "kg": "kg",
       "l": "L",
       "unit": "ud"
+    },
+    "search": {
+      "title": "Buscar productos",
+      "label": "Buscar productos",
+      "supermarket": "Supermercado",
+      "allSupermarkets": "Todos",
+      "idle": "Escribe al menos 2 caracteres para buscar.",
+      "loading": "Buscando…",
+      "empty": "No hay resultados para «{{query}}».",
+      "error": "No se ha podido completar la búsqueda.",
+      "retry": "Reintentar",
+      "total_one": "{{count}} resultado",
+      "total_other": "{{count}} resultados",
+      "results": "Resultados",
+      "pagination": "Páginas de resultados",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "pageStatus": "Página {{page}} de {{pageCount}}"
+    },
+    "product": {
+      "imageAlt": "Foto de {{name}}",
+      "noImage": "Sin imagen",
+      "noPackaging": "Formato no disponible",
+      "noUnitPrice": "Sin precio por unidad",
+      "cheapest": "Más barato"
     }
   }
 }

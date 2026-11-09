@@ -146,7 +146,42 @@ describe('useProductSearch', () => {
     await elapse(300);
     await elapse(0);
 
-    expect(result.current).toEqual({ status: 'error', error: failure });
+    expect(result.current).toMatchObject({ status: 'error', error: failure });
+    expect(result.current).toHaveProperty('retry', expect.any(Function) as unknown);
+  });
+
+  it('retries a failed search', async () => {
+    catalog.respond = () => Promise.reject(new Error('boom'));
+    const { result } = renderSearch({ text: 'leche' });
+    await elapse(0);
+    catalog.respond = (params) => Promise.resolve(page(params.page ?? 1));
+
+    act(() => {
+      if (result.current.status === 'error') {
+        result.current.retry();
+      }
+    });
+    await elapse(0);
+
+    expect(catalog.searches).toHaveLength(2);
+    expect(result.current).toEqual({ status: 'success', data: page(1), isFetching: false });
+  });
+
+  it('goes idle as soon as the text gets too short, without waiting for the debounce delay', async () => {
+    const { result, rerender } = renderSearch({ text: 'leche' });
+    await elapse(0);
+
+    rerender({ text: 'l' });
+
+    expect(result.current).toEqual({ status: 'idle' });
+  });
+
+  it('is loading while a typed text waits for the debounce delay', () => {
+    const { result, rerender } = renderSearch({ text: '' });
+
+    rerender({ text: 'leche' });
+
+    expect(result.current).toEqual({ status: 'loading' });
   });
 
   it('keeps the previous results while the next page loads', async () => {

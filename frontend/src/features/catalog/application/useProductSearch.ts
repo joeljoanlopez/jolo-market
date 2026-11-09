@@ -21,14 +21,16 @@ export interface ProductSearchInput {
 export type ProductSearchState =
   /** The text is too short to search. */
   | { status: 'idle' }
+  /** The first search is in flight, or a typed text waits for the debounce delay. */
   | { status: 'loading' }
-  | { status: 'error'; error: Error }
+  | { status: 'error'; error: Error; retry: () => void }
   /** `isFetching` is true while a newer search runs and `data` still shows the previous one. */
   | { status: 'success'; data: ProductSearchPage; isFetching: boolean };
 
 /**
  * Searches the catalog as the user types: the text waits SEARCH_DEBOUNCE_MS without
- * changes before it is sent, while the filter and the page apply at once.
+ * changes before it is sent, while the filter and the page apply at once. A text that
+ * gets too short (e.g. the box is cleared) goes idle at once, without the delay.
  */
 export function useProductSearch({
   text,
@@ -37,7 +39,8 @@ export function useProductSearch({
 }: ProductSearchInput): ProductSearchState {
   const catalog = useProductCatalog();
   const q = useDebouncedValue(text, SEARCH_DEBOUNCE_MS).trim();
-  const enabled = q.length >= MIN_SEARCH_LENGTH;
+  const typedEnough = text.trim().length >= MIN_SEARCH_LENGTH;
+  const enabled = typedEnough && q.length >= MIN_SEARCH_LENGTH;
 
   const params: SearchProductsParams = { q };
   if (supermarket !== undefined) {
@@ -54,13 +57,19 @@ export function useProductSearch({
     placeholderData: keepPreviousData,
   });
 
-  if (!enabled) {
+  if (!typedEnough) {
     return { status: 'idle' };
   }
   if (query.isError) {
-    return { status: 'error', error: query.error };
+    return {
+      status: 'error',
+      error: query.error,
+      retry: () => {
+        void query.refetch();
+      },
+    };
   }
-  if (query.data === undefined) {
+  if (!enabled || query.data === undefined) {
     return { status: 'loading' };
   }
   return { status: 'success', data: query.data, isFetching: query.isFetching };
