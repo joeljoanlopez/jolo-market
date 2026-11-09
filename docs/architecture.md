@@ -58,6 +58,7 @@ Decisions confirmed by the product owner. Changing any of them requires asking f
 | PD-30 | *(Replaced by PD-31 for Aldi and PD-32 for Bonpreu i Esclat.)* The Bonpreu i Esclat and Aldi adapters were deferred: Bonpreu's WAF blocks an identifying User-Agent and Aldi seemed to publish no food prices. |
 | PD-31 | **Aldi** is ingested from the public category pages of `www.aldi.es` (allowed by its `robots.txt`), which embed their products and prices in `__NEXT_DATA__`. Prices are the **peninsula** ones (`/can/` and `/bal/` are disallowed), and they are used for every postal code, Baleares and Canarias included, so the postal code is not used. Canned food is sized by its **drained weight** (`peso esc.`), the only size Aldi gives. Products without a published price (mostly loose fresh produce) are stored without one. Aldi is in the default `ENABLED_SUPERMARKETS`. *(Replaces the Aldi part of PD-30, whose spike sample was wrong: on 2026-11-09, 2 480 of 2 666 products had a price. Peninsula prices for every postal code and drained weight as the size confirmed by the product owner on 2026-11-09.)* |
 | PD-32 | **Bonpreu i Esclat** is ingested from the internal JSON API of `www.compraonline.bonpreuesclat.cat` (Ocado Smart Platform), with a **browser User-Agent**: its WAF rejects any other client. This overrides PD-26 for Bonpreu only, and like PD-28 it is accepted for **private, self-hosted use** even though `robots.txt` disallows `/api/`. The operator takes that risk. The WAF challenges the seventh API request within about five minutes, and only a browser running its JavaScript can pass a challenge, so the adapter **waits 90 seconds between API requests** instead of trying to pass it, and after a challenge waits six minutes and retries, up to twice (a run takes about an hour and a half). The online store has one price region (Catalunya): every postal code gets the same price, so the postal code is not used. Bonpreu is in the default `ENABLED_SUPERMARKETS`. *(Replaces the Bonpreu part of PD-30; with PD-28 and PD-31, OQ-5 is closed. One price for every postal code confirmed by the product owner on 2026-11-09.)* |
+| PD-33 | Search has **one filter in the MVP: supermarket** (brand and category later). Results are **grouped by unit price unit** (kg, L, unit): the unit with the most results for the query comes first, and each group is ordered by unit price ascending. Products without a unit price go last. Ties on unit price are broken by the **lower shelf price**, then name, then id, so pages are stable. The cheapest unit price is highlighted **within each unit group**. *(Answers OQ-7.)* |
 
 ## Stack
 
@@ -380,6 +381,11 @@ Adapter tests run against **recorded fixtures**. Tests never call a real superma
 
 `GET /api/products?q=leche entera` → FULLTEXT search over available products (PD-22) of enabled supermarkets → ranked by `unitPrice` ascending (products without a unit price go last) → paginated.
 
+`SearchProductsHandler` (Catalog Application) takes a `SearchProductsQuery` (`text`, optional `supermarket` slug, `page` ≥ 1, `perPage` ≥ 1). It searches the supermarkets of `ENABLED_SUPERMARKETS` (port `EnabledSupermarkets`, PD-24), or only the one of the filter, which must be enabled (`SupermarketNotEnabled` otherwise). The port `ProductSearchReadModel` (adapter `DbalProductSearchReadModel`) returns a `ProductSearchPage`: the `ProductSearchResult` DTOs of the page, the `total` of the whole query and `cheapestUnitPriceCentsByUnit` (lowest unit price per unit over the whole query, for the highlight of PD-33).
+
+- **Matching:** every word of the text must match the start of a word of the name or brand, ignoring case and accents. Words are split on anything that is not a letter or a digit, so FULLTEXT operators typed by the user are ignored. Each word becomes a required prefix term (`+word*`) of `MATCH (name, brand) AGAINST (… IN BOOLEAN MODE)` on the `utf8mb4_0900_ai_ci` columns. Words InnoDB does not index (shorter than `innodb_ft_min_token_size` = 3, or a default stopword such as "de" or "la") are matched with `LIKE '% word%'` on the name and brand instead.
+- **Order (PD-33), in SQL so pages are stable:** products without a unit price last; units with more results first (units with as many results as `kg`, `l`, `unit`); then unit price, shelf price, name and id ascending.
+
 ### 3. User onboarding
 
 ```mermaid
@@ -582,7 +588,6 @@ These have **not** been decided. Implementation must stop and ask before coding 
 | OQ-2 | Price history retention: keep forever, or downsample/prune after N months? | E5 |
 | OQ-3 | Concurrent edits on the same item (two people check/uncheck at once): is last-write-wins acceptable? | E4 |
 | OQ-4 | Can a list be deleted (by whom, and what do members see)? Can a member leave a list on their own? Can ownership be transferred? | E4 |
-| OQ-7 | Search ranking ties and filters (brand, category, supermarket) needed in the MVP? | E2 |
 | OQ-8 | Activation link lifetime (proposal: 72 h), and can the admin regenerate it for a pending user? | E3 |
 | OQ-9 | Lost password or lost 2FA device: without email, the proposal is that the admin resets the user (new activation link → new password + new TOTP). Also, do users get TOTP recovery codes? | E3 |
 | OQ-10 | Admin user management beyond creation: disable/enable, delete (what happens to their lists?), change role? | E3 |
