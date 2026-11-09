@@ -59,6 +59,12 @@ Decisions confirmed by the product owner. Changing any of them requires asking f
 | PD-31 | **Aldi** is ingested from the public category pages of `www.aldi.es` (allowed by its `robots.txt`), which embed their products and prices in `__NEXT_DATA__`. Prices are the **peninsula** ones (`/can/` and `/bal/` are disallowed), and they are used for every postal code, Baleares and Canarias included, so the postal code is not used. Canned food is sized by its **drained weight** (`peso esc.`), the only size Aldi gives. Products without a published price (mostly loose fresh produce) are stored without one. Aldi is in the default `ENABLED_SUPERMARKETS`. *(Replaces the Aldi part of PD-30, whose spike sample was wrong: on 2026-11-09, 2 480 of 2 666 products had a price. Peninsula prices for every postal code and drained weight as the size confirmed by the product owner on 2026-11-09.)* |
 | PD-32 | **Bonpreu i Esclat** is ingested from the internal JSON API of `www.compraonline.bonpreuesclat.cat` (Ocado Smart Platform), with a **browser User-Agent**: its WAF rejects any other client. This overrides PD-26 for Bonpreu only, and like PD-28 it is accepted for **private, self-hosted use** even though `robots.txt` disallows `/api/`. The operator takes that risk. The WAF challenges the seventh API request within about five minutes, and only a browser running its JavaScript can pass a challenge, so the adapter **waits 90 seconds between API requests** instead of trying to pass it, and after a challenge waits six minutes and retries, up to twice (a run takes about an hour and a half). The online store has one price region (Catalunya): every postal code gets the same price, so the postal code is not used. Bonpreu is in the default `ENABLED_SUPERMARKETS`. *(Replaces the Bonpreu part of PD-30; with PD-28 and PD-31, OQ-5 is closed. One price for every postal code confirmed by the product owner on 2026-11-09.)* |
 | PD-33 | Search has **one filter in the MVP: supermarket** (brand and category later). Results are **grouped by unit price unit** (kg, L, unit): the unit with the most results for the query comes first, and each group is ordered by unit price ascending. Products without a unit price go last. Ties on unit price are broken by the **lower shelf price**, then name, then id, so pages are stable. The cheapest unit price is highlighted **within each unit group**. Units with as many results go in the order kg, L, unit. Every query word must match the **start of a word** in the name or brand, short words ("de", "xl") included, so search works while a word is still being typed. *(Answers OQ-7.)* |
+| PD-34 | An **activation link is valid for 72 hours**. While a user is still pending activation, an admin can **regenerate** their link: the new link gets a fresh 72 hours and the previous one stops working at once. *(Answers OQ-8, confirmed by the product owner on 2026-11-09.)* |
+| PD-35 | **Lost password or lost 2FA device: an admin resets the user.** The user goes back to pending activation, their password and TOTP secret are removed, their sessions stop working, and a new activation link (PD-34) is generated so they set a new password and enroll a new TOTP device. Their lists and memberships are kept. There are **no TOTP recovery codes** in the MVP. For a locked-out admin, the server operator runs the console command `app:user:reset <username>`, which does the same and prints the new link. *(Answers OQ-9, confirmed by the product owner on 2026-11-09.)* |
+| PD-36 | **Admin user management beyond creation: disable/enable and change role, no delete.** A disabled user cannot log in and their sessions stop working; their lists and memberships are kept and other members still see them. Enabling returns the user to active. An admin can change a role between `USER` and `ADMIN`. The **last active admin** cannot be disabled or lose the `ADMIN` role, and an admin cannot disable themselves. Users cannot be deleted in the MVP. *(Answers OQ-10, confirmed by the product owner on 2026-11-09.)* |
+| PD-37 | **Password policy:** at least **12 characters** (at most 128), with at least one **uppercase letter**, one **lowercase letter**, one **digit** and one **special character** (any character that is not a letter or a digit). There is no breached-password check. **Session:** expires after **7 days of inactivity**, renewed on each request (sliding expiry); there is no "remember me". Every login asks for the TOTP code (PD-13). *(Answers OQ-11, confirmed by the product owner on 2026-11-09.)* |
+| PD-38 | **Self-service profile page.** A logged-in user can **change their password** (asks for the current password and a TOTP code; the new one follows PD-37) and **re-enroll TOTP** (asks for the current password and a code from the current device, then shows a new QR code and manual secret, and the new device is active only after a code from it is confirmed; until then the old device keeps working). Both actions **end every other session** of the user and keep the current one. *(Answers OQ-12, confirmed by the product owner on 2026-11-09.)* |
+| PD-39 | A **username** has 3 to 32 characters: lowercase letters `a`–`z`, digits, `.`, `_` and `-`, starting with a letter or a digit. It is case-insensitive and stored in lowercase (`Maria` is `maria`). Accents, `ñ` and spaces are not allowed. *(Confirmed by the product owner on 2026-11-09.)* |
 
 ## Stack
 
@@ -215,16 +221,23 @@ How it is modelled:
 ```text
 User (aggregate root)
   id: UserId
-  username: Username           unique, case-insensitive, normalized to lowercase
-  role: Role                   ADMIN | USER
-  status: UserStatus           PENDING_ACTIVATION | ACTIVE | DISABLED
-  passwordHash: ?PasswordHash  null until activated (hashing is a port, never done in the domain)
-  totp: ?TotpEnrollment        secret (encrypted at rest) + confirmedAt; required before ACTIVE
-  activation: ?ActivationToken hash of the one-time token + expiresAt; consumed on use
-  createdAt, createdBy: ?UserId
+  username: Username                  PD-39; unique, case-insensitive, normalized to lowercase
+  role: Role                          ADMIN | USER
+  status: UserStatus                  PENDING_ACTIVATION | ACTIVE | DISABLED
+  passwordHash: ?PasswordHash         null until set (hashing is a port, never done in the domain)
+  totpSecret: ?EncryptedTotpSecret    confirmed secret (encrypted at rest) + totpConfirmedAt; required before ACTIVE
+  pendingTotpSecret: ?EncryptedTotpSecret  enrolled but not confirmed yet
+  activation: ?ActivationToken        SHA-256 hash of the one-time token + expiresAt (72 h, PD-34); null once used
+  createdAt, createdBy: ?UserId       createdBy is null for the first admin (PD-14)
 ```
 
 Lifecycle: `PENDING_ACTIVATION` → (valid activation link → set password → scan the TOTP QR code → confirm a code) → `ACTIVE`. Only the **hash** of the activation token is stored. The plain token appears only once, in the link shown to the admin.
+
+`User::createPending` is followed by `setInitialPassword`, `startTotpEnrollment` (starting again replaces the unconfirmed secret) and `confirmTotp`. Each step checks the activation link again, so an expired link cannot finish an activation already started; an unknown, expired or used link is an `ActivationLinkNotValid` (404), and a step out of order is an `ActivationStepOutOfOrder` (409). Checking the TOTP code needs the decrypted secret, so the application layer does it through the ports before `confirmTotp`.
+
+Value objects: `Username` (PD-39), `PlainPassword` (a new password, checked against PD-37; its errors never include the password), `TotpCode` (six digits, spaces ignored), `ActivationToken`, `PasswordHash`, `EncryptedTotpSecret`.
+
+Ports (`Identity\Domain\Port`): `UserRepository` (`save`, `findById`, `findByUsername`, `findByActivationTokenHash`, `hasAnyUser`), `PasswordHasher` (`hash(PlainPassword)`, `verify(hash, typed text)`), `TotpService` (`generateSecret`, `provisioningUri`, `verify(secret, code, now)`), `SecretEncrypter` (`encrypt`, `decrypt`) and `ActivationTokenGenerator` (`generate(): string`).
 
 **Ports (Identity):** `UserRepository`, `PasswordHasher`, `TotpService` (generate secret, verify code), `ActivationTokenGenerator`, `SecretEncrypter`.
 
@@ -305,6 +318,7 @@ Test folders mirror `src/` (for example, `tests/Unit/Catalog/Domain/ValueObject/
 | --- | --- |
 | `Shared\Domain\ValueObject\Money` | Integer cents, `Currency::EUR` only. `eur()`, `add()`, `multiply(int)`, `equals()`, `compareTo()`, `isGreaterThan()`, `isLessThan()`. Never negative (PD-19). |
 | `Shared\Domain\ValueObject\Uuid` | Canonical `8-4-4-4-12` hex string, normalized to lowercase. It only validates; generation belongs to an `IdGenerator` port. |
+| `Shared\Domain\ValueObject\UserId` | Wraps a `Uuid`. Other contexts know users only by this id. |
 | `Shared\Domain\Clock` | Port returning the current `DateTimeImmutable`. `Shared\Infrastructure\Clock\SystemClock` implements it in **UTC**; tests use `Tests\Support\FixedClock`. |
 | `Shared\Domain\IdGenerator` | Port returning a new `Uuid`. `Shared\Infrastructure\Id\UuidV7Generator` implements it with time-ordered UUIDv7 (`symfony/uid`); tests use `Tests\Support\SequentialIdGenerator`. |
 
@@ -628,10 +642,5 @@ These have **not** been decided. Implementation must stop and ask before coding 
 | OQ-2 | Price history retention: keep forever, or downsample/prune after N months? | E5 |
 | OQ-3 | Concurrent edits on the same item (two people check/uncheck at once): is last-write-wins acceptable? | E4 |
 | OQ-4 | Can a list be deleted (by whom, and what do members see)? Can a member leave a list on their own? Can ownership be transferred? | E4 |
-| OQ-8 | Activation link lifetime (proposal: 72 h), and can the admin regenerate it for a pending user? | E3 |
-| OQ-9 | Lost password or lost 2FA device: without email, the proposal is that the admin resets the user (new activation link → new password + new TOTP). Also, do users get TOTP recovery codes? | E3 |
-| OQ-10 | Admin user management beyond creation: disable/enable, delete (what happens to their lists?), change role? | E3 |
-| OQ-11 | Password policy (minimum length, breached-password check?) and session lifetime ("remember me"?). | E3 |
-| OQ-12 | Can a logged-in user change their own password and re-enroll TOTP from a profile page? | E3 |
 
 Once answered, move each item to [Product decisions](#product-decisions) with a new `PD-n` id.
