@@ -13,6 +13,7 @@ use App\Catalog\Application\SearchProducts\SearchProductsQuery;
 use App\Tests\Support\Catalog\FixedEnabledSupermarkets;
 use App\Tests\Support\Catalog\InMemoryProductSearchReadModel;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 
 final class SearchProductsHandlerTest extends TestCase
@@ -100,6 +101,28 @@ final class SearchProductsHandlerTest extends TestCase
         $this->expectException(InvalidSearchProductsQuery::class);
 
         new SearchProductsQuery('leche', page: 0);
+    }
+
+    #[Test]
+    #[TestWith([''])]
+    #[TestWith(['   '])]
+    #[TestWith([' l '])]
+    #[TestWith(['ñ'])]
+    public function it_rejects_a_text_shorter_than_two_characters_after_trimming(string $text): void
+    {
+        $this->expectException(InvalidSearchProductsQuery::class);
+
+        new SearchProductsQuery($text);
+    }
+
+    #[Test]
+    public function it_accepts_a_text_of_two_characters_after_trimming(): void
+    {
+        $this->readModel->add(self::product('1', 'Camiseta XL', 'mercadona'));
+
+        $page = $this->search(new SearchProductsQuery(' xl '), enabled: ['mercadona']);
+
+        self::assertSame(['1'], self::ids($page->results));
     }
 
     #[Test]

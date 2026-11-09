@@ -8,6 +8,11 @@ use App\Shared\Domain\Exception\InvalidArgument;
 
 final class InvalidSearchProductsQuery extends InvalidArgument
 {
+    public static function textTooShort(int $minLength): self
+    {
+        return new self(\sprintf('The search text must have at least %d characters.', $minLength));
+    }
+
     public static function pageBelowOne(int $page): self
     {
         return new self(\sprintf('The page must be 1 or greater, got %d.', $page));

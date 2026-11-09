@@ -121,6 +121,16 @@ The `scheduler` service runs it automatically on `INGESTION_SCHEDULE` (daily at 
 
 It prints a summary per supermarket and exits with `0` when every run succeeded, `1` when any failed and `2` for invalid input or configuration. Each run is stored in the `ingestion_run` table and logged on the `ingestion` channel.
 
+### Catalog API
+
+Search and product endpoints (public until login lands in E3). Full shapes in [`docs/architecture.md`](docs/architecture.md#2-search-and-compare):
+
+```sh
+curl 'http://localhost:8080/api/supermarkets'                                 # enabled supermarkets
+curl 'http://localhost:8080/api/products?q=leche%20entera&supermarket=aldi&page=1'  # search, 20 per page
+curl 'http://localhost:8080/api/products/<id>'                                 # product detail
+```
+
 ### Backend checks
 
 Run them inside the php container (`docker compose exec php composer <script>`):

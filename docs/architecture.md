@@ -268,13 +268,16 @@ backend/
 │   │   ├── Application/
 │   │   │   ├── IngestCatalog/   # IngestCatalogCommand + IngestCatalogHandler
 │   │   │   ├── SearchProducts/  # SearchProductsQuery + handler + result DTO
+│   │   │   ├── GetProduct/      # GetProductQuery + handler + ProductView
+│   │   │   ├── ListSupermarkets/ # ListSupermarketsQuery + handler
 │   │   │   └── GetPriceHistory/
 │   │   └── Infrastructure/
 │   │       ├── Persistence/Dbal/
 │   │       ├── Source/Mercadona/
 │   │       ├── Source/BonpreuEsclat/
 │   │       ├── Source/Aldi/
-│   │       ├── Http/            # controllers
+│   │       ├── Api/             # controllers
+│   │       ├── Http/            # HTTP client of the supermarket sources
 │   │       └── Console/         # app:catalog:ingest
 │   ├── Identity/
 │   │   ├── Domain/ Application/ Infrastructure/   # same layout; Symfony Security + scheb/2fa adapters live in Infrastructure/Security
@@ -379,12 +382,39 @@ Adapter tests run against **recorded fixtures**. Tests never call a real superma
 
 ### 2. Search and compare
 
-`GET /api/products?q=leche entera` → FULLTEXT search over available products (PD-22) of enabled supermarkets → ranked by `unitPrice` ascending (products without a unit price go last) → paginated.
+`GET /api/products?q=leche entera` → FULLTEXT search over available products (PD-22) of enabled supermarkets → grouped by unit and ranked by `unitPrice` ascending (PD-33, products without a unit price go last) → paginated, 20 per page.
 
-`SearchProductsHandler` (Catalog Application) takes a `SearchProductsQuery` (`text`, optional `supermarket` slug, `page` ≥ 1, `perPage` ≥ 1). It searches the supermarkets of `ENABLED_SUPERMARKETS` (port `EnabledSupermarkets`, PD-24), or only the one of the filter, which must be enabled (`SupermarketNotEnabled` otherwise). The port `ProductSearchReadModel` (adapter `DbalProductSearchReadModel`) returns a `ProductSearchPage`: the `ProductSearchResult` DTOs of the page, the `total` of the whole query and `cheapestUnitPriceCentsByUnit` (lowest unit price per unit over the whole query, for the highlight of PD-33).
+`SearchProductsHandler` (Catalog Application) takes a `SearchProductsQuery` (`text` of at least 2 characters after trimming, optional `supermarket` slug, `page` ≥ 1, `perPage` ≥ 1; `InvalidSearchProductsQuery` otherwise). It searches the supermarkets of `ENABLED_SUPERMARKETS` (port `EnabledSupermarkets`, PD-24), or only the one of the filter, which must be enabled (`SupermarketNotEnabled` otherwise). The port `ProductSearchReadModel` (adapter `DbalProductSearchReadModel`) returns a `ProductSearchPage`: the `ProductSearchResult` DTOs of the page, the `total` of the whole query and `cheapestUnitPriceCentsByUnit` (lowest unit price per unit over the whole query, for the highlight of PD-33).
 
 - **Matching:** every word of the text must match the start of a word of the name or brand, ignoring case and accents. Words are split on anything that is not a letter or a digit, so FULLTEXT operators typed by the user are ignored. Each word becomes a required prefix term (`+word*`) of `MATCH (name, brand) AGAINST (… IN BOOLEAN MODE)` on the `utf8mb4_0900_ai_ci` columns. Words InnoDB does not index (shorter than `innodb_ft_min_token_size` = 3, or a default stopword such as "de" or "la") are matched with `LIKE '% word%'` on the name and brand instead.
 - **Order (PD-33), in SQL so pages are stable:** products without a unit price last; units with more results first (units with as many results as `kg`, `l`, `unit`); then unit price, shelf price, name and id ascending.
+
+`SearchProductsController` (Catalog Infrastructure `Api`) maps `q`, `supermarket` and `page` to the query with a fixed page size of 20; a `page` that is not an integer is an `InvalidQueryParameter` (422). Search results and the product detail share one JSON shape (`ProductJson`):
+
+```json
+{
+  "items": [
+    {
+      "id": "0190f3c2-…", "name": "Leche entera", "brand": "Hacendado",
+      "supermarket": { "id": "mercadona", "name": "Mercadona" },
+      "packaging": { "quantity": 1.5, "unit": "l" },
+      "priceCents": 125,
+      "unitPrice": { "cents": 83, "unit": "l" },
+      "imageUrl": "https://…"
+    }
+  ],
+  "page": 1, "perPage": 20, "total": 37,
+  "cheapestUnitPriceCents": { "l": 70, "kg": 900 }
+}
+```
+
+`brand`, `packaging`, `unitPrice` and `imageUrl` may be `null`. Units are `kg`, `l` or `unit`. `packaging.quantity` is a decimal number (stored in thousandths). `cheapestUnitPriceCents` holds the lowest unit price of each unit over the whole query, so the SPA highlights the cheapest of each group (PD-33); it is `{}` when nothing matches.
+
+`GET /api/products/{id}` → `GetProductHandler` (`GetProductQuery`, port `ProductViewReadModel`, adapter `DbalProductViewReadModel`) returns the same shape plus `"available": bool`. It returns a product **even when it is unavailable**, because lists still show it (PD-22). An unknown or malformed id is a `ProductNotFound` (404).
+
+`GET /api/supermarkets` → `ListSupermarketsHandler` returns the supermarkets of `ENABLED_SUPERMARKETS` (port `EnabledSupermarkets`, PD-24) in that order, with their names from the `supermarket` table (port `SupermarketNames`, adapter `DbalSupermarketNames`): `[{"id":"mercadona","name":"Mercadona"}, …]`. An enabled slug without a `supermarket` row is left out.
+
+These three endpoints are **public** until E3.21 puts them behind login.
 
 ### 3. User onboarding
 
@@ -455,9 +485,9 @@ All routes require a fully authenticated session (login + 2FA) except those mark
 | POST | `/api/auth/activation/{token}/totp` | **public** — confirm TOTP code, activates user and logs in |
 | GET | `/api/admin/users` | ADMIN — list users and their status |
 | POST | `/api/admin/users` | ADMIN — create user → activation link |
-| GET | `/api/supermarkets` | Enabled supermarkets |
-| GET | `/api/products?q=&supermarket=&page=` | Search, ranked by unit price |
-| GET | `/api/products/{id}` | Product detail |
+| GET | `/api/supermarkets` | **public until E3.21** — enabled supermarkets, in `ENABLED_SUPERMARKETS` order: `[{id, name}]` |
+| GET | `/api/products?q=&supermarket=&page=` | **public until E3.21** — search available products, grouped by unit and ranked by unit price (PD-33), 20 per page. `q` (≥ 2 characters after trimming) is required; `page` ≥ 1 defaults to 1; `supermarket` must be enabled. Invalid input → `422` |
+| GET | `/api/products/{id}` | **public until E3.21** — product detail with `available`, also for unavailable products (PD-22). Unknown or malformed id → `404` |
 | GET | `/api/products/{id}/price-history` | Price snapshots |
 | GET | `/api/lists` | Lists the current user owns or is a member of |
 | POST | `/api/lists` | Create list (current user is the owner) |

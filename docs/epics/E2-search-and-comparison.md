@@ -21,9 +21,9 @@ Related decisions: PD-3, PD-8, PD-22, PD-33. Open questions: none.
 - [x] E2.2 Add the `SearchProductsQuery` and its handler, with a `ProductSearchResult` read-model DTO (unit tested with an in-memory read port).
 - [x] E2.3 Add a DBAL search read model using a FULLTEXT index on name and brand, with an accent-insensitive collation (integration tests with seeded Spanish products).
   - Note: the FULLTEXT index `ft_product_name_brand` and the `utf8mb4_0900_ai_ci` collation already exist since the E1 catalog migration, so no new migration was needed.
-- [ ] E2.4 Add the `GET /api/products` endpoint: validates `q` (min length), pagination and an optional `supermarket` filter. Functional tests cover the happy path, empty query and unknown supermarket.
-- [ ] E2.5 Add the `GET /api/products/{id}` endpoint (returns 404 when the id is unknown).
-- [ ] E2.6 Add the `GET /api/supermarkets` endpoint.
+- [x] E2.4 Add the `GET /api/products` endpoint: validates `q` (min length), pagination and an optional `supermarket` filter. Functional tests cover the happy path, empty query and unknown supermarket.
+- [x] E2.5 Add the `GET /api/products/{id}` endpoint (returns 404 when the id is unknown).
+- [x] E2.6 Add the `GET /api/supermarkets` endpoint.
 
 ### Frontend
 

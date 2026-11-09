@@ -79,10 +79,10 @@ final readonly class DbalProductSearchReadModel implements ProductSearchReadMode
         $total = 0;
         $cheapest = [];
         foreach ($groups as $group) {
-            $total += self::int($group['results']);
-            $unit = self::nullableString($group['unit_price_unit']);
+            $total += DbalColumn::int($group['results']);
+            $unit = DbalColumn::nullableString($group['unit_price_unit']);
             if (null !== $unit) {
-                $cheapest[$unit] = self::int($group['cheapest']);
+                $cheapest[$unit] = DbalColumn::int($group['cheapest']);
             }
         }
 
@@ -134,44 +134,18 @@ final readonly class DbalProductSearchReadModel implements ProductSearchReadMode
      */
     private static function hydrate(array $row): ProductSearchResult
     {
-        $packageQuantity = $row['package_quantity'];
-        $unitPriceCents = $row['unit_price_cents'];
-
         return new ProductSearchResult(
-            BinaryUuid::fromDatabase(self::string($row['id'])),
-            self::string($row['name']),
-            self::nullableString($row['brand']),
-            self::string($row['supermarket_id']),
-            self::string($row['supermarket_name']),
-            null === $packageQuantity ? null : self::int($packageQuantity),
-            self::nullableString($row['package_unit']),
-            self::int($row['price_cents']),
-            null === $unitPriceCents ? null : self::int($unitPriceCents),
-            self::nullableString($row['unit_price_unit']),
-            self::nullableString($row['image_url']),
+            BinaryUuid::fromDatabase(DbalColumn::string($row['id'])),
+            DbalColumn::string($row['name']),
+            DbalColumn::nullableString($row['brand']),
+            DbalColumn::string($row['supermarket_id']),
+            DbalColumn::string($row['supermarket_name']),
+            DbalColumn::nullableInt($row['package_quantity']),
+            DbalColumn::nullableString($row['package_unit']),
+            DbalColumn::int($row['price_cents']),
+            DbalColumn::nullableInt($row['unit_price_cents']),
+            DbalColumn::nullableString($row['unit_price_unit']),
+            DbalColumn::nullableString($row['image_url']),
         );
-    }
-
-    private static function string(mixed $value): string
-    {
-        if (!\is_string($value)) {
-            throw new \UnexpectedValueException('Expected a string column.');
-        }
-
-        return $value;
-    }
-
-    private static function nullableString(mixed $value): ?string
-    {
-        return null === $value ? null : self::string($value);
-    }
-
-    private static function int(mixed $value): int
-    {
-        if (!is_numeric($value)) {
-            throw new \UnexpectedValueException('Expected an integer column.');
-        }
-
-        return (int) $value;
     }
 }
