@@ -27,9 +27,9 @@ Related decisions: PD-3, PD-8, PD-22, PD-33. Open questions: none.
 
 ### Frontend
 
-- [ ] E2.7 Add catalog domain types and pure functions: `formatPrice`, `formatUnitPrice`, `isCheapest`.
-- [ ] E2.8 Add a catalog API client in `infrastructure/` that maps DTOs to domain types (tested with MSW).
-- [ ] E2.9 Add the `useProductSearch` hook (debounced, paginated, built on TanStack Query).
+- [x] E2.7 Add catalog domain types and pure functions: `formatPrice`, `formatUnitPrice`, `isCheapest`.
+- [x] E2.8 Add a catalog API client in `infrastructure/` that maps DTOs to domain types (tested with MSW).
+- [x] E2.9 Add the `useProductSearch` hook (debounced, paginated, built on TanStack Query).
 - [ ] E2.10 Add presentational components: `SearchBox` (molecule), `PriceTag` (molecule), `ProductCard` (organism), `ProductResultList` (organism), `SupermarketBadge` (atom).
 - [ ] E2.11 Add the `SearchPageContainer` and the `/search?q=` route, with loading, empty, error and results states.
 - [ ] E2.12 Highlight the cheapest unit price in each unit group of the result set (PD-33).

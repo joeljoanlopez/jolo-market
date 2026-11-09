@@ -316,7 +316,7 @@ Feature-first (screaming) folders. Each feature has a light hexagonal split. Sha
 frontend/src/
 ├── features/
 │   ├── catalog/
-│   │   ├── domain/          # types + pure functions (formatUnitPrice, rankByUnitPrice)
+│   │   ├── domain/          # types + pure functions (formatUnitPrice, isCheapest)
 │   │   ├── application/     # hooks/use cases (useProductSearch) depending on ports
 │   │   ├── infrastructure/  # API client implementing the port (fetch), DTO mappers
 │   │   └── ui/
@@ -350,6 +350,12 @@ Rules:
 - `cn()` joins classes and lets the last conflicting utility win. Atoms (`shared/ui/atoms`): `Button` (`variant`: primary, secondary, danger; `size`: sm, md), `Input` (`invalid`), `Text` (`as`, `size`, `tone`, `weight`).
 - `prettier-plugin-tailwindcss` sorts classes, also inside `cva()` and `cn()`.
 - HTTP: `createHttpClient({ baseUrl })` in `shared/http` wraps `fetch` (`get`, `post`, `patch`, `delete`). It sends same-origin cookies and JSON, resolves with the parsed body as `unknown` (`undefined` when empty) and rejects with typed errors: `UnauthorizedError` (401), `NotFoundError` (404), `ConflictError` (409), `ValidationError` (422), `ServerError` (5xx), `HttpError` for any other status, and `NetworkError` when no response arrives. Each error carries the parsed `problem` (falling back to the status when the body is not problem+json). Feature `infrastructure/` maps the `unknown` body to domain types; the UI picks Spanish copy from the error class, never from `problem.detail`.
+- Unexpected API bodies: feature `infrastructure/` rejects a successful response whose body does not have the expected shape with `UnexpectedResponseError` (`shared/http/errors.ts`).
+- Ports of a feature live in its `application/` and are injected with a React context (e.g. `ProductCatalogContext`), so hooks never import `infrastructure/` and tests pass an in-memory fake.
+- Catalog feature (`features/catalog`):
+  - `domain/`: types (`Product`, `ProductDetail`, `ProductSearchPage`, `Supermarket`, `Packaging`, `UnitPrice`, `Unit`, `CheapestUnitPriceCents`) and pure functions `formatPrice(cents)` (`1,25 €`), `formatUnitPrice(unitPrice)` (`0,83 €/L`, `9,00 €/kg`, `0,30 €/ud`), `formatPackaging(packaging)` (`1,5 L`, `0,5 kg`, `6 ud`) and `isCheapest(product, cheapestUnitPriceCents)` (lowest unit price of its unit over the whole query, PD-33). Formats use `Intl` with `es-ES`; unit symbols (`kg`, `L`, `ud`) are part of the format, not translatable copy.
+  - `application/`: port `ProductCatalog` (`searchProducts`, `getProduct`, `listSupermarkets`), `ProductCatalogContext` / `useProductCatalog()`, and `useProductSearch({ text, supermarket?, page? })` on TanStack Query. The initial text is searched at once (landing on a search URL); later changes of the text wait 300 ms without typing (`SEARCH_DEBOUNCE_MS`); the filter and the page apply at once. A trimmed text shorter than 2 characters (`MIN_SEARCH_LENGTH`) does not query. Pagination is page-based (`page` input, `keepPreviousData` keeps the previous page on screen while the next loads); the caller resets the page when the text or the filter changes. It returns `{ status: 'idle' | 'loading' | 'error' | 'success' }`, with `data` and `isFetching` on success.
+  - `infrastructure/`: `createCatalogApi(httpClient)` implements `ProductCatalog` over `GET /api/products`, `GET /api/products/{id}` and `GET /api/supermarkets`, validating every body into domain types.
 - `domain/` has no React imports.
 - API DTOs are mapped to domain types in `infrastructure/`. Components never see raw API shapes.
 - All user-visible strings go through `t()`. No hard-coded Spanish in components.

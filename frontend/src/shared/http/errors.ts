@@ -50,3 +50,11 @@ export function httpErrorFor(problem: ProblemDetails): HttpError {
       return problem.status >= 500 ? new ServerError(problem) : new HttpError(problem);
   }
 }
+
+/** The API answered successfully, but the body does not have the expected shape. */
+export class UnexpectedResponseError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'UnexpectedResponseError';
+  }
+}
