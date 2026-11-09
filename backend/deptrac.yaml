@@ -43,6 +43,19 @@ deptrac:
         - type: classLike
           value: '^App\\Catalog\\Infrastructure\\.*'
 
+    - name: IdentityDomain
+      collectors:
+        - type: classLike
+          value: '^App\\Identity\\Domain\\.*'
+    - name: IdentityApplication
+      collectors:
+        - type: classLike
+          value: '^App\\Identity\\Application\\.*'
+    - name: IdentityInfrastructure
+      collectors:
+        - type: classLike
+          value: '^App\\Identity\\Infrastructure\\.*'
+
     - name: ShoppingListDomain
       collectors:
         - type: classLike
@@ -61,6 +74,8 @@ deptrac:
     SharedDomain: ~
     CatalogDomain:
       - SharedDomain
+    IdentityDomain:
+      - SharedDomain
     ShoppingListDomain:
       - SharedDomain
 
@@ -69,6 +84,10 @@ deptrac:
       - SharedDomain
     CatalogApplication:
       - CatalogDomain
+      - SharedDomain
+      - SharedApplication
+    IdentityApplication:
+      - IdentityDomain
       - SharedDomain
       - SharedApplication
     ShoppingListApplication:
@@ -90,6 +109,13 @@ deptrac:
       - SharedInfrastructure
       - Vendor
       - ShoppingListApplication
+    IdentityInfrastructure:
+      - IdentityDomain
+      - IdentityApplication
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - Vendor
     ShoppingListInfrastructure:
       - ShoppingListDomain
       - ShoppingListApplication
