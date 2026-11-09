@@ -12,7 +12,8 @@ use Symfony\Component\Security\Core\User\UserInterface;
  * The user Symfony keeps in the session. It holds no credentials.
  *
  * On every request Symfony reloads it through SessionUserProvider and compares both with
- * isEqualTo(): once the stored session version moves on, the session stops working.
+ * isEqualTo(): once the stored session version or the role changes, the session stops working,
+ * so the token never keeps the roles of a demoted admin.
  */
 final readonly class SecurityUser implements UserInterface, EquatableInterface
 {
@@ -51,6 +52,9 @@ final readonly class SecurityUser implements UserInterface, EquatableInterface
 
     public function isEqualTo(UserInterface $user): bool
     {
-        return $user instanceof self && $user->id === $this->id && $user->sessionVersion === $this->sessionVersion;
+        return $user instanceof self
+            && $user->id === $this->id
+            && $user->sessionVersion === $this->sessionVersion
+            && $user->role === $this->role;
     }
 }

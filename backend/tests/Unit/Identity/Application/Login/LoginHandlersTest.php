@@ -88,6 +88,16 @@ final class LoginHandlersTest extends TestCase
     }
 
     #[Test]
+    public function a_code_cannot_be_used_for_a_second_login(): void
+    {
+        ($this->verifyCode())(new VerifyLoginCodeCommand(self::MARIA, self::CODE));
+
+        $this->expectException(InvalidCredentials::class);
+
+        ($this->verifyCode())(new VerifyLoginCodeCommand(self::MARIA, self::CODE));
+    }
+
+    #[Test]
     public function a_wrong_code_gets_the_same_error_as_a_wrong_password(): void
     {
         $this->expectException(InvalidCredentials::class);

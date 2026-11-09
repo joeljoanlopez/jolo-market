@@ -20,5 +20,9 @@ interface TotpService
      */
     public function provisioningUri(Username $username, #[\SensitiveParameter] string $secret): string;
 
-    public function verify(#[\SensitiveParameter] string $secret, TotpCode $code, \DateTimeImmutable $now): bool;
+    /**
+     * The 30-second time step (Unix time / 30) whose code is $code, within the tolerated clock
+     * drift, or null when the code is wrong. Callers reject a step already used (no replay).
+     */
+    public function matchingTimeStep(#[\SensitiveParameter] string $secret, TotpCode $code, \DateTimeImmutable $now): ?int;
 }

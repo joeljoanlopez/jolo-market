@@ -30,10 +30,12 @@ final readonly class ConfirmTotpEnrollmentController
     ) {
     }
 
-    #[Route('/api/auth/activation/{token}/totp', name: 'api_auth_activation_totp', methods: ['POST'])]
-    public function __invoke(string $token, Request $request): JsonResponse
+    #[Route('/api/auth/activation/totp', name: 'api_auth_activation_totp', methods: ['POST'])]
+    public function __invoke(Request $request): JsonResponse
     {
-        $code = JsonBody::of($request)->string('code');
+        $body = JsonBody::of($request);
+        $token = $body->string('token');
+        $code = $body->string('code');
         $this->throttle->activationCodeAttempt($request);
 
         $activated = ($this->confirm)(new ConfirmTotpEnrollmentCommand($token, $code));

@@ -17,6 +17,8 @@ final readonly class OtphpTotpService implements TotpService
 {
     private const string ISSUER = 'jolo-market';
 
+    private const int PERIOD_SECONDS = 30;
+
     /** Tolerated clock drift between the phone and the server. */
     private const int LEEWAY_SECONDS = 15;
 
@@ -39,13 +41,24 @@ final readonly class OtphpTotpService implements TotpService
         return $totp->getProvisioningUri();
     }
 
-    public function verify(#[\SensitiveParameter] string $secret, TotpCode $code, \DateTimeImmutable $now): bool
+    public function matchingTimeStep(#[\SensitiveParameter] string $secret, TotpCode $code, \DateTimeImmutable $now): ?int
     {
-        $timestamp = $now->getTimestamp();
-        if ('' === $secret || $timestamp < self::LEEWAY_SECONDS) {
-            return false;
+        if ('' === $secret) {
+            return null;
         }
 
-        return TOTP::createFromSecret($secret, new NativeClock())->verify($code->value(), $timestamp, self::LEEWAY_SECONDS);
+        $totp = TOTP::createFromSecret($secret, new NativeClock());
+        $timestamp = $now->getTimestamp();
+        $steps = array_unique(array_map(
+            static fn (int $at): int => intdiv($at, self::PERIOD_SECONDS),
+            [$timestamp - self::LEEWAY_SECONDS, $timestamp, $timestamp + self::LEEWAY_SECONDS],
+        ));
+        foreach ($steps as $step) {
+            if ($step >= 0 && hash_equals($totp->at($step * self::PERIOD_SECONDS), $code->value())) {
+                return $step;
+            }
+        }
+
+        return null;
     }
 }

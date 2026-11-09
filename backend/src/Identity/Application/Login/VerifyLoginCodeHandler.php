@@ -36,11 +36,14 @@ final readonly class VerifyLoginCodeHandler
         }
 
         $secret = $user?->totpSecret();
-        if (null === $user || null === $secret || !$user->isActive()
-            || !$this->totp->verify($this->encrypter->decrypt($secret), $code, $this->clock->now())
-        ) {
+        if (null === $user || null === $secret || !$user->isActive()) {
             throw InvalidCredentials::create();
         }
+        $step = $this->totp->matchingTimeStep($this->encrypter->decrypt($secret), $code, $this->clock->now());
+        if (null === $step || !$user->claimTotpStep($step)) {
+            throw InvalidCredentials::create();
+        }
+        $this->users->save($user);
 
         return SessionUser::of($user);
     }

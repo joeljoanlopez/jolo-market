@@ -76,6 +76,7 @@ final class DbalUserRepositoryTest extends KernelTestCase
             Users::at(Users::CREATED_AT),
             UserId::fromString(self::ADMIN),
             4,
+            59000000,
         );
 
         $this->repository->save($maria);

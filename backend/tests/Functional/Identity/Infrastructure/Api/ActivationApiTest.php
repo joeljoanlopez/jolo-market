@@ -17,19 +17,19 @@ final class ActivationApiTest extends IdentityApiTestCase
     {
         $pedro = $this->pendingUser('pedro', self::TOKEN);
 
-        $this->client->request('GET', '/api/auth/activation/'.self::TOKEN);
+        $this->postJson('/api/auth/activation', ['token' => self::TOKEN]);
         self::assertResponseStatusCodeSame(200);
         self::assertSame('pedro', $this->json()['username']);
         self::assertIsString($this->json()['expiresAt']);
 
-        $this->postJson('/api/auth/activation/'.self::TOKEN.'/password', ['password' => 'New-password-1!']);
+        $this->postJson('/api/auth/activation/password', ['token' => self::TOKEN, 'password' => 'New-password-1!']);
         self::assertResponseStatusCodeSame(200);
         $enrollment = $this->json();
         self::assertIsString($enrollment['secret']);
         self::assertIsString($enrollment['provisioningUri']);
         self::assertStringStartsWith('otpauth://totp/jolo-market%3Apedro?', $enrollment['provisioningUri']);
 
-        $this->postJson('/api/auth/activation/'.self::TOKEN.'/totp', ['code' => self::codeFor($enrollment['secret'])]);
+        $this->postJson('/api/auth/activation/totp', ['token' => self::TOKEN, 'code' => self::codeFor($enrollment['secret'])]);
         self::assertResponseStatusCodeSame(200);
         self::assertSame(['id' => $pedro->id()->value(), 'username' => 'pedro', 'role' => 'USER'], $this->json());
 
@@ -41,7 +41,7 @@ final class ActivationApiTest extends IdentityApiTestCase
     #[Test]
     public function an_unknown_link_is_a_404(): void
     {
-        $this->client->request('GET', '/api/auth/activation/activation-token-0000000000000000000099');
+        $this->postJson('/api/auth/activation', ['token' => 'activation-token-0000000000000000000099']);
 
         self::assertResponseStatusCodeSame(404);
         self::assertResponseHeaderSame('Content-Type', 'application/problem+json');
@@ -51,14 +51,14 @@ final class ActivationApiTest extends IdentityApiTestCase
     public function a_used_link_is_a_404(): void
     {
         $this->pendingUser('pedro', self::TOKEN);
-        $this->postJson('/api/auth/activation/'.self::TOKEN.'/password', ['password' => 'New-password-1!']);
+        $this->postJson('/api/auth/activation/password', ['token' => self::TOKEN, 'password' => 'New-password-1!']);
         $secret = $this->json()['secret'];
         self::assertIsString($secret);
-        $this->postJson('/api/auth/activation/'.self::TOKEN.'/totp', ['code' => self::codeFor($secret)]);
+        $this->postJson('/api/auth/activation/totp', ['token' => self::TOKEN, 'code' => self::codeFor($secret)]);
 
-        $this->client->request('GET', '/api/auth/activation/'.self::TOKEN);
+        $this->postJson('/api/auth/activation', ['token' => self::TOKEN]);
         self::assertResponseStatusCodeSame(404);
-        $this->postJson('/api/auth/activation/'.self::TOKEN.'/password', ['password' => 'New-password-1!']);
+        $this->postJson('/api/auth/activation/password', ['token' => self::TOKEN, 'password' => 'New-password-1!']);
         self::assertResponseStatusCodeSame(404);
     }
 
@@ -67,7 +67,7 @@ final class ActivationApiTest extends IdentityApiTestCase
     {
         $this->pendingUser('pedro', self::TOKEN);
 
-        $this->postJson('/api/auth/activation/'.self::TOKEN.'/password', ['password' => 'short']);
+        $this->postJson('/api/auth/activation/password', ['token' => self::TOKEN, 'password' => 'short']);
 
         self::assertResponseStatusCodeSame(422);
         self::assertSame('The password must have between 12 and 128 characters.', $this->json()['detail']);
@@ -77,11 +77,11 @@ final class ActivationApiTest extends IdentityApiTestCase
     public function a_wrong_code_is_a_422_and_the_user_stays_pending(): void
     {
         $this->pendingUser('pedro', self::TOKEN);
-        $this->postJson('/api/auth/activation/'.self::TOKEN.'/password', ['password' => 'New-password-1!']);
+        $this->postJson('/api/auth/activation/password', ['token' => self::TOKEN, 'password' => 'New-password-1!']);
         $secret = $this->json()['secret'];
         self::assertIsString($secret);
 
-        $this->postJson('/api/auth/activation/'.self::TOKEN.'/totp', ['code' => '000000' === self::codeFor($secret) ? '111111' : '000000']);
+        $this->postJson('/api/auth/activation/totp', ['token' => self::TOKEN, 'code' => '000000' === self::codeFor($secret) ? '111111' : '000000']);
 
         self::assertResponseStatusCodeSame(422);
         self::assertSame(UserStatus::PENDING_ACTIVATION, $this->users()->findByUsername(Username::fromString('pedro'))?->status());
@@ -91,16 +91,16 @@ final class ActivationApiTest extends IdentityApiTestCase
     public function activation_code_attempts_are_limited_per_ip_address(): void
     {
         $this->pendingUser('pedro', self::TOKEN);
-        $this->postJson('/api/auth/activation/'.self::TOKEN.'/password', ['password' => 'New-password-1!']);
+        $this->postJson('/api/auth/activation/password', ['token' => self::TOKEN, 'password' => 'New-password-1!']);
         $secret = $this->json()['secret'];
         self::assertIsString($secret);
         $wrong = '000000' === self::codeFor($secret) ? '111111' : '000000';
         for ($attempt = 1; $attempt <= 20; ++$attempt) {
-            $this->postJson('/api/auth/activation/'.self::TOKEN.'/totp', ['code' => $wrong]);
+            $this->postJson('/api/auth/activation/totp', ['token' => self::TOKEN, 'code' => $wrong]);
             self::assertResponseStatusCodeSame(422);
         }
 
-        $this->postJson('/api/auth/activation/'.self::TOKEN.'/totp', ['code' => self::codeFor($secret)]);
+        $this->postJson('/api/auth/activation/totp', ['token' => self::TOKEN, 'code' => self::codeFor($secret)]);
 
         self::assertResponseStatusCodeSame(429);
     }

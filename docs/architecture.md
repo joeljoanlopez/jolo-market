@@ -468,10 +468,10 @@ sequenceDiagram
     API-->>SPA: activation link (shown once)
     Admin-->>User: Sends the link (any channel)
     User->>SPA: Opens /activate/{token}
-    SPA->>API: POST /api/auth/activation/{token}/password
+    SPA->>API: POST /api/auth/activation/password {token, password}
     API-->>SPA: TOTP secret + QR code
     User->>SPA: Scans QR, enters 6-digit code
-    SPA->>API: POST /api/auth/activation/{token}/totp
+    SPA->>API: POST /api/auth/activation/totp {token, code}
     API-->>SPA: User ACTIVE, session started
 ```
 
@@ -483,8 +483,9 @@ sequenceDiagram
 
 Security wiring (E3.17 to E3.19, technical decision confirmed by the product owner on 2026-11-09: no `scheb/2fa-bundle`):
 
-- The `main` firewall (`^/api/`) has no request authenticator: the controllers call the Identity use cases and then `Security::login()`, backed by `ProgrammaticLoginAuthenticator`. `SessionUserProvider` reloads the `SecurityUser` (id, username, role, session version) through `FindSessionUserHandler` on every request; a user who is no longer active, or whose `sessionVersion` changed, loses the session. `ProblemJsonAuthenticationEntryPoint` answers `401`.
-- Session cookie: `HttpOnly`, `SameSite=Lax`, `Secure` on HTTPS (`auto`), 7 days. `SessionInactivityListener` ends a session after 7 days without requests and re-sends the cookie at most once an hour (PD-37).
+- The `main` firewall (`^/api/`) has no request authenticator: the controllers call the Identity use cases and then `Security::login()`, backed by `ProgrammaticLoginAuthenticator`. `SessionUserProvider` reloads the `SecurityUser` (id, username, role, session version) through `FindSessionUserHandler` on every request; a user who is no longer active, or whose `sessionVersion` or role changed, loses the session (so a token never keeps the roles of a demoted admin). `ProblemJsonAuthenticationEntryPoint` answers `401`.
+- Session cookie: `HttpOnly`, `SameSite=Lax`, `Secure` on HTTPS (`auto`), 7 days. `SessionInactivityListener` ends a session after 7 days without requests and re-sends the cookie at most once an hour with a new session id, destroying the old one (PD-37).
+- TOTP replay: a code is accepted once. `TotpService::matchingTimeStep` returns the 30-second step of a valid code and `User::claimTotpStep` rejects a step that is not after the last one used (`user.totp_last_used_step`). This covers login, activation, profile checks and re-enrollment.
 - CSRF (E3.18): `RequireCustomHeaderListener` rejects every `POST`/`PUT`/`PATCH`/`DELETE` under `/api/` without `X-Requested-With: XMLHttpRequest` (`403`). Another site cannot add that header without a CORS preflight, which the API never allows.
 - Rate limits (E3.19, `config/packages/rate_limiter.yaml`, sliding windows of 15 minutes): login 5 per username and 20 per IP; 2FA code 5 per user and 20 per IP; activation code 20 per IP. Every attempt counts and a successful login clears the per-user counter. Over the limit: `429` with `Retry-After`.
 
@@ -526,9 +527,9 @@ All routes require a fully authenticated session (login + 2FA) except those mark
 | GET | `/api/auth/me` | Current user (id, username, role) |
 | GET | `/api/setup` | **public** — `{ required: bool }` (true only while there are no users) |
 | POST | `/api/setup` | **public**, only while there are no users — setup code + username → creates the first `ADMIN` and returns its activation token |
-| GET | `/api/auth/activation/{token}` | **public** — `{username, expiresAt}` of a valid link; unknown, expired or used → `404` |
-| POST | `/api/auth/activation/{token}/password` | **public** — `{password}` (PD-37, else `422`) → `{secret, provisioningUri}` (`Cache-Control: no-store`) |
-| POST | `/api/auth/activation/{token}/totp` | **public** — `{code}` → activates the user, logs them in and answers `200 {id, username, role}`; wrong code → `422`; rate-limited |
+| POST | `/api/auth/activation` | **public** — `{token}` → `{username, expiresAt}` of a valid link; unknown, expired or used → `404`. The token goes in the body, never in a URL, so it stays out of logs |
+| POST | `/api/auth/activation/password` | **public** — `{token, password}` (PD-37, else `422`) → `{secret, provisioningUri}` (`Cache-Control: no-store`) |
+| POST | `/api/auth/activation/totp` | **public** — `{token, code}` → activates the user, logs them in and answers `200 {id, username, role}`; wrong code → `422`; rate-limited |
 | GET | `/api/admin/users` | ADMIN — list users and their status |
 | POST | `/api/admin/users` | ADMIN — create user → activation link |
 | GET | `/api/supermarkets` | **public until E3.21** — enabled supermarkets, in `ENABLED_SUPERMARKETS` order: `[{id, name}]` |
@@ -560,7 +561,7 @@ Tables (draft, finalized in migrations):
 | `price_snapshot` | `id` (auto-increment), `product_id`, `price_cents`, `unit_price_cents`, `unit_price_unit`, `captured_at` — INDEX(`product_id`, `captured_at`) |
 | `ingestion_run` | `id`, `supermarket_id`, `started_at`, `finished_at`, `status`, `products_seen`, `products_skipped`, `products_marked_unavailable`, `error` |
 | `setup_code` | `code_hash`, `created_at` — at most one row, deleted when the first admin is created |
-| `user` | `id`, `username` UNIQUE, `role`, `status`, `password_hash`, `totp_secret_encrypted`, `totp_confirmed_at`, `pending_totp_secret_encrypted`, `activation_token_hash` UNIQUE, `activation_expires_at`, `session_version`, `created_at`, `created_by` (FK to `user`) |
+| `user` | `id`, `username` UNIQUE, `role`, `status`, `password_hash`, `totp_secret_encrypted`, `totp_confirmed_at`, `pending_totp_secret_encrypted`, `activation_token_hash` UNIQUE, `activation_expires_at`, `session_version`, `totp_last_used_step`, `created_at`, `created_by` (FK to `user`) |
 | `shopping_list` | `id`, `owner_id`, `share_token` UNIQUE, `name`, `version`, `created_at`, `updated_at` |
 | `list_member` | `list_id`, `user_id`, `joined_at` — PK(`list_id`, `user_id`) |
 | `list_item` | `id`, `list_id`, `type` (`free_text`/`product`), `text`, `product_id`, `quantity`, `checked`, `position` |

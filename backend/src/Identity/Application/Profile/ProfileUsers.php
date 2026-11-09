@@ -51,14 +51,20 @@ final readonly class ProfileUsers
         if (null === $passwordHash
             || null === $secret
             || !$this->hasher->verify($passwordHash, $password)
-            || !$this->codeMatches($secret, TotpCode::fromString($code))
+            || !$this->claimCode($user, $secret, TotpCode::fromString($code))
         ) {
             throw CredentialsRejected::create();
         }
     }
 
-    public function codeMatches(EncryptedTotpSecret $secret, TotpCode $code): bool
+    /**
+     * Whether $code is the current code of $secret and was not used before (no replay).
+     * The caller saves the user, which records the use.
+     */
+    public function claimCode(User $user, EncryptedTotpSecret $secret, TotpCode $code): bool
     {
-        return $this->totp->verify($this->encrypter->decrypt($secret), $code, $this->clock->now());
+        $step = $this->totp->matchingTimeStep($this->encrypter->decrypt($secret), $code, $this->clock->now());
+
+        return null !== $step && $user->claimTotpStep($step);
     }
 }

@@ -19,10 +19,11 @@ final readonly class SetInitialPasswordController
     {
     }
 
-    #[Route('/api/auth/activation/{token}/password', name: 'api_auth_activation_password', methods: ['POST'])]
-    public function __invoke(string $token, Request $request): JsonResponse
+    #[Route('/api/auth/activation/password', name: 'api_auth_activation_password', methods: ['POST'])]
+    public function __invoke(Request $request): JsonResponse
     {
-        $enrollment = ($this->setPassword)(new SetInitialPasswordCommand($token, JsonBody::of($request)->string('password')));
+        $body = JsonBody::of($request);
+        $enrollment = ($this->setPassword)(new SetInitialPasswordCommand($body->string('token'), $body->string('password')));
 
         return TotpEnrollmentJson::response($enrollment);
     }
