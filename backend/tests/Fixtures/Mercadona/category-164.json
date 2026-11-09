@@ -1,0 +1,128 @@
+{
+  "id": 164,
+  "name": "Cerveza",
+  "order": 15,
+  "layout": 1,
+  "published": true,
+  "is_extended": false,
+  "categories": [
+    {
+      "id": 550,
+      "name": "Cerveza botella y botellín",
+      "order": 15,
+      "layout": 2,
+      "published": true,
+      "is_extended": false,
+      "image": null,
+      "subtitle": null,
+      "products": [
+        {
+          "id": "66518",
+          "slug": "cerveza-reserva-1925-alhambra-botellin",
+          "limit": 999,
+          "badges": {
+            "is_water": false,
+            "requires_age_check": true
+          },
+          "status": null,
+          "packaging": "Botellín",
+          "published": true,
+          "share_url": "https://tienda.mercadona.es/product/66518/cerveza-reserva-1925-alhambra-botellin",
+          "thumbnail": "https://prod-mercadona.imgix.net/images/d1eab3480db39bfa65cd69a1230d73ed.jpg?fit=crop&h=300&w=300",
+          "categories": [
+            {
+              "id": 19,
+              "name": "Bodega",
+              "level": 0,
+              "order": 15
+            }
+          ],
+          "display_name": "Cerveza reserva 1925 Alhambra",
+          "main_feature": null,
+          "unavailable_from": null,
+          "price_instructions": {
+            "iva": 21,
+            "is_new": false,
+            "is_pack": false,
+            "pack_size": null,
+            "unit_name": null,
+            "unit_size": 0.33,
+            "bulk_price": "4.52",
+            "unit_price": "1.49",
+            "approx_size": false,
+            "size_format": "l",
+            "total_units": null,
+            "unit_selector": true,
+            "bunch_selector": false,
+            "drained_weight": null,
+            "selling_method": 0,
+            "tax_percentage": "21.000",
+            "price_decreased": false,
+            "reference_price": "4.516",
+            "min_bunch_amount": 1.0,
+            "reference_format": "L",
+            "previous_unit_price": null,
+            "increment_bunch_amount": 1.0
+          },
+          "unavailable_weekdays": [],
+          "is_new_arrival": false
+        },
+        {
+          "id": "86866",
+          "slug": "cerveza-especial-mini-mahou-pack-12",
+          "limit": 999,
+          "badges": {
+            "is_water": false,
+            "requires_age_check": true
+          },
+          "status": null,
+          "packaging": "Pack-12",
+          "published": true,
+          "share_url": "https://tienda.mercadona.es/product/86866/cerveza-especial-mini-mahou-pack-12",
+          "thumbnail": "https://prod-mercadona.imgix.net/images/df5e62ba8db9461b625725dce2405d45.jpg?fit=crop&h=300&w=300",
+          "categories": [
+            {
+              "id": 19,
+              "name": "Bodega",
+              "level": 0,
+              "order": 15
+            }
+          ],
+          "display_name": "Cerveza especial mini Mahou",
+          "main_feature": null,
+          "unavailable_from": null,
+          "price_instructions": {
+            "iva": null,
+            "is_new": false,
+            "is_pack": true,
+            "pack_size": 0.2,
+            "unit_name": "botellines",
+            "unit_size": 2.4,
+            "bulk_price": "2.45",
+            "unit_price": "5.88",
+            "approx_size": false,
+            "size_format": "l",
+            "total_units": 12,
+            "unit_selector": true,
+            "bunch_selector": false,
+            "drained_weight": null,
+            "selling_method": 0,
+            "tax_percentage": "21.000",
+            "price_decreased": false,
+            "reference_price": "2.450",
+            "min_bunch_amount": 1.0,
+            "reference_format": "L",
+            "previous_unit_price": null,
+            "increment_bunch_amount": 1.0
+          },
+          "unavailable_weekdays": [],
+          "is_new_arrival": false
+        }
+      ]
+    }
+  ],
+  "next_category": {
+    "id": 166,
+    "name": "Cerveza sin alcohol"
+  }
+}

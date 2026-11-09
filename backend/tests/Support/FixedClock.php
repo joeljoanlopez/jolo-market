@@ -29,4 +29,9 @@ final class FixedClock implements Clock
     {
         $this->now = $this->now->add($interval);
     }
+
+    public function advanceMicroseconds(int $microseconds): void
+    {
+        $this->now = $this->now->modify(\sprintf('+%d microseconds', $microseconds));
+    }
 }

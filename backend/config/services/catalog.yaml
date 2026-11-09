@@ -3,5 +3,61 @@ services:
         autowire: true
         autoconfigure: true
 
+    _instanceof:
+        # One adapter per supermarket chain (PD-1). Each one is picked up by the ingestion handler.
+        App\Catalog\Domain\Port\SupermarketCatalogSource:
+            tags: ['catalog.supermarket_source']
+
     App\Catalog\:
         resource: '../../src/Catalog/'
+
+    App\Catalog\Application\IngestCatalog\IngestCatalogHandler:
+        arguments:
+            $sources: !tagged_iterator catalog.supermarket_source
+
+    # HTTP client for supermarket adapters (E1.19, PD-26). Adapters receive '@catalog.http_client'.
+    App\Catalog\Infrastructure\Http\CatalogHttpOptions:
+        arguments:
+            $userAgent: '%env(string:CATALOG_HTTP_USER_AGENT)%'
+            $delayBetweenRequestsInMilliseconds: 1000
+            $maxRetries: 3
+            $firstRetryDelayInMilliseconds: 1000
+            $timeoutInSeconds: 10.0
+            $maxDurationInSeconds: 30.0
+
+    catalog.http_client:
+        class: Symfony\Contracts\HttpClient\HttpClientInterface
+        factory: ['App\Catalog\Infrastructure\Http\CatalogHttpClientFactory', 'create']
+        arguments:
+            - '@http_client'
+            - '@App\Catalog\Infrastructure\Http\CatalogHttpOptions'
+            - '@App\Shared\Domain\Clock'
+            - '@App\Catalog\Infrastructure\Http\Sleeper'
+
+    App\Catalog\Infrastructure\Ingestion\EnvIngestionSettings:
+        arguments:
+            $postalCode: '%env(string:INSTANCE_POSTAL_CODE)%'
+            $enabledSupermarkets: '%env(string:ENABLED_SUPERMARKETS)%'
+
+when@test:
+    services:
+        test.catalog_http_client:
+            alias: catalog.http_client
+            public: true
+        # Fake sources: functional tests never call a real supermarket.
+        # Decorates (replaces) the real adapter, which keeps its tag, so it is never called in tests.
+        test.catalog_source.mercadona:
+            class: App\Tests\Support\Catalog\ConfigurableCatalogSource
+            decorates: App\Catalog\Infrastructure\Source\Mercadona\MercadonaCatalogSource
+            public: true
+            arguments: ['mercadona']
+        test.catalog_source.aldi:
+            class: App\Tests\Support\Catalog\ConfigurableCatalogSource
+            decorates: App\Catalog\Infrastructure\Source\Aldi\AldiCatalogSource
+            public: true
+            arguments: ['aldi']
+        test.catalog_source.bonpreu:
+            class: App\Tests\Support\Catalog\ConfigurableCatalogSource
+            decorates: App\Catalog\Infrastructure\Source\BonpreuEsclat\BonpreuEsclatCatalogSource
+            public: true
+            arguments: ['bonpreu']

@@ -1,0 +1,5 @@
+# Messenger only carries the scheduler's messages (the "scheduler" container consumes scheduler_default).
+framework:
+    messenger:
+        transports:
+            sync: 'sync://'

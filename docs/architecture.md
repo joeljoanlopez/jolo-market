@@ -46,6 +46,18 @@ Decisions confirmed by the product owner. Changing any of them requires asking f
 | PD-18 | API errors map a small **domain error hierarchy** in `Shared\Domain\Exception` to HTTP: `NotFound` → `404`, `InvalidArgument` → `422`, `Conflict` → `409`. Symfony HTTP errors keep their status (unknown route `404`, wrong method `405`). Any other exception is a `500` with a generic title and **no internal details**, in every environment. Only domain errors include their message as `detail`. |
 | PD-19 | `Money` is **never negative**: amounts and multipliers below zero are rejected. A signed amount (price differences, discounts) needs its own decision. |
 | PD-20 | Each supermarket has its own color token, **inspired by its brand** so the chain is recognisable at a glance: Mercadona green, Bonpreu i Esclat orange, Aldi navy. The rest of the UI uses a neutral palette with one primary color. |
+| PD-21 | The unit price (price ÷ normalized quantity) is rounded to whole cents **half-up**: 2.6533 €/L → 2.65 €/L, 2.655 €/L → 2.66 €/L. It is computed with integers only. |
+| PD-22 | Products that disappear from their supermarket's catalog are marked **unavailable**. Search returns **only available products**. A shopping list that already contains one keeps showing it, flagged as unavailable and **not counted in the totals**. It becomes available again when its supermarket returns it. *(Answers OQ-6.)* |
+| PD-23 | During ingestion, a **malformed product** (blank name, negative price, invalid image URL…) is **skipped**: it is not imported, a warning is logged and it is counted in the run (`products_skipped`). The rest of the catalog is imported. |
+| PD-24 | Which supermarkets are enabled is decided **only by `ENABLED_SUPERMARKETS`** in `.env` (comma-separated slugs). The `supermarket` table stores id and name only, with no `enabled` column. |
+| PD-25 | Products not seen in a run are marked unavailable **only when the run succeeds**. A run that fails half-way or returns **zero products** is recorded as **failed**: what it imported before failing is kept (with its snapshots), and every other product keeps its previous state. |
+| PD-26 | Requests to supermarkets identify the project (except Bonpreu i Esclat, PD-32): User-Agent `jolo-market/1.0 (+https://github.com/joeljoanlopez/jolo-market)` by default, overridable per instance with `CATALOG_HTTP_USER_AGENT` (operators may add their own contact). |
+| PD-27 | Catalogs are ingested **daily at 05:00 Europe/Madrid** by default. `INGESTION_SCHEDULE` (cron expression, evaluated in Europe/Madrid) changes it per instance. *(Answers OQ-1.)* |
+| PD-28 | **Mercadona** is ingested from the internal JSON API of `tienda.mercadona.es`, accepted for **private, self-hosted use** (one instance, one run a day, identifying User-Agent) even though its `robots.txt` disallows `/api`. The operator takes that risk. *(Partly answers OQ-5.)* |
+| PD-29 | When a product's size is **approximate** (loose fruit and vegetables) and the source gives its own price per kg, L or unit, that **reference price is the unit price**. Otherwise the unit price is always computed by us. Adapters pass a reference price only for approximate sizes. |
+| PD-30 | *(Replaced by PD-31 for Aldi and PD-32 for Bonpreu i Esclat.)* The Bonpreu i Esclat and Aldi adapters were deferred: Bonpreu's WAF blocks an identifying User-Agent and Aldi seemed to publish no food prices. |
+| PD-31 | **Aldi** is ingested from the public category pages of `www.aldi.es` (allowed by its `robots.txt`), which embed their products and prices in `__NEXT_DATA__`. Prices are the **peninsula** ones (`/can/` and `/bal/` are disallowed), and they are used for every postal code, Baleares and Canarias included, so the postal code is not used. Canned food is sized by its **drained weight** (`peso esc.`), the only size Aldi gives. Products without a published price (mostly loose fresh produce) are stored without one. Aldi is in the default `ENABLED_SUPERMARKETS`. *(Replaces the Aldi part of PD-30, whose spike sample was wrong: on 2026-11-09, 2 480 of 2 666 products had a price. Peninsula prices for every postal code and drained weight as the size confirmed by the product owner on 2026-11-09.)* |
+| PD-32 | **Bonpreu i Esclat** is ingested from the internal JSON API of `www.compraonline.bonpreuesclat.cat` (Ocado Smart Platform), with a **browser User-Agent**: its WAF rejects any other client. This overrides PD-26 for Bonpreu only, and like PD-28 it is accepted for **private, self-hosted use** even though `robots.txt` disallows `/api/`. The operator takes that risk. The WAF challenges the seventh API request within about five minutes, and only a browser running its JavaScript can pass a challenge, so the adapter **waits 90 seconds between API requests** instead of trying to pass it, and after a challenge waits six minutes and retries, up to twice (a run takes about an hour and a half). The online store has one price region (Catalunya): every postal code gets the same price, so the postal code is not used. Bonpreu is in the default `ENABLED_SUPERMARKETS`. *(Replaces the Bonpreu part of PD-30; with PD-28 and PD-31, OQ-5 is closed. One price for every postal code confirmed by the product owner on 2026-11-09.)* |
 
 ## Stack
 
@@ -57,6 +69,7 @@ Decisions confirmed by the product owner. Changing any of them requires asking f
 | Database | **MySQL 9.7 LTS** | Required stack (PD-16). `utf8mb4_0900_ai_ci` gives accent- and case-insensitive search. FULLTEXT indexes cover product search. |
 | HTTP client | Symfony HttpClient | Used only inside supermarket adapters. Supports retries and mock responses for tests. |
 | Scheduling | Symfony Scheduler + Console command | Ingestion runs as a console command, triggered by a scheduler worker container. |
+| Logging | Monolog (`symfony/monolog-bundle`) | Standard Symfony logging. Structured context, JSON to stderr in production so the container runtime collects it. Used only in Infrastructure, behind application ports. |
 | Authentication | Symfony Security (session cookie) + `scheb/2fa-bundle` with `scheb/2fa-totp` + Symfony RateLimiter | The SPA and the API share the same origin (nginx), so an `HttpOnly`, `Secure`, `SameSite=Lax` session cookie is simpler and safer than JWT in browser storage. `scheb/2fa` is the standard Symfony TOTP integration. Login and 2FA attempts are rate-limited. Passwords are hashed with Symfony's `auto` hasher (bcrypt/argon2id). All of this lives in Infrastructure; the Identity domain is framework-free. |
 | Language (FE) | TypeScript (strict) | Required stack. |
 | Framework (FE) | **React + Vite** | Mature ecosystem. Fits atomic design and the container/presentational pattern. Vite gives fast dev builds and a static output that nginx serves. |
@@ -159,36 +172,42 @@ Solid arrows are calls, and dashed arrows are interface implementations. Every d
 ```text
 Supermarket (aggregate root)
   id: SupermarketId            e.g. "mercadona", "bonpreu", "aldi" (stable slug)
-  name: string
-  enabled: bool
+  name: string                 enabled or not is configuration (PD-24), not state
 
 Product (aggregate root)
   id: ProductId                internal UUID
   supermarketId: SupermarketId
   externalId: ExternalProductId  id in the supermarket's store (unique per supermarket)
-  name: ProductName
-  brand: ?string
-  category: ?CategoryPath
-  imageUrl: ?Url
-  packaging: Packaging         quantity + unit (e.g. 1 L, 500 g, 6 units)
+  details: ProductDetails       name: ProductName, brand: ?string, category: ?CategoryPath, imageUrl: ?Url
+  packaging: ?Packaging        quantity + unit (e.g. 1 L, 500 g, 6 units); null when unknown
   currentPrice: Money
-  unitPrice: UnitPrice         Money per UnitOfMeasure (kg | L | unit)
+  unitPrice: ?UnitPrice        Money per UnitOfMeasure (kg | L | unit), always derived from
+                               currentPrice and packaging; null when packaging is unknown
   lastSeenAt: DateTimeImmutable
   available: bool              false when the last ingestion did not return it
 
-PriceSnapshot (entity, append-only)
-  productId, price: Money, unitPrice: UnitPrice, capturedAt
+PriceSnapshot (append-only, created by Product::captureSnapshot)
+  productId, price: Money, unitPrice: ?UnitPrice, capturedAt
 ```
 
 Value objects: `Money` (cents and currency, EUR only for now), `Packaging`, `UnitOfMeasure` (enum: `KILOGRAM`, `LITRE`, `UNIT`), `UnitPrice`, `ProductName`, `ExternalProductId`, `PostalCode`.
 
-**Unit normalization:** grams → kg, ml/cl → L, and "pack of N" → unit. When a source gives its own unit price, store it and also compute ours. If they disagree, ours wins and a warning is logged. If packaging cannot be parsed, the product is stored **without** a unit price and ranked last. That is an explicit state, not a guess.
+**Unit normalization:** grams → kg, ml/cl → L, and "pack of N" → unit. A source's own unit price is used only for approximate sizes (PD-29); otherwise ours is the only one. If packaging cannot be parsed, the product is stored **without** a unit price and ranked last. That is an explicit state, not a guess.
+
+How it is modelled:
+
+- `Packaging` stores the quantity as an **integer number of thousandths** of its `UnitOfMeasure` (500 g → 500 thousandths of a kg, 33 cl → 330 thousandths of a L, 12 units → 12 000), so no float is ever used. Named constructors (`kilograms`, `grams`, `litres`, `centilitres`, `millilitres`, `units`) take decimal strings with a dot. A quantity finer than a thousandth (for example `0.5 g`) is rejected, not rounded. `multipliedBy(n)` models multipacks (`6 x 33 cl`).
+- `PackagingParser` (domain service) accepts only strings that match a known format completely: an optional `pack`/`pack de` prefix, an optional `N x` multiplier, a quantity with a comma or dot decimal, and a unit (`kg`, `g`/`gr`, `l`/`lt`/`litro(s)`, `cl`, `ml`, `u`/`ud`/`uds`/`unidad(es)`). Anything else (approximate weights such as `1,2 kg aprox.`, ranges, unknown words) returns `null`, the explicit "unknown" state. New formats are added to its table-driven test as each supermarket spike finds them.
+- `UnitPriceCalculator` computes `price ÷ normalized quantity` rounded half-up to whole cents (PD-21).
+- `PostalCode` accepts five digits whose first two are a Spanish province (`01`–`52`).
 
 **Ports (Catalog Domain):**
 
-- `ProductRepository`: save, find by `(supermarketId, externalId)`, search.
-- `PriceSnapshotRepository`: append, history by product.
-- `SupermarketCatalogSource`: `fetchCatalog(PostalCode): iterable<SourceProduct>`. **One adapter per chain.**
+- `ProductRepository`: `save` (insert or update), `findBySupermarketAndExternalId`, `findAvailableNotSeenSince(supermarketId, instant)` (the products a run did not see). Search is added in E2.
+- `PriceSnapshotRepository`: `append(...snapshots)` in one batch. History by product is added in E5.
+- `SupermarketCatalogSource`: `supermarketId()` and `fetchCatalog(PostalCode): iterable<SourceProduct>`. **One adapter per chain.** `SourceProduct` carries plain values (external id, name, price in cents, packaging text, brand, category segments, image URL and, for approximate sizes only, a reference unit price in cents with its unit `kg`/`l`/`unit`), so one malformed product does not stop a source from returning the rest of its catalog.
+
+`Product` is created with `register` and changed only through `updateFromSource` (new details, price and packaging; makes it available again) and `markUnavailable`. `Supermarket` is created with `create(id, name)`; `SupermarketId` is a slug of lowercase letters, digits and inner hyphens.
 
 ### Identity
 
@@ -283,6 +302,7 @@ Test folders mirror `src/` (for example, `tests/Unit/Catalog/Domain/ValueObject/
 | `Shared\Domain\ValueObject\Money` | Integer cents, `Currency::EUR` only. `eur()`, `add()`, `multiply(int)`, `equals()`, `compareTo()`, `isGreaterThan()`, `isLessThan()`. Never negative (PD-19). |
 | `Shared\Domain\ValueObject\Uuid` | Canonical `8-4-4-4-12` hex string, normalized to lowercase. It only validates; generation belongs to an `IdGenerator` port. |
 | `Shared\Domain\Clock` | Port returning the current `DateTimeImmutable`. `Shared\Infrastructure\Clock\SystemClock` implements it in **UTC**; tests use `Tests\Support\FixedClock`. |
+| `Shared\Domain\IdGenerator` | Port returning a new `Uuid`. `Shared\Infrastructure\Id\UuidV7Generator` implements it with time-ordered UUIDv7 (`symfony/uid`); tests use `Tests\Support\SequentialIdGenerator`. |
 
 ## Frontend structure
 
@@ -337,21 +357,28 @@ Rules:
 ```text
 scheduler → app:catalog:ingest [--supermarket=mercadona]
   → IngestCatalogHandler
-      for each enabled supermarket:
+      for each supermarket in ENABLED_SUPERMARKETS (or only the requested one, which must be enabled):
+        save IngestionRun (running)
         source = SupermarketCatalogSource(supermarket)
         for each SourceProduct from source.fetchCatalog(INSTANCE_POSTAL_CODE):
-          normalize packaging → unit price
+          skip it if its external id was already seen in this run
+          validate it; a malformed product is skipped and counted (PD-23)
+          parse packaging → unit price (unknown packaging → no unit price)
           upsert Product (by supermarketId + externalId)
-          append PriceSnapshot
-        mark products not seen in this run as unavailable
-      a failure in one supermarket does not abort the others; it is logged and reported
+          queue a PriceSnapshot (appended in batches of 500)
+        zero valid products → the run fails
+        mark products not seen in this run as unavailable (only on success, PD-25)
+        save IngestionRun (succeeded or failed, with counts and error)
+      a failure in one supermarket does not abort the others
 ```
+
+`IngestionRun` (Catalog Application, port `IngestionRunRepository`) records each run: supermarket, `startedAt`, `finishedAt`, status (`running`, `succeeded`, `failed`), `productsSeen`, `productsSkipped`, `productsMarkedUnavailable` and `error`. A run left as `running` was interrupted. `IngestionSettings` (Application port) gives the instance postal code and the enabled supermarkets. The handler returns an `IngestCatalogResult` with one summary per run.
 
 Adapter tests run against **recorded fixtures**. Tests never call a real supermarket.
 
 ### 2. Search and compare
 
-`GET /api/products?q=leche entera` → FULLTEXT search over available products of enabled supermarkets → ranked by `unitPrice` ascending (products without a unit price go last) → paginated.
+`GET /api/products?q=leche entera` → FULLTEXT search over available products (PD-22) of enabled supermarkets → ranked by `unitPrice` ascending (products without a unit price go last) → paginated.
 
 ### 3. User onboarding
 
@@ -446,10 +473,10 @@ Tables (draft, finalized in migrations):
 
 | Table | Key columns |
 | --- | --- |
-| `supermarket` | `id` (slug PK), `name`, `enabled` |
-| `product` | `id` (BINARY(16)), `supermarket_id`, `external_id`, `name`, `brand`, `category`, `image_url`, `package_quantity`, `package_unit`, `price_cents`, `unit_price_cents`, `unit_price_unit`, `available`, `last_seen_at` — UNIQUE(`supermarket_id`, `external_id`), FULLTEXT(`name`, `brand`) |
-| `price_snapshot` | `id`, `product_id`, `price_cents`, `unit_price_cents`, `captured_at` — INDEX(`product_id`, `captured_at`) |
-| `ingestion_run` | `id`, `supermarket_id`, `started_at`, `finished_at`, `status`, `products_seen`, `error` |
+| `supermarket` | `id` (slug PK), `name` — seeded with `mercadona`, `bonpreu`, `aldi` |
+| `product` | `id` (BINARY(16)), `supermarket_id`, `external_id`, `name`, `brand`, `category` (`A > B`), `image_url`, `package_quantity` (thousandths), `package_unit`, `price_cents`, `unit_price_cents`, `unit_price_unit`, `available`, `last_seen_at` — UNIQUE(`supermarket_id`, `external_id`), INDEX(`supermarket_id`, `available`, `last_seen_at`), FULLTEXT(`name`, `brand`) |
+| `price_snapshot` | `id` (auto-increment), `product_id`, `price_cents`, `unit_price_cents`, `unit_price_unit`, `captured_at` — INDEX(`product_id`, `captured_at`) |
+| `ingestion_run` | `id`, `supermarket_id`, `started_at`, `finished_at`, `status`, `products_seen`, `products_skipped`, `products_marked_unavailable`, `error` |
 | `setup_code` | `code_hash`, `created_at` — at most one row, deleted when the first admin is created |
 | `user` | `id`, `username` UNIQUE, `role`, `status`, `password_hash`, `totp_secret_encrypted`, `totp_confirmed_at`, `activation_token_hash` UNIQUE, `activation_expires_at`, `created_at`, `created_by` |
 | `shopping_list` | `id`, `owner_id`, `share_token` UNIQUE, `name`, `version`, `created_at`, `updated_at` |
@@ -510,7 +537,7 @@ Configuration lives in `.env` (`APP_SECRET`, `DATABASE_URL`, `INSTANCE_POSTAL_CO
 
 ### Development environment
 
-`compose.yaml` runs `nginx`, `php` (php-fpm, built from `docker/php/Dockerfile`), `mysql` and `frontend` (Vite dev server on Node 26, `npm ci` on start, `node_modules` in the `frontend-node-modules` named volume).
+`compose.yaml` runs `nginx`, `php` (php-fpm, built from `docker/php/Dockerfile`), `scheduler` (same image, Messenger worker for scheduled jobs), `mysql` and `frontend` (Vite dev server on Node 26, `npm ci` on start, `node_modules` in the `frontend-node-modules` named volume).
 
 | Variable (root `.env`, documented in `.env.example`) | Purpose |
 | --- | --- |
@@ -528,13 +555,23 @@ Symfony variables (`backend/.env`, committed with non-secret defaults; real valu
 | `APP_SECRET` | Framework secret. Empty in `backend/.env`; public placeholders in `.env.dev` and `.env.test`. Required in production. |
 | `DATABASE_URL` | MySQL connection. Overridden by Compose in development. |
 | `DEFAULT_URI` | Base URI for absolute URLs generated outside HTTP requests (console commands). Default `http://localhost`. |
+| `INSTANCE_POSTAL_CODE` | Spanish postal code whose prices are imported (PD-5). Empty in `backend/.env`: set it in `backend/.env.local`. `app:catalog:ingest` refuses to run without a valid one. |
+| `ENABLED_SUPERMARKETS` | Comma-separated slugs of the supermarkets to import and show (PD-24). Default `mercadona,aldi,bonpreu` (PD-31, PD-32). |
+| `CATALOG_HTTP_USER_AGENT` | User-Agent sent to the supermarkets (PD-26). |
+| `INGESTION_SCHEDULE` | Cron expression for catalog ingestion, evaluated in Europe/Madrid (PD-27). Default `0 5 * * *`. |
 
 - nginx routes `/api` to Symfony (`backend/public/index.php`) and every other path to the Vite dev server (`frontend:5173`), including the HMR websocket. The SPA and the API share the origin `http://localhost:${HTTP_PORT}`.
 - MySQL starts with `utf8mb4` / `utf8mb4_0900_ai_ci`, and DBAL creates tables with the same default. On the first start of the `mysql-data` volume, `docker/mysql/init/01-create-test-database.sh` creates `<MYSQL_DATABASE>_test`. The test environment uses that database (Doctrine `dbname_suffix: _test`).
 - CI (`.github/workflows/ci.yml`, GitHub Actions) runs on every push: the backend `composer check` inside the Compose php and mysql containers, the frontend `npm run check`, and then the Playwright suite against the full stack.
 - End-to-end tests (Playwright, `frontend/e2e/`) run against the running stack: `npm run test:e2e` in `frontend/`. `E2E_BASE_URL` overrides the target (default `http://localhost:8080`).
 - Frontend quality commands run in `frontend/` with Node 26 (`npm ci` first): `npm run test`, `npm run typecheck`, `npm run lint`, `npm run format:check` and `npm run check` (runs all of them).
-- Backend quality commands run inside the php container: `composer test`, `composer test:unit`, `composer analyse`, `composer deptrac`, `composer cs` and `composer check` (runs all of them).
+- Schema changes are Doctrine migrations in `backend/migrations/` (raw SQL, UTC `DATETIME(6)`, UUIDs as `BINARY(16)`). Apply them with `bin/console doctrine:migrations:migrate`. `composer test` first runs `composer db:test`, which migrates the test database.
+- Catalog ingestion: `bin/console app:catalog:ingest [--supermarket=<slug>]`. It prints one row per run (status, seen, skipped, marked unavailable, duration, error). Exit code `0` when every run succeeded, `1` when any run failed, `2` for invalid input or configuration (unknown or disabled `--supermarket`, invalid `INSTANCE_POSTAL_CODE`), in which case nothing is ingested. Supermarket adapters implement `SupermarketCatalogSource` and are collected through the `catalog.supermarket_source` tag (`_instanceof` in `config/services/catalog.yaml`). In the test environment two `ConfigurableCatalogSource` fakes replace them.
+- Scheduling (E1.21): `Catalog\Infrastructure\Scheduler\CatalogIngestionSchedule` (Symfony Scheduler, schedule `default`) sends `app:catalog:ingest` as a `RunCommandMessage` on `INGESTION_SCHEDULE`. A failing command does not throw (the runs are already recorded and logged), so Messenger never retries a whole ingestion. The schedule is stateful (cache): if the worker was down at the scheduled time, it runs once when it comes back. The `scheduler` Compose service runs `messenger:consume scheduler_default --time-limit=3600` and restarts after each hour. `bin/console debug:scheduler` shows the next run.
+- Supermarket HTTP (E1.19): adapters use the `catalog.http_client` service built by `CatalogHttpClientFactory` on Symfony HttpClient. It sends the PD-26 User-Agent, uses a 10 s idle timeout and a 30 s maximum per request, leaves at least 1 s between the start of two requests (`PoliteHttpClient`, with an injected `Sleeper` so tests never sleep) and retries `429`/`5xx` up to 3 times with exponential backoff from 1 s (a `Retry-After` header wins). The numbers are arguments of `CatalogHttpOptions` in `config/services/catalog.yaml`; the spikes may tune them per chain.
+- Mercadona adapter (E1.14, PD-28): `Catalog\Infrastructure\Source\Mercadona\MercadonaCatalogSource`. It turns the postal code into a warehouse (`PUT /api/postal-codes/actions/change-pc/`, header `x-customer-wh`), lists the categories and reads every leaf category with `?wh=`. Packaging text is `unit_size` + `size_format` (already the total size of a pack); approximate sizes pass Mercadona's `reference_price` instead (PD-29). Prices are converted from decimal strings with `DecimalCents` (no floats). A full run is about 150 requests and 2.5 minutes. Tests use recorded fixtures in `backend/tests/Fixtures/Mercadona/`; in the test container `ConfigurableCatalogSource` decorates the adapter so it is never called.
+- Logging: Monolog. Ingestion logs go to the `ingestion` channel through the `IngestionLogger` application port (`PsrIngestionLogger`): a warning per skipped product and one record per finished run (`info` on success, `error` on failure) with `run_id`, `supermarket`, `status`, counts, `duration_ms` and `error` in the context. In `prod` this channel is written as JSON to stderr at `info` level, outside the `fingers_crossed` buffer.
+- Backend quality commands run inside the php container: `composer db:test`, `composer test`, `composer test:unit`, `composer analyse`, `composer deptrac`, `composer cs` and `composer check` (runs all of them).
 
 ## Open questions
 
@@ -542,12 +579,9 @@ These have **not** been decided. Implementation must stop and ask before coding 
 
 | ID | Question | Raised in |
 | --- | --- | --- |
-| OQ-1 | Ingestion frequency (daily? weekly?) and time of day. | E1 |
 | OQ-2 | Price history retention: keep forever, or downsample/prune after N months? | E5 |
 | OQ-3 | Concurrent edits on the same item (two people check/uncheck at once): is last-write-wins acceptable? | E4 |
 | OQ-4 | Can a list be deleted (by whom, and what do members see)? Can a member leave a list on their own? Can ownership be transferred? | E4 |
-| OQ-5 | Data source and terms of use for each supermarket (public API vs HTML scraping). Each adapter starts with a spike. | E1 |
-| OQ-6 | Should products that disappear from a catalog be hidden from search or shown as "unavailable"? | E1/E2 |
 | OQ-7 | Search ranking ties and filters (brand, category, supermarket) needed in the MVP? | E2 |
 | OQ-8 | Activation link lifetime (proposal: 72 h), and can the admin regenerate it for a pending user? | E3 |
 | OQ-9 | Lost password or lost 2FA device: without email, the proposal is that the admin resets the user (new activation link → new password + new TOTP). Also, do users get TOTP recovery codes? | E3 |

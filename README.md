@@ -52,7 +52,7 @@ jolo-market/
 ├── docs/
 │   ├── architecture.md # Stack, architecture, domain model, decisions
 │   └── epics/          # Epics with task checklists (progress tracking)
-├── compose.yaml        # Development stack: nginx, php-fpm, mysql, Vite dev server
+├── compose.yaml        # Development stack: nginx, php-fpm, scheduler, mysql, Vite dev server
 ├── .env.example        # Documented Compose variables (copy to .env)
 └── AGENTS.md           # Rules for AI assistants (TDD, hexagonal, English code)
 ```
@@ -84,9 +84,19 @@ Requirements: Docker with Docker Compose v2.
    ```sh
    docker compose up -d --build
    docker compose exec php composer install
+   docker compose exec php bin/console doctrine:migrations:migrate --no-interaction
    ```
 
-5. Check that it works:
+   Run the migrations again whenever you pull new ones. `composer test` migrates the test database by itself.
+
+5. Set the postal code whose prices are imported, then import the catalogs (see [Catalog ingestion](#catalog-ingestion)):
+
+   ```sh
+   echo "INSTANCE_POSTAL_CODE=08001" >> backend/.env.local
+   docker compose exec php bin/console app:catalog:ingest
+   ```
+
+6. Check that it works:
 
    ```sh
    curl http://localhost:8080/api/health   # {"status":"ok"}
@@ -96,13 +106,29 @@ Requirements: Docker with Docker Compose v2.
 
 The MySQL test database (`<MYSQL_DATABASE>_test`) is created automatically the first time the `mysql-data` volume is initialised. If you created the volume before that script existed, recreate it with `docker compose down -v`.
 
+### Catalog ingestion
+
+`app:catalog:ingest` imports the catalog of every supermarket in `ENABLED_SUPERMARKETS` (`mercadona`, `aldi` and `bonpreu` have an adapter) for `INSTANCE_POSTAL_CODE` (both in `backend/.env`, override them in `backend/.env.local`):
+
+```sh
+docker compose exec php bin/console app:catalog:ingest                         # every enabled supermarket
+docker compose exec php bin/console app:catalog:ingest --supermarket=mercadona # only one
+```
+
+Requests to the stores identify themselves with `CATALOG_HTTP_USER_AGENT`, wait at least 1 s between each other and retry rate limits and server errors.
+
+The `scheduler` service runs it automatically on `INGESTION_SCHEDULE` (daily at 05:00 Europe/Madrid by default; `docker compose exec php bin/console debug:scheduler` shows the next run).
+
+It prints a summary per supermarket and exits with `0` when every run succeeded, `1` when any failed and `2` for invalid input or configuration. Each run is stored in the `ingestion_run` table and logged on the `ingestion` channel.
+
 ### Backend checks
 
 Run them inside the php container (`docker compose exec php composer <script>`):
 
 | Script | What it runs |
 | --- | --- |
-| `test` | Every PHPUnit suite (Unit, Integration, Functional) |
+| `db:test` | Applies pending migrations to the test database |
+| `test` | `db:test`, then every PHPUnit suite (Unit, Integration, Functional) |
 | `test:unit` | Unit suite only, no I/O |
 | `analyse` | PHPStan at max level |
 | `deptrac` | Hexagonal layer and context rules |

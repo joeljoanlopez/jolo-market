@@ -1,0 +1,61 @@
+{
+ "productGroups": [
+  {
+   "type": "ungrouped",
+   "decoratedProducts": [
+    {
+     "productId": "e6914409-8156-42af-8395-b25704497c86",
+     "retailerProductId": "66984",
+     "type": "REGULAR",
+     "name": "LATORRE Llet fresca A2 sencera",
+     "brand": "LATORRE",
+     "packSizeDescription": "1L",
+     "price": {
+      "amount": "1.85",
+      "currency": "EUR"
+     },
+     "unitPrice": {
+      "price": {
+       "amount": "1.85",
+       "currency": "EUR"
+      },
+      "unit": "fop.price.per.litre",
+      "unitName": "PER_LITRE"
+     },
+     "available": true,
+     "isVerifiedPurchase": false,
+     "quantityInBasket": 0,
+     "maxQuantityReached": false,
+     "quantityRestrictionGroup": {
+      "quantityRestrictionGroupId": "0050e0bf-cba9-40d1-a151-e968edbe5b45",
+      "contribution": 5.0
+     },
+     "taxCodesDisplayNames": [],
+     "image": {
+      "src": "https://www.compraonline.bonpreuesclat.cat/images-v3/dcbcfd72-cf23-44a2-8e14-8a38edd645a3/118b7694-aadf-4df4-ab84-d63441c34366/300x300.jpg"
+     },
+     "iconAttributes": [
+      {
+       "label": "Refrigerat",
+       "file": "refrigerated"
+      }
+     ],
+     "icons": [],
+     "timeRestricted": false,
+     "isInShoppingList": false,
+     "isInCurrentCatalog": true,
+     "retailerFinancingPlanIds": [],
+     "alcohol": false,
+     "categoryPath": [
+      "Làctics i ous",
+      "Llets i begudes vegetals",
+      "Llet fresca"
+     ],
+     "isNew": false
+    }
+   ],
+   "otherProductIds": []
+  }
+ ],
+ "metadata": {}
+}

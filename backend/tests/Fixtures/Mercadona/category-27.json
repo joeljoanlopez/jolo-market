@@ -1,0 +1,140 @@
+{
+  "id": 27,
+  "name": "Fruta",
+  "order": 306,
+  "layout": 1,
+  "published": true,
+  "is_extended": false,
+  "categories": [
+    {
+      "id": 853,
+      "name": "Plátano y uva",
+      "order": 306,
+      "layout": 2,
+      "published": true,
+      "is_extended": false,
+      "image": null,
+      "subtitle": null,
+      "products": [
+        {
+          "id": "3819",
+          "slug": "platano-canarias-igp-pieza",
+          "limit": 999,
+          "badges": {
+            "is_water": false,
+            "requires_age_check": false
+          },
+          "status": null,
+          "packaging": "Pieza",
+          "published": true,
+          "share_url": "https://tienda.mercadona.es/product/3819/platano-canarias-igp-pieza",
+          "thumbnail": "https://prod-mercadona.imgix.net/images/e4a37940916985bf5ca166e266580c37.jpg?fit=crop&h=300&w=300",
+          "categories": [
+            {
+              "id": 1,
+              "name": "Fruta y verdura",
+              "level": 0,
+              "order": 306
+            }
+          ],
+          "display_name": "Plátano de Canarias IGP",
+          "main_feature": null,
+          "unavailable_from": null,
+          "price_instructions": {
+            "iva": null,
+            "is_new": false,
+            "is_pack": false,
+            "pack_size": null,
+            "unit_name": null,
+            "unit_size": 0.16,
+            "bulk_price": "3.20",
+            "unit_price": "0.51",
+            "approx_size": true,
+            "size_format": "kg",
+            "total_units": null,
+            "unit_selector": true,
+            "bunch_selector": false,
+            "drained_weight": null,
+            "selling_method": 0,
+            "tax_percentage": "4.000",
+            "price_decreased": false,
+            "reference_price": "3.200",
+            "min_bunch_amount": 1.0,
+            "reference_format": "kg",
+            "previous_unit_price": null,
+            "increment_bunch_amount": 1.0
+          },
+          "unavailable_weekdays": [],
+          "is_new_arrival": false
+        }
+      ]
+    },
+    {
+      "id": 247,
+      "name": "Cítricos",
+      "order": 306,
+      "layout": 2,
+      "published": true,
+      "is_extended": false,
+      "image": null,
+      "subtitle": null,
+      "products": [
+        {
+          "id": "30501",
+          "slug": "mandarinas-bandeja",
+          "limit": 999,
+          "badges": {
+            "is_water": false,
+            "requires_age_check": false
+          },
+          "status": null,
+          "packaging": null,
+          "published": true,
+          "share_url": "https://tienda.mercadona.es/product/30501/mandarinas-bandeja",
+          "thumbnail": "https://prod-mercadona.imgix.net/images/cb421f8ce6110b55d7d5496dc5ea58fd.jpg?fit=crop&h=300&w=300",
+          "categories": [
+            {
+              "id": 1,
+              "name": "Fruta y verdura",
+              "level": 0,
+              "order": 306
+            }
+          ],
+          "display_name": "Mandarinas",
+          "main_feature": "",
+          "unavailable_from": null,
+          "price_instructions": {
+            "iva": null,
+            "is_new": false,
+            "is_pack": true,
+            "pack_size": 1.5,
+            "unit_name": null,
+            "unit_size": 1.5,
+            "bulk_price": "2.35",
+            "unit_price": "3.53",
+            "approx_size": false,
+            "size_format": "kg",
+            "total_units": null,
+            "unit_selector": true,
+            "bunch_selector": false,
+            "drained_weight": null,
+            "selling_method": 0,
+            "tax_percentage": "4.000",
+            "price_decreased": false,
+            "reference_price": "2.354",
+            "min_bunch_amount": 1.0,
+            "reference_format": "kg",
+            "previous_unit_price": null,
+            "increment_bunch_amount": 1.0
+          },
+          "unavailable_weekdays": [],
+          "is_new_arrival": false
+        }
+      ]
+    }
+  ],
+  "next_category": {
+    "id": 28,
+    "name": "Lechuga y ensalada preparada"
+  }
+}

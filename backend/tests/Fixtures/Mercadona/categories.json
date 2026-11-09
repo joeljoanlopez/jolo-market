@@ -1,0 +1,58 @@
+{
+  "count": 3,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 12,
+      "name": "Aceite, especias y salsas",
+      "order": 7,
+      "is_extended": false,
+      "categories": [
+        {
+          "id": 112,
+          "name": "Aceite, vinagre y sal",
+          "order": 7,
+          "layout": 1,
+          "published": true,
+          "is_extended": false
+        }
+      ],
+      "icon_url": null
+    },
+    {
+      "id": 19,
+      "name": "Bodega",
+      "order": 15,
+      "is_extended": false,
+      "categories": [
+        {
+          "id": 164,
+          "name": "Cerveza",
+          "order": 15,
+          "layout": 1,
+          "published": true,
+          "is_extended": false
+        }
+      ],
+      "icon_url": null
+    },
+    {
+      "id": 1,
+      "name": "Fruta y verdura",
+      "order": 306,
+      "is_extended": false,
+      "categories": [
+        {
+          "id": 27,
+          "name": "Fruta",
+          "order": 306,
+          "layout": 1,
+          "published": true,
+          "is_extended": false
+        }
+      ],
+      "icon_url": null
+    }
+  ]
+}

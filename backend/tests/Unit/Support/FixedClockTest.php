@@ -28,4 +28,14 @@ final class FixedClockTest extends TestCase
 
         self::assertEquals(new \DateTimeImmutable('2026-11-06 11:30:00', new \DateTimeZone('UTC')), $clock->now());
     }
+
+    #[Test]
+    public function it_advances_by_microseconds(): void
+    {
+        $clock = FixedClock::at('2026-11-08 06:00:00');
+
+        $clock->advanceMicroseconds(1_500_000);
+
+        self::assertSame('2026-11-08 06:00:01.500000', $clock->now()->format('Y-m-d H:i:s.u'));
+    }
 }

@@ -2,7 +2,7 @@
 
 **Goal:** a user types a product name and sees results from all supermarkets ranked by unit price, with the cheapest option obvious at a glance.
 
-Related decisions: PD-3, PD-8. Open questions: OQ-6, OQ-7.
+Related decisions: PD-3, PD-8, PD-22. Open questions: OQ-7.
 
 ## Acceptance criteria
 

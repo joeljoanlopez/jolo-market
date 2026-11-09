@@ -1,0 +1,343 @@
+{
+ "productGroups": [
+  {
+   "type": "featured",
+   "decoratedProducts": [
+    {
+     "productId": "5a4a0ed8-6c89-4787-8868-6631a94252f0",
+     "retailerProductId": "44787",
+     "type": "REGULAR",
+     "name": "LA FAGEDA Iogurt grec de mango i préssec",
+     "brand": "LA FAGEDA",
+     "packSizeDescription": "4 x 0.11kg",
+     "price": {
+      "amount": "2.75",
+      "currency": "EUR"
+     },
+     "unitPrice": {
+      "price": {
+       "amount": "6.25",
+       "currency": "EUR"
+      },
+      "unit": "fop.price.per.kg",
+      "unitName": "PER_1KG"
+     },
+     "available": true,
+     "isVerifiedPurchase": false,
+     "quantityInBasket": 0,
+     "maxQuantityReached": false,
+     "promotions": [
+      {
+       "promoId": "103040d6-5ae1-442c-856a-76e09083e30e",
+       "retailerPromotionId": "OF44787_2611030001",
+       "description": "Abans 2,99€",
+       "type": "OFFER",
+       "presentationMode": "DEFAULT",
+       "limitReached": false
+      }
+     ],
+     "taxCodesDisplayNames": [],
+     "image": {
+      "src": "https://www.compraonline.bonpreuesclat.cat/images-v3/dcbcfd72-cf23-44a2-8e14-8a38edd645a3/dbb3fb85-4c35-4d48-89c1-b7fd69cab272/300x300.jpg"
+     },
+     "iconAttributes": [
+      {
+       "label": "Refrigerat",
+       "file": "refrigerated"
+      },
+      {
+       "label": "Sense gluten",
+       "file": "glutenFree"
+      }
+     ],
+     "icons": [],
+     "timeRestricted": false,
+     "isInShoppingList": false,
+     "isInCurrentCatalog": true,
+     "retailerFinancingPlanIds": [],
+     "alcohol": false,
+     "categoryPath": [
+      "Làctics i ous",
+      "Iogurts",
+      "Grecs i mousse",
+      "Grec sabors"
+     ],
+     "isNew": false
+    }
+   ],
+   "otherProductIds": []
+  },
+  {
+   "type": "on_offer",
+   "decoratedProducts": [
+    {
+     "productId": "5a4a0ed8-6c89-4787-8868-6631a94252f0",
+     "retailerProductId": "44787",
+     "type": "REGULAR",
+     "name": "LA FAGEDA Iogurt grec de mango i préssec",
+     "brand": "LA FAGEDA",
+     "packSizeDescription": "4 x 0.11kg",
+     "price": {
+      "amount": "2.75",
+      "currency": "EUR"
+     },
+     "unitPrice": {
+      "price": {
+       "amount": "6.25",
+       "currency": "EUR"
+      },
+      "unit": "fop.price.per.kg",
+      "unitName": "PER_1KG"
+     },
+     "available": true,
+     "isVerifiedPurchase": false,
+     "quantityInBasket": 0,
+     "maxQuantityReached": false,
+     "promotions": [
+      {
+       "promoId": "103040d6-5ae1-442c-856a-76e09083e30e",
+       "retailerPromotionId": "OF44787_2611030001",
+       "description": "Abans 2,99€",
+       "type": "OFFER",
+       "presentationMode": "DEFAULT",
+       "limitReached": false
+      }
+     ],
+     "taxCodesDisplayNames": [],
+     "image": {
+      "src": "https://www.compraonline.bonpreuesclat.cat/images-v3/dcbcfd72-cf23-44a2-8e14-8a38edd645a3/dbb3fb85-4c35-4d48-89c1-b7fd69cab272/300x300.jpg"
+     },
+     "iconAttributes": [
+      {
+       "label": "Refrigerat",
+       "file": "refrigerated"
+      },
+      {
+       "label": "Sense gluten",
+       "file": "glutenFree"
+      }
+     ],
+     "icons": [],
+     "timeRestricted": false,
+     "isInShoppingList": false,
+     "isInCurrentCatalog": true,
+     "retailerFinancingPlanIds": [],
+     "alcohol": false,
+     "categoryPath": [
+      "Làctics i ous",
+      "Iogurts",
+      "Grecs i mousse",
+      "Grec sabors"
+     ],
+     "isNew": false
+    },
+    {
+     "productId": "eb883db9-c47b-4049-af57-1254a94c9b4b",
+     "retailerProductId": "72316",
+     "type": "REGULAR",
+     "name": "DANACOL Iogurt per beure de llima i llimona",
+     "brand": "DANACOL",
+     "packSizeDescription": "8 x 1 per paquet",
+     "price": {
+      "amount": "4.59",
+      "currency": "EUR"
+     },
+     "unitPrice": {
+      "price": {
+       "amount": "0.57",
+       "currency": "EUR"
+      },
+      "unit": "fop.price.per.each",
+      "unitName": "EACH"
+     },
+     "available": true,
+     "isVerifiedPurchase": false,
+     "quantityInBasket": 0,
+     "maxQuantityReached": false,
+     "promotions": [
+      {
+       "promoId": "1f74adce-af02-486d-a13c-b441ce9c3aa5",
+       "retailerPromotionId": "220697",
+       "description": "2a unitat 50% de descompte",
+       "type": "OFFER",
+       "presentationMode": "DEFAULT",
+       "requiredProductQuantity": 2,
+       "limitReached": false
+      }
+     ],
+     "taxCodesDisplayNames": [],
+     "image": {
+      "src": "https://www.compraonline.bonpreuesclat.cat/images-v3/dcbcfd72-cf23-44a2-8e14-8a38edd645a3/f2e33341-1ea6-4ea1-b3c4-050e5e667597/300x300.jpg"
+     },
+     "iconAttributes": [
+      {
+       "label": "Refrigerat",
+       "file": "refrigerated"
+      }
+     ],
+     "icons": [],
+     "timeRestricted": false,
+     "isInShoppingList": false,
+     "isInCurrentCatalog": true,
+     "retailerFinancingPlanIds": [],
+     "alcohol": false,
+     "categoryPath": [
+      "Ofertes",
+      "2es unitats amb descompte"
+     ],
+     "isNew": false
+    },
+    {
+     "productId": "6a987a8e-2ab1-4020-8d74-36877463ec22",
+     "retailerProductId": "22338",
+     "type": "REGULAR",
+     "name": "ASTURIANA Llet sencera en cartró",
+     "brand": "ASTURIANA",
+     "packSizeDescription": "1L",
+     "price": {
+      "amount": "1.24",
+      "currency": "EUR"
+     },
+     "unitPrice": {
+      "price": {
+       "amount": "1.24",
+       "currency": "EUR"
+      },
+      "unit": "fop.price.per.litre",
+      "unitName": "PER_LITRE"
+     },
+     "available": true,
+     "isVerifiedPurchase": false,
+     "quantityInBasket": 0,
+     "maxQuantityReached": false,
+     "quantityRestrictionGroup": {
+      "quantityRestrictionGroupId": "0050e0bf-cba9-40d1-a151-e968edbe5b45",
+      "contribution": 5.0
+     },
+     "promotions": [
+      {
+       "promoId": "1e99a1e8-d8c7-4d44-805e-e81684710d05",
+       "retailerPromotionId": "OF22338_2611030001",
+       "description": "Abans 1,29€",
+       "type": "OFFER",
+       "presentationMode": "DEFAULT",
+       "limitReached": false
+      }
+     ],
+     "taxCodesDisplayNames": [],
+     "image": {
+      "src": "https://www.compraonline.bonpreuesclat.cat/images-v3/dcbcfd72-cf23-44a2-8e14-8a38edd645a3/88998d9d-4308-47c8-ab34-01872bd934ee/300x300.jpg"
+     },
+     "iconAttributes": [],
+     "icons": [],
+     "timeRestricted": false,
+     "isInShoppingList": false,
+     "isInCurrentCatalog": true,
+     "retailerFinancingPlanIds": [],
+     "alcohol": false,
+     "categoryPath": [
+      "Ofertes",
+      "Preu rebaixat"
+     ],
+     "isNew": false
+    }
+   ],
+   "otherProductIds": []
+  },
+  {
+   "type": "ungrouped",
+   "decoratedProducts": [
+    {
+     "productId": "e1aa6452-3b46-4968-813b-183cc137d2fa",
+     "retailerProductId": "38974",
+     "type": "REGULAR",
+     "name": "BONPREU Ous frescos de gallines soltes en el galliner L",
+     "brand": "BONPREU",
+     "packSizeDescription": "12 per paquet",
+     "price": {
+      "amount": "3.05",
+      "currency": "EUR"
+     },
+     "unitPrice": {
+      "price": {
+       "amount": "3.05",
+       "currency": "EUR"
+      },
+      "unit": "fop.price.per.dozen",
+      "unitName": "PER_DOZEN"
+     },
+     "available": true,
+     "isVerifiedPurchase": false,
+     "quantityInBasket": 0,
+     "maxQuantityReached": false,
+     "taxCodesDisplayNames": [],
+     "image": {
+      "src": "https://www.compraonline.bonpreuesclat.cat/images-v3/dcbcfd72-cf23-44a2-8e14-8a38edd645a3/990913f2-9014-4f39-9a89-328c8541c2f5/300x300.jpg"
+     },
+     "iconAttributes": [],
+     "icons": [],
+     "timeRestricted": false,
+     "isInShoppingList": false,
+     "isInCurrentCatalog": true,
+     "retailerFinancingPlanIds": [],
+     "alcohol": false,
+     "categoryPath": [
+      "Làctics i ous",
+      "Ous",
+      "Classe L"
+     ],
+     "isNew": false
+    },
+    {
+     "productId": "eb711f1b-9d75-4e07-9a0a-4d5a1ac074a1",
+     "retailerProductId": "25069",
+     "type": "REGULAR",
+     "name": "ATO NATURA Llet sencera 6x1L en cartró",
+     "brand": "ATO NATURA",
+     "packSizeDescription": "6 x 1L",
+     "price": {
+      "amount": "7.68",
+      "currency": "EUR"
+     },
+     "unitPrice": {
+      "price": {
+       "amount": "1.28",
+       "currency": "EUR"
+      },
+      "unit": "fop.price.per.litre",
+      "unitName": "PER_LITRE"
+     },
+     "available": true,
+     "isVerifiedPurchase": false,
+     "quantityInBasket": 0,
+     "maxQuantityReached": false,
+     "quantityRestrictionGroup": {
+      "quantityRestrictionGroupId": "0050e0bf-cba9-40d1-a151-e968edbe5b45",
+      "contribution": 30.0
+     },
+     "taxCodesDisplayNames": [],
+     "image": {
+      "src": "https://www.compraonline.bonpreuesclat.cat/images-v3/dcbcfd72-cf23-44a2-8e14-8a38edd645a3/67c84777-2b9e-46cb-ad2b-9ab8c964923f/300x300.jpg"
+     },
+     "iconAttributes": [],
+     "icons": [],
+     "timeRestricted": false,
+     "isInShoppingList": false,
+     "isInCurrentCatalog": true,
+     "retailerFinancingPlanIds": [],
+     "alcohol": false,
+     "categoryPath": [
+      "Làctics i ous",
+      "Llets i begudes vegetals",
+      "Packs"
+     ],
+     "isNew": false
+    }
+   ],
+   "otherProductIds": []
+  }
+ ],
+ "metadata": {
+  "nextPageToken": "56be485f-cc17-4332-ba76-52df35e44164"
+ }
+}
