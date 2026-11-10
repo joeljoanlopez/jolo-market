@@ -21,6 +21,7 @@ final readonly class LoginThrottle
         private RateLimiterFactoryInterface $identityTwoFactorUserLimiter,
         private RateLimiterFactoryInterface $identityTwoFactorIpLimiter,
         private RateLimiterFactoryInterface $identityActivationIpLimiter,
+        private RateLimiterFactoryInterface $identitySetupIpLimiter,
     ) {
     }
 
@@ -40,9 +41,25 @@ final readonly class LoginThrottle
         return $byUser;
     }
 
+    /**
+     * Profile changes re-check the password and a code, so they share the per-user 2FA limit.
+     */
+    public function profileAttempt(Request $request, string $userId): LimiterInterface
+    {
+        $byUser = $this->identityTwoFactorUserLimiter->create('profile:'.$userId);
+        self::consume($this->identityTwoFactorIpLimiter->create(self::ip($request)), $byUser);
+
+        return $byUser;
+    }
+
     public function activationCodeAttempt(Request $request): void
     {
         self::consume($this->identityActivationIpLimiter->create(self::ip($request)));
+    }
+
+    public function setupAttempt(Request $request): void
+    {
+        self::consume($this->identitySetupIpLimiter->create(self::ip($request)));
     }
 
     private static function consume(LimiterInterface ...$limiters): void

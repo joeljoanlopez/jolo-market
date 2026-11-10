@@ -11,6 +11,7 @@ use App\Identity\Domain\ValueObject\Username;
 use App\Identity\Infrastructure\Security\InvalidEncryptionKey;
 use App\Identity\Infrastructure\Security\OtphpTotpService;
 use App\Identity\Infrastructure\Security\RandomActivationTokenGenerator;
+use App\Identity\Infrastructure\Security\RandomSetupCodeGenerator;
 use App\Identity\Infrastructure\Security\SecretDecryptionFailed;
 use App\Identity\Infrastructure\Security\SodiumSecretEncrypter;
 use App\Identity\Infrastructure\Security\SymfonyPasswordHasher;
@@ -137,6 +138,18 @@ final class IdentityAdaptersTest extends TestCase
 
         self::assertMatchesRegularExpression('/^[A-Za-z0-9_-]{43}$/', $token);
         self::assertNotSame($token, $generator->generate());
+    }
+
+    #[Test]
+    public function setup_codes_are_80_random_bits_in_four_easy_groups(): void
+    {
+        $generator = new RandomSetupCodeGenerator();
+
+        $code = $generator->generate();
+
+        // Crockford base32 without I, L, O and U, so no character is mistaken for another.
+        self::assertMatchesRegularExpression('/^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){3}$/', $code);
+        self::assertNotSame($code, $generator->generate());
     }
 
     private static function at(int $timestamp): \DateTimeImmutable

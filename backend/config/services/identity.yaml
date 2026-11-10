@@ -11,6 +11,8 @@ services:
     App\Identity\Domain\Port\TotpService: '@App\Identity\Infrastructure\Security\OtphpTotpService'
     App\Identity\Domain\Port\SecretEncrypter: '@App\Identity\Infrastructure\Security\SodiumSecretEncrypter'
     App\Identity\Domain\Port\ActivationTokenGenerator: '@App\Identity\Infrastructure\Security\RandomActivationTokenGenerator'
+    App\Identity\Domain\Port\SetupCodeRepository: '@App\Identity\Infrastructure\Persistence\Dbal\DbalSetupCodeRepository'
+    App\Identity\Domain\Port\SetupCodeGenerator: '@App\Identity\Infrastructure\Security\RandomSetupCodeGenerator'
 
     # Symfony's "auto" algorithm: bcrypt or Argon2id with their default cost.
     identity.native_password_hasher:

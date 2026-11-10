@@ -129,10 +129,18 @@ abstract class IdentityApiTestCase extends WebTestCase
         self::assertResponseIsSuccessful();
 
         if ($forgetUsedCode) {
-            $connection = self::getContainer()->get(Connection::class);
-            self::assertInstanceOf(Connection::class, $connection);
-            $connection->executeStatement('UPDATE user SET totp_last_used_step = NULL');
+            $this->forgetUsedCodes();
         }
+    }
+
+    /**
+     * Lets a test use the current code again within its 30 seconds (codes are single-use).
+     */
+    protected function forgetUsedCodes(): void
+    {
+        $connection = self::getContainer()->get(Connection::class);
+        self::assertInstanceOf(Connection::class, $connection);
+        $connection->executeStatement('UPDATE user SET totp_last_used_step = NULL');
     }
 
     /**

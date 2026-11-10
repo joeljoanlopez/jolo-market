@@ -22,6 +22,7 @@ security:
     # Only the first matching rule applies.
     access_control:
         - { path: ^/api/health$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/setup$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/(login|2fa)$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/activation(/password|/totp)?$, roles: PUBLIC_ACCESS }
         # The catalog stays public until E3.21.
