@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Catalog\Infrastructure\Http;
 
 use App\Shared\Infrastructure\Persistence\Dbal\BinaryUuid;
+use App\Tests\Support\Identity\AuthenticatedApiClient;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -12,10 +13,13 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
  * The test environment enables "mercadona" and "aldi", in that order (backend/.env.test).
- * Catalog rows are deleted before each test; the seeded supermarkets are kept.
+ * Catalog rows and users are deleted before each test; the seeded supermarkets are kept.
+ * The catalog requires a fully authenticated session, so each test starts logged in as a USER.
  */
 abstract class CatalogApiTestCase extends WebTestCase
 {
+    use AuthenticatedApiClient;
+
     protected KernelBrowser $client;
 
     private Connection $connection;
@@ -32,6 +36,16 @@ abstract class CatalogApiTestCase extends WebTestCase
         $this->connection->executeStatement('DELETE FROM price_snapshot');
         $this->connection->executeStatement('DELETE FROM product');
         $this->connection->executeStatement('DELETE FROM ingestion_run');
+        $this->resetIdentity();
+
+        if ($this->logsInBeforeEachTest()) {
+            $this->logInAsNewUser();
+        }
+    }
+
+    protected function logsInBeforeEachTest(): bool
+    {
+        return true;
     }
 
     protected function seed(

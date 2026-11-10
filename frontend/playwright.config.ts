@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+import { baseURL, storageStatePath } from './e2e/support/session';
+
 // Runs against the Docker stack (`docker compose up`), served by nginx.
 export default defineConfig({
   testDir: './e2e',
@@ -7,8 +9,16 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:8080',
+    baseURL,
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    // Creates (or reuses) a logged-in user, so the other tests start authenticated.
+    { name: 'session', testMatch: /session\.setup\.ts/ },
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'], storageState: storageStatePath },
+      dependencies: ['session'],
+    },
+  ],
 });
