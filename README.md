@@ -215,7 +215,7 @@ npx playwright install chromium
 E2E_BASE_URL=http://localhost:8081 npm run test:e2e   # E2E_BASE_URL defaults to http://localhost:8080
 ```
 
-The suite logs in as its own admin, `e2e-admin`. On an **empty** database the first run creates it through `/api/setup`, with a code it gets from `docker compose exec php bin/console app:setup:ensure-code` (so run Playwright from a shell with the same `COMPOSE_PROJECT_NAME`). It keeps the session and the credentials in your system temp folder (`jolo-market-e2e/`), outside the repository, so later runs reuse them. If the database already has users but those files are gone, the run stops and asks for an empty database.
+The suite logs in as its own admin, `e2e-admin`. On an **empty** database the first journey (onboarding) creates it through the `/setup` page, with a code it gets from `docker compose exec php bin/console app:setup:ensure-code` (so run Playwright from a shell with the same `COMPOSE_PROJECT_NAME`). The onboarding journey can take up to a minute: TOTP codes are single-use, so it waits for a new one before logging in again. It keeps the session and the credentials in your system temp folder (`jolo-market-e2e/`), outside the repository, so later runs reuse them. If the database already has users but those files are gone, the run stops and asks for an empty database.
 
 `docker compose down -v` (with the same `COMPOSE_PROJECT_NAME`) removes that stack and its database.
 
