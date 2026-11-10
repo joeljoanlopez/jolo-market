@@ -32,7 +32,8 @@ final readonly class ConfirmTotpEnrollmentHandler
             throw ActivationStepOutOfOrder::passwordMissing();
         }
         $pendingSecret = $user->pendingTotpSecret() ?? throw ActivationStepOutOfOrder::totpEnrollmentMissing();
-        if (!$this->totp->verify($this->encrypter->decrypt($pendingSecret), $code, $now)) {
+        $step = $this->totp->matchingTimeStep($this->encrypter->decrypt($pendingSecret), $code, $now);
+        if (null === $step || !$user->claimTotpStep($step)) {
             throw TotpCodeRejected::create();
         }
 

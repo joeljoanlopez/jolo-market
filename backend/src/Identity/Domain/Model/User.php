@@ -40,6 +40,7 @@ final class User
         private readonly \DateTimeImmutable $createdAt,
         private readonly ?UserId $createdBy,
         private int $sessionVersion,
+        private ?int $lastTotpStep,
     ) {
     }
 
@@ -54,7 +55,7 @@ final class User
         \DateTimeImmutable $createdAt,
         ?UserId $createdBy,
     ): self {
-        return new self($id, $username, $role, UserStatus::PENDING_ACTIVATION, null, null, null, null, $activation, $createdAt, $createdBy, 1);
+        return new self($id, $username, $role, UserStatus::PENDING_ACTIVATION, null, null, null, null, $activation, $createdAt, $createdBy, 1, null);
     }
 
     /**
@@ -73,8 +74,9 @@ final class User
         \DateTimeImmutable $createdAt,
         ?UserId $createdBy,
         int $sessionVersion,
+        ?int $lastTotpStep,
     ): self {
-        return new self($id, $username, $role, $status, $passwordHash, $totpSecret, $totpConfirmedAt, $pendingTotpSecret, $activation, $createdAt, $createdBy, $sessionVersion);
+        return new self($id, $username, $role, $status, $passwordHash, $totpSecret, $totpConfirmedAt, $pendingTotpSecret, $activation, $createdAt, $createdBy, $sessionVersion, $lastTotpStep);
     }
 
     public function setInitialPassword(#[\SensitiveParameter] string $plainToken, PasswordHash $passwordHash, \DateTimeImmutable $now): void
@@ -211,6 +213,22 @@ final class User
         $this->endSessions();
     }
 
+    /**
+     * A TOTP code is accepted once: its time step must come after the last one this user used.
+     *
+     * @return bool false when the step was already used (or is older), so the code is a replay
+     */
+    public function claimTotpStep(int $step): bool
+    {
+        if (null !== $this->lastTotpStep && $step <= $this->lastTotpStep) {
+            return false;
+        }
+
+        $this->lastTotpStep = $step;
+
+        return true;
+    }
+
     public function id(): UserId
     {
         return $this->id;
@@ -279,6 +297,11 @@ final class User
     public function sessionVersion(): int
     {
         return $this->sessionVersion;
+    }
+
+    public function lastTotpStep(): ?int
+    {
+        return $this->lastTotpStep;
     }
 
     /**

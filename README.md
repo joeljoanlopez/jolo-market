@@ -121,6 +121,16 @@ The `scheduler` service runs it automatically on `INGESTION_SCHEDULE` (daily at 
 
 It prints a summary per supermarket and exits with `0` when every run succeeded, `1` when any failed and `2` for invalid input or configuration. Each run is stored in the `ingestion_run` table and logged on the `ingestion` channel.
 
+### First admin
+
+A fresh instance has no users. The `php` container prints a one-time setup code in its logs on every start until the first user exists:
+
+```sh
+docker compose logs php | grep "Setup code"
+```
+
+Open the app, go to `/setup`, enter the code and a username: that creates the first admin, who then sets a password and enrolls a TOTP device through the activation link. After that, `/setup` is gone for good.
+
 ### User reset
 
 If a user, for example the only admin, loses their password or their two-factor device, the server operator resets them. The command ends their sessions and prints a new activation link (valid 72 hours, shown once) to set a new password and enroll a new device:
@@ -134,6 +144,20 @@ The link starts with `DEFAULT_URI` (`backend/.env`), so set it to the public add
 ```sh
 php -r "echo base64_encode(random_bytes(32)), PHP_EOL;"
 ```
+
+### Authentication API
+
+The instance is closed: every `/api` route except health, login and activation needs a session opened with the password **and** a TOTP code. State-changing requests must send `X-Requested-With: XMLHttpRequest`.
+
+```sh
+curl -c jar -H 'Content-Type: application/json' -H 'X-Requested-With: XMLHttpRequest' \
+  -d '{"username":"maria","password":"…"}' http://localhost:8080/api/auth/login   # 202
+curl -b jar -c jar -H 'Content-Type: application/json' -H 'X-Requested-With: XMLHttpRequest' \
+  -d '{"code":"123456"}' http://localhost:8080/api/auth/2fa                        # 200 {id, username, role}
+curl -b jar http://localhost:8080/api/auth/me
+```
+
+Failed logins answer the same `401`, and repeated attempts get `429`. The full list of endpoints is in [docs/architecture.md](docs/architecture.md#http-api-draft).
 
 ### Catalog API
 

@@ -195,6 +195,18 @@ final class UserManagementTest extends TestCase
         self::pending()->startTotpReEnrollment(EncryptedTotpSecret::fromString('cipher-new'));
     }
 
+    #[Test]
+    public function a_totp_time_step_can_be_used_only_once(): void
+    {
+        $user = self::active();
+
+        self::assertTrue($user->claimTotpStep(59000000));
+        self::assertSame(59000000, $user->lastTotpStep());
+        self::assertFalse($user->claimTotpStep(59000000));
+        self::assertFalse($user->claimTotpStep(58999999));
+        self::assertTrue($user->claimTotpStep(59000001));
+    }
+
     private static function pending(): User
     {
         return Users::pending(self::ID, 'maria', self::OLD_TOKEN);

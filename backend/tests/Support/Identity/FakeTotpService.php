@@ -9,13 +9,16 @@ use App\Identity\Domain\ValueObject\TotpCode;
 use App\Identity\Domain\ValueObject\Username;
 
 /**
- * Secrets are SECRET1, SECRET2, ... The valid code of a secret is set with acceptCode().
+ * Secrets are SECRET1, SECRET2, ... The valid code of a secret, and the time step it belongs
+ * to, are set with acceptCode().
  */
 final class FakeTotpService implements TotpService
 {
+    public const int DEFAULT_STEP = 59000000;
+
     private int $next = 1;
 
-    /** @var array<string, string> secret => valid code */
+    /** @var array<string, array{string, int}> secret => [valid code, its time step] */
     private array $validCodes = [];
 
     public function generateSecret(): string
@@ -28,13 +31,15 @@ final class FakeTotpService implements TotpService
         return \sprintf('otpauth://totp/jolo-market:%s?secret=%s&issuer=jolo-market', $username->value(), $secret);
     }
 
-    public function verify(string $secret, TotpCode $code, \DateTimeImmutable $now): bool
+    public function matchingTimeStep(string $secret, TotpCode $code, \DateTimeImmutable $now): ?int
     {
-        return ($this->validCodes[$secret] ?? null) === $code->value();
+        [$validCode, $step] = $this->validCodes[$secret] ?? [null, null];
+
+        return $validCode === $code->value() ? $step : null;
     }
 
-    public function acceptCode(string $secret, string $code): void
+    public function acceptCode(string $secret, string $code, int $step = self::DEFAULT_STEP): void
     {
-        $this->validCodes[$secret] = $code;
+        $this->validCodes[$secret] = [$code, $step];
     }
 }
