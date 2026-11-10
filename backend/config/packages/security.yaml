@@ -1,0 +1,30 @@
+security:
+    # Passwords are hashed by the Identity PasswordHasher port, not by Symfony Security.
+    providers:
+        identity:
+            id: App\Identity\Infrastructure\Security\SessionUserProvider
+
+    firewalls:
+        dev:
+            # Ensure dev tools and static assets are always allowed
+            pattern: ^/(_profiler(/|$)|(_wdt|assets|build)/)
+            security: false
+        main:
+            pattern: ^/api/
+            lazy: true
+            provider: identity
+            # Login and 2FA are controllers that call the Identity use cases, then
+            # Security::login() (E3.17). This authenticator never handles a request itself.
+            custom_authenticators:
+                - App\Identity\Infrastructure\Security\ProgrammaticLoginAuthenticator
+            entry_point: App\Shared\Infrastructure\Http\ProblemJsonAuthenticationEntryPoint
+
+    # Only the first matching rule applies.
+    access_control:
+        - { path: ^/api/health$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/setup$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/(login|2fa)$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/activation(/password|/totp)?$, roles: PUBLIC_ACCESS }
+        # The catalog stays public until E3.21.
+        - { path: ^/api/(products|supermarkets)(/|$), roles: PUBLIC_ACCESS }
+        - { path: ^/api/, roles: IS_AUTHENTICATED_FULLY }

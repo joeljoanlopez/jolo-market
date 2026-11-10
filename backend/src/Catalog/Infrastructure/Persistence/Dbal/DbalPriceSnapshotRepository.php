@@ -6,6 +6,8 @@ namespace App\Catalog\Infrastructure\Persistence\Dbal;
 
 use App\Catalog\Domain\Model\PriceSnapshot;
 use App\Catalog\Domain\Port\PriceSnapshotRepository;
+use App\Shared\Infrastructure\Persistence\Dbal\BinaryUuid;
+use App\Shared\Infrastructure\Persistence\Dbal\DbalDateTime;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 

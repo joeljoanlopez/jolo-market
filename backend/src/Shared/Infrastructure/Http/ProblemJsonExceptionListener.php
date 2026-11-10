@@ -8,6 +8,7 @@ use App\Shared\Domain\Exception\Conflict;
 use App\Shared\Domain\Exception\DomainError;
 use App\Shared\Domain\Exception\InvalidArgument;
 use App\Shared\Domain\Exception\NotFound;
+use App\Shared\Domain\Exception\Unauthorized;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -49,6 +50,7 @@ final readonly class ProblemJsonExceptionListener
     private function statusFor(\Throwable $exception): int
     {
         return match (true) {
+            $exception instanceof Unauthorized => Response::HTTP_UNAUTHORIZED,
             $exception instanceof NotFound => Response::HTTP_NOT_FOUND,
             $exception instanceof InvalidArgument => Response::HTTP_UNPROCESSABLE_ENTITY,
             $exception instanceof Conflict => Response::HTTP_CONFLICT,

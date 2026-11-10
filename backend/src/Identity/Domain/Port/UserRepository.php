@@ -20,9 +20,26 @@ interface UserRepository
     public function findByUsername(Username $username): ?User;
 
     /**
+     * @param list<UserId> $ids
+     *
+     * @return list<User> the users found, in no particular order; unknown ids are skipped
+     */
+    public function findByIds(array $ids): array;
+
+    /**
+     * @return list<User> every user, ordered by username
+     */
+    public function findAll(): array;
+
+    /**
      * Finds the user whose current activation link has this hash (see ActivationToken::hashOf()).
      */
     public function findByActivationTokenHash(string $hash): ?User;
+
+    /**
+     * Active users with the ADMIN role; the last one must stay (PD-36).
+     */
+    public function countActiveAdmins(): int;
 
     /**
      * Whether any user exists at all; first-admin setup is possible only while none does (PD-14).

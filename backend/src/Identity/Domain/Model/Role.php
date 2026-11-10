@@ -11,4 +11,9 @@ enum Role: string
 {
     case ADMIN = 'ADMIN';
     case USER = 'USER';
+
+    public static function fromName(string $name): self
+    {
+        return self::tryFrom($name) ?? throw InvalidRole::unknown($name);
+    }
 }
