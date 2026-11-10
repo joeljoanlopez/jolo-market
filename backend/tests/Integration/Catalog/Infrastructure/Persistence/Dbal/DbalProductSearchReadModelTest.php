@@ -7,8 +7,8 @@ namespace App\Tests\Integration\Catalog\Infrastructure\Persistence\Dbal;
 use App\Catalog\Application\SearchProducts\ProductSearchPage;
 use App\Catalog\Application\SearchProducts\ProductSearchResult;
 use App\Catalog\Domain\ValueObject\SupermarketId;
-use App\Catalog\Infrastructure\Persistence\Dbal\BinaryUuid;
 use App\Catalog\Infrastructure\Persistence\Dbal\DbalProductSearchReadModel;
+use App\Shared\Infrastructure\Persistence\Dbal\BinaryUuid;
 use Doctrine\DBAL\ParameterType;
 use PHPUnit\Framework\Attributes\Test;
 

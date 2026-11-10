@@ -24,7 +24,7 @@ final readonly class ConfirmTotpReEnrollmentHandler
         $user = $this->profileUsers->actor($command->actorId);
         $code = TotpCode::fromString($command->code);
         $pendingSecret = $user->pendingTotpSecret() ?? throw UserStateConflict::noTotpReEnrollment();
-        if (!$this->profileUsers->codeMatches($pendingSecret, $code)) {
+        if (!$this->profileUsers->claimCode($user, $pendingSecret, $code)) {
             throw TotpCodeRejected::create();
         }
 

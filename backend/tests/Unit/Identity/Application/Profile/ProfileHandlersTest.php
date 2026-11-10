@@ -55,6 +55,18 @@ final class ProfileHandlersTest extends TestCase
     }
 
     #[Test]
+    public function the_code_of_the_login_cannot_be_used_again_for_a_profile_change(): void
+    {
+        $maria = $this->maria();
+        $maria->claimTotpStep(FakeTotpService::DEFAULT_STEP);
+        $this->users->save($maria);
+
+        $this->expectException(CredentialsRejected::class);
+
+        ($this->changePassword())(new ChangePasswordCommand(self::MARIA, Users::PASSWORD, self::CURRENT_CODE, self::NEW_PASSWORD));
+    }
+
+    #[Test]
     public function changing_the_password_needs_the_current_password(): void
     {
         $this->expectException(CredentialsRejected::class);
@@ -91,7 +103,7 @@ final class ProfileHandlersTest extends TestCase
         self::assertStringContainsString('secret=SECRET1', $enrollment->provisioningUri);
         self::assertSame('encrypted:'.Users::TOTP_SECRET, $this->maria()->totpSecret()?->value());
 
-        $this->totp->acceptCode('SECRET1', '222222');
+        $this->totp->acceptCode('SECRET1', '222222', FakeTotpService::DEFAULT_STEP + 1);
         $changed = ($this->confirmReEnrollment())(new ConfirmTotpReEnrollmentCommand(self::MARIA, '222222'));
 
         self::assertSame('encrypted:SECRET1', $this->maria()->totpSecret()->value());
@@ -110,7 +122,7 @@ final class ProfileHandlersTest extends TestCase
     public function a_wrong_code_from_the_new_device_keeps_the_old_one(): void
     {
         ($this->startReEnrollment())(new StartTotpReEnrollmentCommand(self::MARIA, Users::PASSWORD, self::CURRENT_CODE));
-        $this->totp->acceptCode('SECRET1', '222222');
+        $this->totp->acceptCode('SECRET1', '222222', FakeTotpService::DEFAULT_STEP + 1);
 
         try {
             ($this->confirmReEnrollment())(new ConfirmTotpReEnrollmentCommand(self::MARIA, '333333'));

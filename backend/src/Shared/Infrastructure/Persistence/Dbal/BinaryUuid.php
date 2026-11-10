@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Catalog\Infrastructure\Persistence\Dbal;
+namespace App\Shared\Infrastructure\Persistence\Dbal;
 
 /**
  * UUIDs are stored as BINARY(16).

@@ -9,6 +9,9 @@ namespace App\Identity\Domain\ValueObject;
  */
 final readonly class TotpCode
 {
+    /**
+     * @param non-empty-string $value
+     */
     private function __construct(private string $value)
     {
     }
@@ -24,6 +27,9 @@ final readonly class TotpCode
         return new self($digits);
     }
 
+    /**
+     * @return non-empty-string
+     */
     public function value(): string
     {
         return $this->value;
