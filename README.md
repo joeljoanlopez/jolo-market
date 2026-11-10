@@ -161,12 +161,12 @@ Failed logins answer the same `401`, and repeated attempts get `429`. The full l
 
 ### Catalog API
 
-Search and product endpoints (public until login lands in E3). Full shapes in [`docs/architecture.md`](docs/architecture.md#2-search-and-compare):
+Search and product endpoints. They need a logged-in session, like every other route (use the cookie jar of the login above). Full shapes in [`docs/architecture.md`](docs/architecture.md#2-search-and-compare):
 
 ```sh
-curl 'http://localhost:8080/api/supermarkets'                                 # enabled supermarkets
-curl 'http://localhost:8080/api/products?q=leche%20entera&supermarket=aldi&page=1'  # search, 20 per page
-curl 'http://localhost:8080/api/products/<id>'                                 # product detail
+curl -b jar 'http://localhost:8080/api/supermarkets'                                 # enabled supermarkets
+curl -b jar 'http://localhost:8080/api/products?q=leche%20entera&supermarket=aldi&page=1'  # search, 20 per page
+curl -b jar 'http://localhost:8080/api/products/<id>'                                 # product detail
 ```
 
 ### Backend checks
@@ -214,6 +214,8 @@ Install the browser once, then run the suite from `frontend/`:
 npx playwright install chromium
 E2E_BASE_URL=http://localhost:8081 npm run test:e2e   # E2E_BASE_URL defaults to http://localhost:8080
 ```
+
+The suite logs in as its own admin, `e2e-admin`. On an **empty** database the first run creates it through `/api/setup`, with a code it gets from `docker compose exec php bin/console app:setup:ensure-code` (so run Playwright from a shell with the same `COMPOSE_PROJECT_NAME`). It keeps the session and the credentials in your system temp folder (`jolo-market-e2e/`), outside the repository, so later runs reuse them. If the database already has users but those files are gone, the run stops and asks for an empty database.
 
 `docker compose down -v` (with the same `COMPOSE_PROJECT_NAME`) removes that stack and its database.
 

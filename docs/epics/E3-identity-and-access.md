@@ -2,7 +2,7 @@
 
 **Goal:** a closed instance where an admin creates users. Each user activates their account through a one-time link, sets a password and enrolls mandatory TOTP 2FA. Afterwards, the whole app requires login + 2FA.
 
-Related decisions: PD-2, PD-9, PD-12, PD-13, PD-14, PD-15, PD-34, PD-35, PD-36, PD-37, PD-38, PD-39.
+Related decisions: PD-2, PD-9, PD-12, PD-13, PD-14, PD-15, PD-34, PD-35, PD-36, PD-37, PD-38, PD-39, PD-40.
 
 ## Acceptance criteria
 
@@ -45,16 +45,18 @@ Related decisions: PD-2, PD-9, PD-12, PD-13, PD-14, PD-15, PD-34, PD-35, PD-36, 
 - [x] E3.18 Add CSRF protection for state-changing requests (SameSite plus a required custom header or a token). Functional tests prove that a cross-site request is rejected.
 - [x] E3.19 Rate-limit login and 2FA attempts per username and per IP (Symfony RateLimiter). Functional tests check the lockout response.
 - [x] E3.20 Add the endpoints `/api/auth/*`, `/api/me/*` and `/api/admin/users/*`, with functional tests for each: happy path, wrong credentials, wrong code, expired/used token, non-admin access → 404.
-- [ ] E3.21 Protect every existing `/api` route (catalog endpoints from E2 included) and update their functional tests to use an authenticated test client helper.
+- [x] E3.21 Protect every existing `/api` route (catalog endpoints from E2 included) and update their functional tests to use an authenticated test client helper.
+  - Note: done after E3.23–E3.25, as confirmed on 2026-11-10, so `main` never has a protected catalog without a login page. The Playwright search journey starts logged in through the `session` setup project. Fixing a cookie renewal race found here is PD-40.
 - [x] E3.22 Add first-admin setup (PD-14). At container startup, `app:setup:ensure-code` generates a setup code **only if there are no users**, stores its hash and prints the plain code in the logs (a new code on each start replaces the old one). Add a `CompleteSetup` use case (valid code + no users → ADMIN pending activation) and the `GET/POST /api/setup` endpoints. Functional tests cover: wrong code, users already exist (→ 404), and that the code cannot be reused.
 - [ ] E3.22b Add the frontend `/setup` page: the app redirects there when `GET /api/setup` says it is required. It asks for the code and username, then continues to `/activate/:token`.
 
 ### Frontend
 
-- [ ] E3.23 Add an `auth` feature: domain types (`CurrentUser`, `Role`) and an API client (MSW tests).
-- [ ] E3.24 Add a `useCurrentUser` hook and route guards (authenticated, admin), and redirect to `/login` on `401` while keeping the original target (for `/join/:token`). The admin guard renders the **not-found page** for non-admins, never a "forbidden" message (PD-15).
+- [x] E3.23 Add an `auth` feature: domain types (`CurrentUser`, `Role`) and an API client (MSW tests).
+- [x] E3.24 Add a `useCurrentUser` hook and route guards (authenticated, admin), and redirect to `/login` on `401` while keeping the original target (for `/join/:token`). The admin guard renders the **not-found page** for non-admins, never a "forbidden" message (PD-15).
 - [ ] E3.24b Render admin navigation and actions only for `ADMIN` users (PD-15). Component tests check that a `USER` sees no admin entry points.
-- [ ] E3.25 Add a login page in two steps: credentials, then TOTP code.
+  - Note: the `RequireAdmin` guard exists (E3.24). The admin entry points arrive with the users page (E3.27), so this is done together with it.
+- [x] E3.25 Add a login page in two steps: credentials, then TOTP code.
 - [ ] E3.26 Add an activation page `/activate/:token`: set password → QR code + manual secret → confirm code. It has an invalid/expired link state.
 - [ ] E3.27 Add an admin users page: list users with status, create user, and show the activation link once with a copy button.
 - [ ] E3.28 Add logout in the app shell.
