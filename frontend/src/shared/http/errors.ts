@@ -26,6 +26,8 @@ export class UnauthorizedError extends HttpError {}
 export class NotFoundError extends HttpError {}
 export class ConflictError extends HttpError {}
 export class ValidationError extends HttpError {}
+/** Rate-limited (login, 2FA, profile changes): the API sends `Retry-After`. */
+export class TooManyRequestsError extends HttpError {}
 export class ServerError extends HttpError {}
 
 /** The request never got a response (offline, DNS, connection reset...). */
@@ -46,6 +48,8 @@ export function httpErrorFor(problem: ProblemDetails): HttpError {
       return new ConflictError(problem);
     case 422:
       return new ValidationError(problem);
+    case 429:
+      return new TooManyRequestsError(problem);
     default:
       return problem.status >= 500 ? new ServerError(problem) : new HttpError(problem);
   }

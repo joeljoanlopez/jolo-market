@@ -29,6 +29,11 @@ export function createHttpClient({ baseUrl }: HttpClientConfig): HttpClient {
     options: RequestOptions = {},
   ): Promise<unknown> {
     const headers = new Headers({ Accept: 'application/json' });
+    if (method !== 'GET') {
+      // The API refuses state-changing requests without it (CSRF): another site cannot
+      // add a custom header without a CORS preflight, which the API never allows.
+      headers.set('X-Requested-With', 'XMLHttpRequest');
+    }
     const init: RequestInit = { method, headers, credentials: 'same-origin' };
     if (body !== undefined) {
       headers.set('Content-Type', 'application/json');

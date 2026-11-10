@@ -9,6 +9,7 @@ import {
   NetworkError,
   NotFoundError,
   ServerError,
+  TooManyRequestsError,
   UnauthorizedError,
   ValidationError,
 } from './errors';
@@ -53,6 +54,25 @@ describe('httpClient', () => {
     });
   });
 
+  it('marks every state-changing request with X-Requested-With, the API CSRF guard', async () => {
+    const received: (string | null)[] = [];
+    const record = ({ request }: { request: Request }) => {
+      received.push(request.headers.get('X-Requested-With'));
+      return new HttpResponse(null, { status: 204 });
+    };
+    server.use(
+      http.post(`${baseUrl}/api/auth/logout`, record),
+      http.patch(`${baseUrl}/api/lists/1`, record),
+      http.delete(`${baseUrl}/api/lists/1`, record),
+    );
+
+    await client.post('/api/auth/logout');
+    await client.patch('/api/lists/1', { name: 'Semana' });
+    await client.delete('/api/lists/1');
+
+    expect(received).toEqual(['XMLHttpRequest', 'XMLHttpRequest', 'XMLHttpRequest']);
+  });
+
   it('supports PATCH and DELETE', async () => {
     server.use(
       http.patch(`${baseUrl}/api/lists/1`, () => HttpResponse.json({ patched: true })),
@@ -90,6 +110,7 @@ describe('httpClient', () => {
     [401, 'Unauthorized', UnauthorizedError],
     [422, 'Unprocessable Content', ValidationError],
     [409, 'Conflict', ConflictError],
+    [429, 'Too Many Requests', TooManyRequestsError],
     [500, 'Internal Server Error', ServerError],
     [503, 'Service Unavailable', ServerError],
   ])('maps a %i problem+json to %s', async (status, title, errorClass) => {
