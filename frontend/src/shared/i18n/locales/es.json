@@ -49,7 +49,10 @@
   "auth": {
     "session": {
       "error": "No se ha podido comprobar tu sesión.",
-      "retry": "Reintentar"
+      "retry": "Reintentar",
+      "logOut": "Cerrar sesión",
+      "logOutFailed": "No se ha podido cerrar la sesión. Inténtalo de nuevo.",
+      "adminNav": "Administración"
     },
     "login": {
       "title": "Iniciar sesión",
@@ -65,6 +68,131 @@
       "invalidCode": "El código no es válido o ha caducado. Inténtalo de nuevo.",
       "tooManyAttempts": "Demasiados intentos. Espera unos minutos y vuelve a intentarlo.",
       "failed": "No se ha podido iniciar sesión. Inténtalo de nuevo."
+    },
+    "activation": {
+      "title": "Activa tu cuenta",
+      "checking": "Comprobando el enlace…",
+      "invalidTitle": "Este enlace no funciona",
+      "invalid": "El enlace de activación no es válido, ha caducado o ya se ha usado. Pide uno nuevo a quien administra jolo-market.",
+      "checkFailed": "No se ha podido comprobar el enlace.",
+      "retry": "Reintentar",
+      "welcome": "Hola, {{username}}. Elige una contraseña para tu cuenta.",
+      "password": "Contraseña",
+      "passwordHint": "Al menos 12 caracteres, con una mayúscula, una minúscula, un número y un carácter especial.",
+      "passwordInvalid": "La contraseña no cumple los requisitos.",
+      "continue": "Continuar",
+      "totpTitle": "Configura la verificación en dos pasos",
+      "totpIntro": "Escanea este código QR con tu app de autenticación.",
+      "qrLabel": "Código QR para tu app de autenticación",
+      "manualSecret": "¿No puedes escanearlo? Introduce esta clave a mano:",
+      "code": "Código de verificación",
+      "codeHint": "Introduce el código de 6 dígitos que muestra la app.",
+      "codeInvalid": "El código no es válido. Comprueba que la hora del móvil es correcta y vuelve a intentarlo.",
+      "activate": "Activar cuenta",
+      "tooManyAttempts": "Demasiados intentos. Espera unos minutos y vuelve a intentarlo.",
+      "failed": "No se ha podido completar la activación. Inténtalo de nuevo."
+    },
+    "setup": {
+      "title": "Configura jolo-market",
+      "intro": "Esta instancia aún no tiene usuarios. Introduce el código de configuración que aparece en los registros del servidor y elige el nombre de la primera cuenta de administración.",
+      "code": "Código de configuración",
+      "codeHint": "Lo muestra el contenedor php al arrancar: docker compose logs php | grep \"Setup code\"",
+      "username": "Nombre de usuario",
+      "usernameHint": "De 3 a 32 caracteres: letras minúsculas sin acentos, números, punto, guion bajo o guion.",
+      "submit": "Crear administrador",
+      "invalid": "El código o el nombre de usuario no son válidos.",
+      "tooManyAttempts": "Demasiados intentos. Espera unos minutos y vuelve a intentarlo.",
+      "failed": "No se ha podido crear el administrador. Inténtalo de nuevo."
+    },
+    "profile": {
+      "nav": "Mi perfil",
+      "title": "Mi perfil",
+      "tooManyAttempts": "Demasiados intentos. Espera unos minutos y vuelve a intentarlo.",
+      "failed": "No se ha podido guardar el cambio. Inténtalo de nuevo.",
+      "password": {
+        "title": "Cambiar contraseña",
+        "current": "Contraseña actual",
+        "code": "Código de tu app de autenticación",
+        "new": "Nueva contraseña",
+        "newHint": "Al menos 12 caracteres, con una mayúscula, una minúscula, un número y un carácter especial.",
+        "submit": "Cambiar contraseña",
+        "done": "Contraseña cambiada. Se han cerrado tus otras sesiones.",
+        "weak": "La nueva contraseña no cumple los requisitos.",
+        "rejected": "La contraseña actual o el código no son correctos."
+      },
+      "totp": {
+        "title": "Cambiar de app de autenticación",
+        "intro": "Primero confirma que eres tú. Tu app actual seguirá funcionando hasta que confirmes la nueva.",
+        "current": "Contraseña actual",
+        "code": "Código de tu app actual",
+        "continue": "Continuar",
+        "submit": "Confirmar nueva app",
+        "cancel": "Cancelar",
+        "done": "Tu nueva app de autenticación ya está activa. Se han cerrado tus otras sesiones.",
+        "rejected": "La contraseña o el código no son correctos.",
+        "codeInvalid": "El código no es válido. Usa el código que muestra la app nueva.",
+        "expired": "El cambio de app ya no está en curso. Empieza de nuevo."
+      }
+    }
+  },
+  "admin": {
+    "users": {
+      "nav": "Usuarios",
+      "title": "Usuarios",
+      "loading": "Cargando usuarios…",
+      "loadFailed": "No se han podido cargar los usuarios.",
+      "retry": "Reintentar",
+      "list": "Lista de usuarios",
+      "roles": {
+        "ADMIN": "Administrador",
+        "USER": "Usuario"
+      },
+      "statuses": {
+        "PENDING_ACTIVATION": "Pendiente de activación",
+        "ACTIVE": "Activo",
+        "DISABLED": "Desactivado"
+      },
+      "linkValidUntil": "Enlace válido hasta el {{date}}",
+      "create": {
+        "title": "Crear usuario",
+        "username": "Nombre de usuario",
+        "usernameHint": "De 3 a 32 caracteres: letras minúsculas sin acentos, números, punto, guion bajo o guion.",
+        "role": "Rol",
+        "submit": "Crear usuario",
+        "taken": "Ya existe un usuario con ese nombre.",
+        "invalid": "El nombre de usuario no es válido.",
+        "failed": "No se ha podido crear el usuario. Inténtalo de nuevo."
+      },
+      "link": {
+        "title": "Enlace de activación de {{username}}",
+        "onlyOnce": "Copia este enlace y envíaselo a {{username}} por el canal que prefieras. Solo se muestra ahora: si lo pierdes, genera uno nuevo.",
+        "validUntil": "Válido hasta el {{date}}.",
+        "label": "Enlace de activación",
+        "copy": "Copiar enlace",
+        "copied": "Enlace copiado",
+        "done": "Hecho"
+      },
+      "actions": {
+        "label": "Acciones de {{username}}",
+        "regenerateLink": "Generar enlace nuevo",
+        "reset": "Resetear",
+        "disable": "Desactivar",
+        "enable": "Activar",
+        "makeAdmin": "Hacer administrador",
+        "makeUser": "Quitar administrador",
+        "confirmReset": "¿Resetear a {{username}}? Perderá su contraseña y su app de autenticación, y tendrá que activar la cuenta de nuevo con un enlace nuevo.",
+        "confirmDisable": "¿Desactivar a {{username}}? Se cerrarán sus sesiones y no podrá entrar hasta que la actives.",
+        "confirm": "Confirmar",
+        "cancel": "Cancelar",
+        "errors": {
+          "regenerateLink": "No se ha podido generar el enlace: el usuario ya no está pendiente de activación.",
+          "reset": "No se puede resetear a este usuario.",
+          "disable": "No se puede desactivar: es tu propia cuenta o el último administrador activo.",
+          "enable": "Este usuario no está desactivado.",
+          "changeRole": "No se puede quitar el rol: es el último administrador activo.",
+          "failed": "No se ha podido completar la acción. Inténtalo de nuevo."
+        }
+      }
     }
   }
 }

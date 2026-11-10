@@ -8,16 +8,21 @@ import { useAuthGateway } from './authGatewayContext';
 
 export const currentUserQueryKey = ['auth', 'currentUser'] as const;
 
+/** Stored instead of `null` when the user logged out on purpose. */
+const LOGGED_OUT = 'loggedOut';
+type StoredSession = CurrentUser | null | typeof LOGGED_OUT;
+
 export type CurrentUserState =
   | { status: 'loading' }
   | { status: 'error'; retry: () => void }
-  | { status: 'anonymous' }
+  /** `loggedOut`: the user ended the session, so there is no page to come back to. */
+  | { status: 'anonymous'; loggedOut: boolean }
   | { status: 'authenticated'; user: CurrentUser };
 
 /** The user of the session, loaded once and shared by every component. */
 export function useCurrentUser(): CurrentUserState {
   const gateway = useAuthGateway();
-  const query = useQuery({
+  const query = useQuery<StoredSession>({
     queryKey: currentUserQueryKey,
     queryFn: ({ signal }) => gateway.getCurrentUser({ signal }),
     // It only changes on login, logout or a 401, which update it explicitly.
@@ -30,20 +35,35 @@ export function useCurrentUser(): CurrentUserState {
   if (query.isError) {
     return { status: 'error', retry: () => void query.refetch() };
   }
-  return query.data === null
-    ? { status: 'anonymous' }
-    : { status: 'authenticated', user: query.data };
+  if (query.data === null || query.data === LOGGED_OUT) {
+    return { status: 'anonymous', loggedOut: query.data === LOGGED_OUT };
+  }
+  return { status: 'authenticated', user: query.data };
 }
 
-/** Stores the user that a login or an activation just authenticated (or `null` after logout). */
+/**
+ * Stores the user that a login or an activation just authenticated, or `null` when the session
+ * ended by itself (a 401).
+ */
 export function useSetCurrentUser(): (user: CurrentUser | null) => void {
   const queryClient = useQueryClient();
   return useCallback(
     (user) => {
-      queryClient.setQueryData(currentUserQueryKey, user);
+      queryClient.setQueryData<StoredSession>(currentUserQueryKey, user);
     },
     [queryClient],
   );
+}
+
+/** Marks the session as ended by the user, and drops the cached data of that user. */
+export function useEndSessionOnLogout(): () => void {
+  const queryClient = useQueryClient();
+  return useCallback(() => {
+    queryClient.removeQueries({
+      predicate: (query) => query.queryKey[0] !== currentUserQueryKey[0],
+    });
+    queryClient.setQueryData<StoredSession>(currentUserQueryKey, LOGGED_OUT);
+  }, [queryClient]);
 }
 
 /**

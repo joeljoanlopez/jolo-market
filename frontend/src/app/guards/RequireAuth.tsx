@@ -22,7 +22,12 @@ export function RequireAuth() {
     case 'error':
       return <SessionStatus onRetry={session.retry} />;
     case 'anonymous':
-      return <Navigate to={loginPathFor(location.pathname + location.search)} replace />;
+      return (
+        <Navigate
+          to={session.loggedOut ? '/login' : loginPathFor(location.pathname + location.search)}
+          replace
+        />
+      );
     case 'authenticated':
       return <Outlet />;
   }

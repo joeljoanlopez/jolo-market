@@ -6,12 +6,14 @@ import { routes as appRoutes } from '@/app/routes';
 
 import { FakeAuthGateway } from './FakeAuthGateway';
 import { FakeProductCatalog } from './FakeProductCatalog';
+import { FakeUserAdministration } from './FakeUserAdministration';
 import { testI18n } from './i18n';
 import { createTestQueryClient } from './render';
 
 interface RenderAppOptions {
   auth?: FakeAuthGateway;
   catalog?: FakeProductCatalog;
+  administration?: FakeUserAdministration;
   routes?: RouteObject[];
 }
 
@@ -21,6 +23,7 @@ export function renderApp(
   {
     auth = new FakeAuthGateway(),
     catalog = new FakeProductCatalog(),
+    administration = new FakeUserAdministration(),
     routes = appRoutes,
   }: RenderAppOptions = {},
 ) {
@@ -32,6 +35,7 @@ export function renderApp(
       i18n={testI18n}
       productCatalog={catalog}
       authGateway={auth}
+      userAdministration={administration}
     />,
   );
   return router;
