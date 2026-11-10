@@ -5,6 +5,7 @@ import { createBrowserRouter } from 'react-router';
 
 import { App } from '@/app/App';
 import { routes } from '@/app/routes';
+import { createAuthApi } from '@/features/auth/infrastructure/authApi';
 import { createCatalogApi } from '@/features/catalog/infrastructure/catalogApi';
 import { createHttpClient } from '@/shared/http/httpClient';
 import { createI18n } from '@/shared/i18n/i18n';
@@ -26,6 +27,7 @@ createRoot(root).render(
       queryClient={new QueryClient()}
       i18n={createI18n()}
       productCatalog={createCatalogApi(http)}
+      authGateway={createAuthApi(http)}
     />
   </StrictMode>,
 );

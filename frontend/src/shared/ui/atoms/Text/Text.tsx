@@ -17,6 +17,7 @@ const textVariants = cva('font-sans', {
     tone: {
       default: 'text-foreground',
       muted: 'text-muted',
+      danger: 'text-danger',
     },
     weight: {
       normal: 'font-normal',

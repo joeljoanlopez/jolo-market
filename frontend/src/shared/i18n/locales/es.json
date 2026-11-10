@@ -1,6 +1,7 @@
 {
   "app": {
-    "name": "jolo-market"
+    "name": "jolo-market",
+    "loading": "Cargando…"
   },
   "home": {
     "title": "Compara precios y comparte tu lista de la compra",
@@ -43,6 +44,27 @@
       "noPackaging": "Formato no disponible",
       "noUnitPrice": "Sin precio por unidad",
       "cheapest": "Más barato"
+    }
+  },
+  "auth": {
+    "session": {
+      "error": "No se ha podido comprobar tu sesión.",
+      "retry": "Reintentar"
+    },
+    "login": {
+      "title": "Iniciar sesión",
+      "username": "Usuario",
+      "password": "Contraseña",
+      "continue": "Continuar",
+      "codeTitle": "Verificación en dos pasos",
+      "code": "Código de verificación",
+      "codeHint": "Abre tu app de autenticación e introduce el código de 6 dígitos que muestra.",
+      "submit": "Entrar",
+      "back": "Volver",
+      "invalidCredentials": "Usuario o contraseña incorrectos.",
+      "invalidCode": "El código no es válido o ha caducado. Inténtalo de nuevo.",
+      "tooManyAttempts": "Demasiados intentos. Espera unos minutos y vuelve a intentarlo.",
+      "failed": "No se ha podido iniciar sesión. Inténtalo de nuevo."
     }
   }
 }
