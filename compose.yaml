@@ -33,6 +33,12 @@ services:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
         INSTALL_XDEBUG: ${INSTALL_XDEBUG:-false}
+    # While there are no users, print the one-time first-admin setup code in the logs (PD-14).
+    # It must never stop php-fpm from starting (no vendor/ or migrations yet on a fresh clone).
+    command:
+      - sh
+      - -c
+      - php bin/console app:setup:ensure-code --no-interaction || echo "Setup code not generated yet; run the migrations and restart php."; exec php-fpm
     volumes:
       - ./backend:/var/www/backend
     environment:

@@ -17,6 +17,8 @@ use App\Catalog\Domain\ValueObject\UnitOfMeasure;
 use App\Catalog\Domain\ValueObject\UnitPrice;
 use App\Catalog\Domain\ValueObject\Url;
 use App\Shared\Domain\ValueObject\Money;
+use App\Shared\Infrastructure\Persistence\Dbal\BinaryUuid;
+use App\Shared\Infrastructure\Persistence\Dbal\DbalDateTime;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 

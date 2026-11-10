@@ -59,6 +59,12 @@ Decisions confirmed by the product owner. Changing any of them requires asking f
 | PD-31 | **Aldi** is ingested from the public category pages of `www.aldi.es` (allowed by its `robots.txt`), which embed their products and prices in `__NEXT_DATA__`. Prices are the **peninsula** ones (`/can/` and `/bal/` are disallowed), and they are used for every postal code, Baleares and Canarias included, so the postal code is not used. Canned food is sized by its **drained weight** (`peso esc.`), the only size Aldi gives. Products without a published price (mostly loose fresh produce) are stored without one. Aldi is in the default `ENABLED_SUPERMARKETS`. *(Replaces the Aldi part of PD-30, whose spike sample was wrong: on 2026-11-09, 2 480 of 2 666 products had a price. Peninsula prices for every postal code and drained weight as the size confirmed by the product owner on 2026-11-09.)* |
 | PD-32 | **Bonpreu i Esclat** is ingested from the internal JSON API of `www.compraonline.bonpreuesclat.cat` (Ocado Smart Platform), with a **browser User-Agent**: its WAF rejects any other client. This overrides PD-26 for Bonpreu only, and like PD-28 it is accepted for **private, self-hosted use** even though `robots.txt` disallows `/api/`. The operator takes that risk. The WAF challenges the seventh API request within about five minutes, and only a browser running its JavaScript can pass a challenge, so the adapter **waits 90 seconds between API requests** instead of trying to pass it, and after a challenge waits six minutes and retries, up to twice (a run takes about an hour and a half). The online store has one price region (Catalunya): every postal code gets the same price, so the postal code is not used. Bonpreu is in the default `ENABLED_SUPERMARKETS`. *(Replaces the Bonpreu part of PD-30; with PD-28 and PD-31, OQ-5 is closed. One price for every postal code confirmed by the product owner on 2026-11-09.)* |
 | PD-33 | Search has **one filter in the MVP: supermarket** (brand and category later). Results are **grouped by unit price unit** (kg, L, unit): the unit with the most results for the query comes first, and each group is ordered by unit price ascending. Products without a unit price go last. Ties on unit price are broken by the **lower shelf price**, then name, then id, so pages are stable. The cheapest unit price is highlighted **within each unit group**. Units with as many results go in the order kg, L, unit. Every query word must match the **start of a word** in the name or brand, short words ("de", "xl") included, so search works while a word is still being typed. *(Answers OQ-7.)* |
+| PD-34 | An **activation link is valid for 72 hours**. While a user is still pending activation, an admin can **regenerate** their link: the new link gets a fresh 72 hours and the previous one stops working at once. *(Answers OQ-8, confirmed by the product owner on 2026-11-09.)* |
+| PD-35 | **Lost password or lost 2FA device: an admin resets the user.** The user goes back to pending activation, their password and TOTP secret are removed, their sessions stop working, and a new activation link (PD-34) is generated so they set a new password and enroll a new TOTP device. Their lists and memberships are kept. There are **no TOTP recovery codes** in the MVP. For a locked-out admin, the server operator runs the console command `app:user:reset <username>`, which does the same and prints the new link. *(Answers OQ-9, confirmed by the product owner on 2026-11-09.)* |
+| PD-36 | **Admin user management beyond creation: disable/enable and change role, no delete.** A disabled user cannot log in and their sessions stop working; their lists and memberships are kept and other members still see them. Enabling returns the user to active. An admin can change a role between `USER` and `ADMIN`. The **last active admin** cannot be disabled or lose the `ADMIN` role, and an admin cannot disable themselves. Users cannot be deleted in the MVP. *(Answers OQ-10, confirmed by the product owner on 2026-11-09.)* |
+| PD-37 | **Password policy:** at least **12 characters** (at most 128), with at least one **uppercase letter**, one **lowercase letter**, one **digit** and one **special character** (any character that is not a letter or a digit). There is no breached-password check. **Session:** expires after **7 days of inactivity**, renewed on each request (sliding expiry); there is no "remember me". Every login asks for the TOTP code (PD-13). *(Answers OQ-11, confirmed by the product owner on 2026-11-09.)* |
+| PD-38 | **Self-service profile page.** A logged-in user can **change their password** (asks for the current password and a TOTP code; the new one follows PD-37) and **re-enroll TOTP** (asks for the current password and a code from the current device, then shows a new QR code and manual secret, and the new device is active only after a code from it is confirmed; until then the old device keeps working). Both actions **end every other session** of the user and keep the current one. *(Answers OQ-12, confirmed by the product owner on 2026-11-09.)* |
+| PD-39 | A **username** has 3 to 32 characters: lowercase letters `a`–`z`, digits, `.`, `_` and `-`, starting with a letter or a digit. It is case-insensitive and stored in lowercase (`Maria` is `maria`). Accents, `ñ` and spaces are not allowed. *(Confirmed by the product owner on 2026-11-09.)* |
 
 ## Stack
 
@@ -215,16 +221,38 @@ How it is modelled:
 ```text
 User (aggregate root)
   id: UserId
-  username: Username           unique, case-insensitive, normalized to lowercase
-  role: Role                   ADMIN | USER
-  status: UserStatus           PENDING_ACTIVATION | ACTIVE | DISABLED
-  passwordHash: ?PasswordHash  null until activated (hashing is a port, never done in the domain)
-  totp: ?TotpEnrollment        secret (encrypted at rest) + confirmedAt; required before ACTIVE
-  activation: ?ActivationToken hash of the one-time token + expiresAt; consumed on use
-  createdAt, createdBy: ?UserId
+  username: Username                  PD-39; unique, case-insensitive, normalized to lowercase
+  role: Role                          ADMIN | USER
+  status: UserStatus                  PENDING_ACTIVATION | ACTIVE | DISABLED
+  passwordHash: ?PasswordHash         null until set (hashing is a port, never done in the domain)
+  totpSecret: ?EncryptedTotpSecret    confirmed secret (encrypted at rest) + totpConfirmedAt; required before ACTIVE
+  pendingTotpSecret: ?EncryptedTotpSecret  enrolled but not confirmed yet
+  activation: ?ActivationToken        SHA-256 hash of the one-time token + expiresAt (72 h, PD-34); null once used
+  createdAt, createdBy: ?UserId       createdBy is null for the first admin (PD-14)
 ```
 
 Lifecycle: `PENDING_ACTIVATION` → (valid activation link → set password → scan the TOTP QR code → confirm a code) → `ACTIVE`. Only the **hash** of the activation token is stored. The plain token appears only once, in the link shown to the admin.
+
+`User::createPending` is followed by `setInitialPassword`, `startTotpEnrollment` (starting again replaces the unconfirmed secret) and `confirmTotp`. Each step checks the activation link again, so an expired link cannot finish an activation already started; an unknown, expired or used link is an `ActivationLinkNotValid` (404), and a step out of order is an `ActivationStepOutOfOrder` (409). Checking the TOTP code needs the decrypted secret, so the application layer does it through the ports before `confirmTotp`.
+
+Value objects: `Username` (PD-39), `PlainPassword` (a new password, checked against PD-37; its errors never include the password), `TotpCode` (six digits, spaces ignored), `ActivationToken`, `PasswordHash`, `EncryptedTotpSecret`.
+
+Ports (`Identity\Domain\Port`): `UserRepository` (`save`, `findById`, `findByUsername`, `findByIds`, `findAll` ordered by username, `findByActivationTokenHash`, `countActiveAdmins`, `hasAnyUser`), `PasswordHasher` (`hash(PlainPassword)`, `verify(hash, typed text)`), `TotpService` (`generateSecret`, `provisioningUri`, `verify(secret, code, now)`), `SecretEncrypter` (`encrypt`, `decrypt`) and `ActivationTokenGenerator` (`generate(): string`).
+
+Use cases (`Identity\Application`). Admin use cases first check the actor through `AdminActor`: anyone but an active admin gets `AdminRequired` (404, PD-15).
+
+- `CreateUserHandler` (admin): username + role → user pending activation; returns the **plain activation token once** with its expiry. A taken username (any case) is a `UsernameAlreadyTaken` (409).
+- `ValidateActivationTokenHandler`: token → username and expiry of a valid link.
+- `SetInitialPasswordHandler`: token + password (PD-37) → stores the hash and starts the TOTP enrollment; returns the secret and the `otpauth://` provisioning URI. Calling it again gives a new secret.
+- `ConfirmTotpEnrollmentHandler`: token + code → checks the code against the pending secret (`TotpCodeRejected`, 422, when wrong), activates the user and returns its id.
+- `ListUsersHandler` (admin): every user, ordered by username, with role, status and the expiry of a pending activation link.
+- `FindUsernamesHandler`: the query API other contexts use (E3.9): user ids → usernames; unknown or malformed ids are left out.
+- `RegenerateActivationLinkHandler` (admin, PD-34): pending users only (`UserStateConflict`, 409, otherwise). The new link has a fresh 72 h and drops a half-finished activation.
+- `ResetUserHandler` (admin, PD-35): back to pending activation, credentials removed, sessions ended; returns the new link. Not on oneself (`CannotManageYourself`, 409) and not on a disabled user (enable first). `ResetUserByUsernameHandler` does the same for the server operator, without an actor (console only).
+- `DisableUserHandler`, `EnableUserHandler`, `ChangeUserRoleHandler` (admin, PD-36): only an active user can be disabled and only a disabled one enabled. Disabling ends the user's sessions. Disabling or demoting the last active admin is a `LastActiveAdmin` (409); an admin cannot disable themselves.
+- `ChangePasswordHandler`, `StartTotpReEnrollmentHandler`, `ConfirmTotpReEnrollmentHandler` (the user themselves, PD-38): changing the password and starting a re-enrollment ask for the current password and a code (`CredentialsRejected`, 422, the same for both). The old device works until a code from the new one is confirmed. Both changes return the new session version.
+
+**Ending sessions.** `User` has a `sessionVersion` (starting at 1) that a reset, disabling, a new password or a new TOTP device increases. A session stores the version it started with and stops working when it no longer matches; the session that changed its own password or device moves to the new version and stays logged in.
 
 **Ports (Identity):** `UserRepository`, `PasswordHasher`, `TotpService` (generate secret, verify code), `ActivationTokenGenerator`, `SecretEncrypter`.
 
@@ -305,6 +333,7 @@ Test folders mirror `src/` (for example, `tests/Unit/Catalog/Domain/ValueObject/
 | --- | --- |
 | `Shared\Domain\ValueObject\Money` | Integer cents, `Currency::EUR` only. `eur()`, `add()`, `multiply(int)`, `equals()`, `compareTo()`, `isGreaterThan()`, `isLessThan()`. Never negative (PD-19). |
 | `Shared\Domain\ValueObject\Uuid` | Canonical `8-4-4-4-12` hex string, normalized to lowercase. It only validates; generation belongs to an `IdGenerator` port. |
+| `Shared\Domain\ValueObject\UserId` | Wraps a `Uuid`. Other contexts know users only by this id. |
 | `Shared\Domain\Clock` | Port returning the current `DateTimeImmutable`. `Shared\Infrastructure\Clock\SystemClock` implements it in **UTC**; tests use `Tests\Support\FixedClock`. |
 | `Shared\Domain\IdGenerator` | Port returning a new `Uuid`. `Shared\Infrastructure\Id\UuidV7Generator` implements it with time-ordered UUIDv7 (`symfony/uid`); tests use `Tests\Support\SequentialIdGenerator`. |
 
@@ -439,18 +468,26 @@ sequenceDiagram
     API-->>SPA: activation link (shown once)
     Admin-->>User: Sends the link (any channel)
     User->>SPA: Opens /activate/{token}
-    SPA->>API: POST /api/auth/activation/{token}/password
+    SPA->>API: POST /api/auth/activation/password {token, password}
     API-->>SPA: TOTP secret + QR code
     User->>SPA: Scans QR, enters 6-digit code
-    SPA->>API: POST /api/auth/activation/{token}/totp
+    SPA->>API: POST /api/auth/activation/totp {token, code}
     API-->>SPA: User ACTIVE, session started
 ```
 
 ### 4. Login
 
-1. `POST /api/auth/login` with username and password. On success, the session is created in a **2FA-pending** state.
-2. `POST /api/auth/2fa` with the TOTP code. On success, the session is fully authenticated.
-3. Every other `/api` route requires a fully authenticated session. Otherwise it returns `401`, and the SPA redirects to `/login`.
+1. `POST /api/auth/login` `{username, password}` → `LogInHandler`. On success the API answers `202 {"twoFactorRequired": true}`, gives the session a new id and remembers the user as **2FA-pending** for five minutes. Unknown user, wrong password, pending or disabled user: the same `401` (`InvalidCredentials`, detail `Invalid credentials.`).
+2. `POST /api/auth/2fa` `{code}` → `VerifyLoginCodeHandler`. On success the session is fully authenticated (`Security::login()`) and the API answers `200 {id, username, role}`. A wrong code or no pending login: the same `401`.
+3. Every other `/api` route requires a fully authenticated session. Otherwise it returns `401` problem+json, and the SPA redirects to `/login`.
+
+Security wiring (E3.17 to E3.19, technical decision confirmed by the product owner on 2026-11-09: no `scheb/2fa-bundle`):
+
+- The `main` firewall (`^/api/`) has no request authenticator: the controllers call the Identity use cases and then `Security::login()`, backed by `ProgrammaticLoginAuthenticator`. `SessionUserProvider` reloads the `SecurityUser` (id, username, role, session version) through `FindSessionUserHandler` on every request; a user who is no longer active, or whose `sessionVersion` or role changed, loses the session (so a token never keeps the roles of a demoted admin). `ProblemJsonAuthenticationEntryPoint` answers `401`.
+- Session cookie: `HttpOnly`, `SameSite=Lax`, `Secure` on HTTPS (`auto`), 7 days. `SessionInactivityListener` ends a session after 7 days without requests and re-sends the cookie at most once an hour with a new session id, destroying the old one (PD-37).
+- TOTP replay: a code is accepted once. `TotpService::matchingTimeStep` returns the 30-second step of a valid code and `User::claimTotpStep` rejects a step that is not after the last one used (`user.totp_last_used_step`). This covers login, activation, profile checks and re-enrollment.
+- CSRF (E3.18): `RequireCustomHeaderListener` rejects every `POST`/`PUT`/`PATCH`/`DELETE` under `/api/` without `X-Requested-With: XMLHttpRequest` (`403`). Another site cannot add that header without a CORS preflight, which the API never allows.
+- Rate limits (E3.19, `config/packages/rate_limiter.yaml`, sliding windows of 15 minutes): login 5 per username and 20 per IP; 2FA code 5 per user and 20 per IP; profile changes (`/api/me/*`) 5 per user and 20 per IP; activation code 20 per IP; setup code 10 per IP. Every attempt counts and a successful login clears the per-user counter. Over the limit: `429` with `Retry-After`.
 
 ### 5. Shared list via secret link
 
@@ -470,6 +507,7 @@ JSON over REST under `/api`. Errors use RFC 9457 `application/problem+json` (PD-
 
 | Thrown | Status | `detail` |
 | --- | --- | --- |
+| `Shared\Domain\Exception\Unauthorized` subclass | `401` | Exception message |
 | `Shared\Domain\Exception\NotFound` subclass | `404` | Exception message |
 | `Shared\Domain\Exception\InvalidArgument` subclass | `422` | Exception message |
 | `Shared\Domain\Exception\Conflict` subclass | `409` | Exception message |
@@ -478,22 +516,30 @@ JSON over REST under `/api`. Errors use RFC 9457 `application/problem+json` (PD-
 
 Domain error messages are English and must be safe to show (no secrets, no internals). The SPA shows Spanish copy chosen from `status`, never the raw `detail`. The rendering lives in `Shared\Infrastructure\Http\ProblemJsonExceptionListener`.
 
-All routes require a fully authenticated session (login + 2FA) except those marked **public**.
+All routes require a fully authenticated session (login + 2FA) except those marked **public**. Every `POST`/`PUT`/`PATCH`/`DELETE` needs the header `X-Requested-With: XMLHttpRequest` (CSRF, E3.18), or the API answers `403`. A wrong JSON body is a `422`.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/health` | **public** — `200 {"status":"ok"}` when the database answers, `503 {"status":"unavailable"}` otherwise (PD-17) |
-| POST | `/api/auth/login` | **public** — username + password → 2FA-pending session |
-| POST | `/api/auth/2fa` | 2FA-pending session — TOTP code → authenticated |
-| POST | `/api/auth/logout` | End session |
+| POST | `/api/auth/login` | **public** — `{username, password}` → `202`, 2FA-pending session; `401` on any failure; rate-limited |
+| POST | `/api/auth/2fa` | **public**, needs a 2FA-pending session — `{code}` → `200 {id, username, role}`, authenticated; `401` otherwise; rate-limited |
+| POST | `/api/auth/logout` | End session → `204` |
 | GET | `/api/auth/me` | Current user (id, username, role) |
-| GET | `/api/setup` | **public** — `{ required: bool }` (true only while there are no users) |
-| POST | `/api/setup` | **public**, only while there are no users — setup code + username → creates the first `ADMIN` and returns its activation token |
-| GET | `/api/auth/activation/{token}` | **public** — check that an activation link is valid |
-| POST | `/api/auth/activation/{token}/password` | **public** — set password, returns TOTP enrollment data |
-| POST | `/api/auth/activation/{token}/totp` | **public** — confirm TOTP code, activates user and logs in |
-| GET | `/api/admin/users` | ADMIN — list users and their status |
-| POST | `/api/admin/users` | ADMIN — create user → activation link |
+| GET | `/api/setup` | **public** — `200 {required: true}` while there are no users; `404` once any user exists |
+| POST | `/api/setup` | **public**, only while there are no users — `{code, username}` → `201 {id, username, activationToken, activationExpiresAt}` (first `ADMIN`, pending activation; the code is used up). Wrong code → `422`; users exist → `404`; 10 attempts per IP per 15 min |
+| POST | `/api/auth/activation` | **public** — `{token}` → `{username, expiresAt}` of a valid link; unknown, expired or used → `404`. The token goes in the body, never in a URL, so it stays out of logs |
+| POST | `/api/auth/activation/password` | **public** — `{token, password}` (PD-37, else `422`) → `{secret, provisioningUri}` (`Cache-Control: no-store`) |
+| POST | `/api/auth/activation/totp` | **public** — `{token, code}` → activates the user, logs them in and answers `200 {id, username, role}`; wrong code → `422`; rate-limited |
+| GET | `/api/admin/users` | ADMIN — `[{id, username, role, status, createdAt, activationExpiresAt}]`, ordered by username |
+| POST | `/api/admin/users` | ADMIN — `{username, role}` → `201 {id, username, activationToken, activationExpiresAt}` (shown once, `no-store`; the SPA builds `/activate/{token}`). Taken username → `409`; invalid → `422` |
+| POST | `/api/admin/users/{id}/activation-link` | ADMIN — new link for a pending user (PD-34) → `{id, username, activationToken, activationExpiresAt}`; not pending → `409` |
+| POST | `/api/admin/users/{id}/reset` | ADMIN — reset (PD-35) → same shape as above; own account or disabled user → `409` |
+| POST | `/api/admin/users/{id}/disable` | ADMIN — `204`; own account, last active admin or not active → `409` (PD-36) |
+| POST | `/api/admin/users/{id}/enable` | ADMIN — `204`; not disabled → `409` |
+| PUT | `/api/admin/users/{id}/role` | ADMIN — `{role}` → `204`; demoting the last active admin → `409` |
+| POST | `/api/me/password` | `{currentPassword, code, newPassword}` → `204`; other sessions end, this one stays (PD-38). Wrong password or code → `422`; rate-limited |
+| POST | `/api/me/totp` | `{currentPassword, code}` → `{secret, provisioningUri}` of the new device (`no-store`); rate-limited |
+| POST | `/api/me/totp/confirm` | `{code}` from the new device → `204`; other sessions end, this one stays |
 | GET | `/api/supermarkets` | **public until E3.21** — enabled supermarkets, in `ENABLED_SUPERMARKETS` order: `[{id, name}]` |
 | GET | `/api/products?q=&supermarket=&page=` | **public until E3.21** — search available products, grouped by unit and ranked by unit price (PD-33), 20 per page. `q` (≥ 2 characters after trimming) is required; `page` ≥ 1 defaults to 1; `supermarket` must be enabled. Invalid input → `422` |
 | GET | `/api/products/{id}` | **public until E3.21** — product detail with `available`, also for unavailable products (PD-22). Unknown or malformed id → `404` |
@@ -523,7 +569,8 @@ Tables (draft, finalized in migrations):
 | `price_snapshot` | `id` (auto-increment), `product_id`, `price_cents`, `unit_price_cents`, `unit_price_unit`, `captured_at` — INDEX(`product_id`, `captured_at`) |
 | `ingestion_run` | `id`, `supermarket_id`, `started_at`, `finished_at`, `status`, `products_seen`, `products_skipped`, `products_marked_unavailable`, `error` |
 | `setup_code` | `code_hash`, `created_at` — at most one row, deleted when the first admin is created |
-| `user` | `id`, `username` UNIQUE, `role`, `status`, `password_hash`, `totp_secret_encrypted`, `totp_confirmed_at`, `activation_token_hash` UNIQUE, `activation_expires_at`, `created_at`, `created_by` |
+| `user` | `id`, `username` UNIQUE, `role`, `status`, `password_hash`, `totp_secret_encrypted`, `totp_confirmed_at`, `pending_totp_secret_encrypted`, `activation_token_hash` UNIQUE, `activation_expires_at`, `session_version`, `totp_last_used_step`, `created_at`, `created_by` (FK to `user`) |
+| `setup_code` | `id` (always 1), `code_hash`, `created_at` — the current first-admin setup code (PD-14) |
 | `shopping_list` | `id`, `owner_id`, `share_token` UNIQUE, `name`, `version`, `created_at`, `updated_at` |
 | `list_member` | `list_id`, `user_id`, `joined_at` — PK(`list_id`, `user_id`) |
 | `list_item` | `id`, `list_id`, `type` (`free_text`/`product`), `text`, `product_id`, `quantity`, `checked`, `position` |
@@ -578,7 +625,7 @@ flowchart LR
 
 In development, a `frontend` service runs the Vite dev server (HMR), and nginx proxies to it instead of serving the static build.
 
-Configuration lives in `.env` (`APP_SECRET`, `DATABASE_URL`, `INSTANCE_POSTAL_CODE`, `ENABLED_SUPERMARKETS`, `INGESTION_SCHEDULE`, `TOTP_ENCRYPTION_KEY`, `ACTIVATION_LINK_TTL`). TLS is terminated by the user's own reverse proxy.
+Configuration lives in `.env` (`APP_SECRET`, `DATABASE_URL`, `INSTANCE_POSTAL_CODE`, `ENABLED_SUPERMARKETS`, `INGESTION_SCHEDULE`, `TOTP_ENCRYPTION_KEY`). TLS is terminated by the user's own reverse proxy.
 
 ### Development environment
 
@@ -604,6 +651,7 @@ Symfony variables (`backend/.env`, committed with non-secret defaults; real valu
 | `ENABLED_SUPERMARKETS` | Comma-separated slugs of the supermarkets to import and show (PD-24). Default `mercadona,aldi,bonpreu` (PD-31, PD-32). |
 | `CATALOG_HTTP_USER_AGENT` | User-Agent sent to the supermarkets (PD-26). |
 | `INGESTION_SCHEDULE` | Cron expression for catalog ingestion, evaluated in Europe/Madrid (PD-27). Default `0 5 * * *`. |
+| `TOTP_ENCRYPTION_KEY` | 32 random bytes in base64 that encrypt TOTP secrets at rest (libsodium secretbox). Empty in `backend/.env`: required in production (`php -r "echo base64_encode(random_bytes(32)), PHP_EOL;"`); public placeholders in `.env.dev` and `.env.test`. Changing it makes every enrolled TOTP device unreadable, so every user must then be reset. |
 
 - nginx routes `/api` to Symfony (`backend/public/index.php`) and every other path to the Vite dev server (`frontend:5173`), including the HMR websocket. The SPA and the API share the origin `http://localhost:${HTTP_PORT}`.
 - MySQL starts with `utf8mb4` / `utf8mb4_0900_ai_ci`, and DBAL creates tables with the same default. On the first start of the `mysql-data` volume, `docker/mysql/init/01-create-test-database.sh` creates `<MYSQL_DATABASE>_test`. The test environment uses that database (Doctrine `dbname_suffix: _test`).
@@ -617,6 +665,9 @@ Symfony variables (`backend/.env`, committed with non-secret defaults; real valu
 - Supermarket HTTP (E1.19): adapters use the `catalog.http_client` service built by `CatalogHttpClientFactory` on Symfony HttpClient. It sends the PD-26 User-Agent, uses a 10 s idle timeout and a 30 s maximum per request, leaves at least 1 s between the start of two requests (`PoliteHttpClient`, with an injected `Sleeper` so tests never sleep) and retries `429`/`5xx` up to 3 times with exponential backoff from 1 s (a `Retry-After` header wins). The numbers are arguments of `CatalogHttpOptions` in `config/services/catalog.yaml`; the spikes may tune them per chain.
 - Mercadona adapter (E1.14, PD-28): `Catalog\Infrastructure\Source\Mercadona\MercadonaCatalogSource`. It turns the postal code into a warehouse (`PUT /api/postal-codes/actions/change-pc/`, header `x-customer-wh`), lists the categories and reads every leaf category with `?wh=`. Packaging text is `unit_size` + `size_format` (already the total size of a pack); approximate sizes pass Mercadona's `reference_price` instead (PD-29). Prices are converted from decimal strings with `DecimalCents` (no floats). A full run is about 150 requests and 2.5 minutes. Tests use recorded fixtures in `backend/tests/Fixtures/Mercadona/`; in the test container `ConfigurableCatalogSource` decorates the adapter so it is never called.
 - Logging: Monolog. Ingestion logs go to the `ingestion` channel through the `IngestionLogger` application port (`PsrIngestionLogger`): a warning per skipped product and one record per finished run (`info` on success, `error` on failure) with `run_id`, `supermarket`, `status`, counts, `duration_ms` and `error` in the context. In `prod` this channel is written as JSON to stderr at `info` level, outside the `fingers_crossed` buffer.
+- Identity adapters (E3.16): `DbalUserRepository` (insert or update by id; never `ON DUPLICATE KEY UPDATE`, which would also fire on the unique username), `SymfonyPasswordHasher` (Symfony `NativePasswordHasher`, the "auto" algorithm; cost 4 in the test environment), `OtphpTotpService` (`spomky-labs/otphp`: SHA-1, 6 digits, 30 s, 160-bit secrets, 15 s of tolerated clock drift), `SodiumSecretEncrypter` (base64 of nonce + ciphertext, `TOTP_ENCRYPTION_KEY`) and `RandomActivationTokenGenerator` (256 random bits, base64url, 43 characters). `BinaryUuid` and `DbalDateTime` live in `Shared\Infrastructure\Persistence\Dbal`.
+- First-admin setup (E3.22, PD-14): the `php` service runs `bin/console app:setup:ensure-code` before `php-fpm`. While there are no users it stores the SHA-256 of a new code in `setup_code` (one row, replaced on each start) and prints `Setup code: XXXX-XXXX-XXXX-XXXX` (Crockford base32, 80 bits; case, spaces and hyphens are ignored when typed). Once a user exists it prints nothing useful and removes any old code. A failure (no `vendor/` or migrations yet) never stops `php-fpm`.
+- User reset (PD-35): `bin/console app:user:reset <username>` sends the user back to activation, ends their sessions and prints a new activation link built on `DEFAULT_URI` (`<DEFAULT_URI>/activate/<token>`), shown only once. Exit code `0` on success, `1` for an unknown user or one that cannot be reset (disabled).
 - Backend quality commands run inside the php container: `composer db:test`, `composer test`, `composer test:unit`, `composer analyse`, `composer deptrac`, `composer cs` and `composer check` (runs all of them).
 
 ## Open questions
@@ -628,10 +679,5 @@ These have **not** been decided. Implementation must stop and ask before coding 
 | OQ-2 | Price history retention: keep forever, or downsample/prune after N months? | E5 |
 | OQ-3 | Concurrent edits on the same item (two people check/uncheck at once): is last-write-wins acceptable? | E4 |
 | OQ-4 | Can a list be deleted (by whom, and what do members see)? Can a member leave a list on their own? Can ownership be transferred? | E4 |
-| OQ-8 | Activation link lifetime (proposal: 72 h), and can the admin regenerate it for a pending user? | E3 |
-| OQ-9 | Lost password or lost 2FA device: without email, the proposal is that the admin resets the user (new activation link → new password + new TOTP). Also, do users get TOTP recovery codes? | E3 |
-| OQ-10 | Admin user management beyond creation: disable/enable, delete (what happens to their lists?), change role? | E3 |
-| OQ-11 | Password policy (minimum length, breached-password check?) and session lifetime ("remember me"?). | E3 |
-| OQ-12 | Can a logged-in user change their own password and re-enroll TOTP from a profile page? | E3 |
 
 Once answered, move each item to [Product decisions](#product-decisions) with a new `PD-n` id.

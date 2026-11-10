@@ -7,6 +7,7 @@ namespace App\Catalog\Infrastructure\Persistence\Dbal;
 use App\Catalog\Application\GetProduct\ProductView;
 use App\Catalog\Application\GetProduct\ProductViewReadModel;
 use App\Catalog\Domain\ValueObject\ProductId;
+use App\Shared\Infrastructure\Persistence\Dbal\BinaryUuid;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 

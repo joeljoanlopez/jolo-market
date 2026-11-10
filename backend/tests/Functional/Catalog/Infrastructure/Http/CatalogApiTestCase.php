@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Catalog\Infrastructure\Http;
 
-use App\Catalog\Infrastructure\Persistence\Dbal\BinaryUuid;
+use App\Shared\Infrastructure\Persistence\Dbal\BinaryUuid;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
