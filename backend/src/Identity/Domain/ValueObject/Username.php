@@ -12,6 +12,9 @@ final readonly class Username
 {
     private const string PATTERN = '/^[a-z0-9][a-z0-9._-]{2,31}$/D';
 
+    /**
+     * @param non-empty-string $value
+     */
     private function __construct(private string $value)
     {
     }
@@ -27,6 +30,9 @@ final readonly class Username
         return new self($normalized);
     }
 
+    /**
+     * @return non-empty-string
+     */
     public function value(): string
     {
         return $this->value;

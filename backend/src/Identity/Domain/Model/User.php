@@ -20,13 +20,17 @@ use App\Shared\Domain\ValueObject\UserId;
  *
  * Checking the TOTP code itself needs the decrypted secret, which the application layer does
  * through its ports before calling confirmTotp().
+ *
+ * A session remembers the session version it started with and stops working once the version
+ * moves on: a reset, disabling the user, a new password or a new TOTP device ends every session
+ * (PD-35, PD-36, PD-38).
  */
 final class User
 {
     private function __construct(
         private readonly UserId $id,
         private readonly Username $username,
-        private readonly Role $role,
+        private Role $role,
         private UserStatus $status,
         private ?PasswordHash $passwordHash,
         private ?EncryptedTotpSecret $totpSecret,
@@ -35,6 +39,8 @@ final class User
         private ?ActivationToken $activation,
         private readonly \DateTimeImmutable $createdAt,
         private readonly ?UserId $createdBy,
+        private int $sessionVersion,
+        private ?int $lastTotpStep,
     ) {
     }
 
@@ -49,7 +55,7 @@ final class User
         \DateTimeImmutable $createdAt,
         ?UserId $createdBy,
     ): self {
-        return new self($id, $username, $role, UserStatus::PENDING_ACTIVATION, null, null, null, null, $activation, $createdAt, $createdBy);
+        return new self($id, $username, $role, UserStatus::PENDING_ACTIVATION, null, null, null, null, $activation, $createdAt, $createdBy, 1, null);
     }
 
     /**
@@ -67,8 +73,10 @@ final class User
         ?ActivationToken $activation,
         \DateTimeImmutable $createdAt,
         ?UserId $createdBy,
+        int $sessionVersion,
+        ?int $lastTotpStep,
     ): self {
-        return new self($id, $username, $role, $status, $passwordHash, $totpSecret, $totpConfirmedAt, $pendingTotpSecret, $activation, $createdAt, $createdBy);
+        return new self($id, $username, $role, $status, $passwordHash, $totpSecret, $totpConfirmedAt, $pendingTotpSecret, $activation, $createdAt, $createdBy, $sessionVersion, $lastTotpStep);
     }
 
     public function setInitialPassword(#[\SensitiveParameter] string $plainToken, PasswordHash $passwordHash, \DateTimeImmutable $now): void
@@ -109,6 +117,116 @@ final class User
         $this->pendingTotpSecret = null;
         $this->activation = null;
         $this->status = UserStatus::ACTIVE;
+    }
+
+    /**
+     * PD-34: the new link gets a fresh lifetime and the previous one stops working. A half-finished
+     * activation is dropped, so the new link starts from the password step.
+     */
+    public function regenerateActivation(ActivationToken $activation): void
+    {
+        if (UserStatus::PENDING_ACTIVATION !== $this->status) {
+            throw UserStateConflict::notPendingActivation();
+        }
+
+        $this->activation = $activation;
+        $this->passwordHash = null;
+        $this->pendingTotpSecret = null;
+    }
+
+    /**
+     * PD-35: lost password or TOTP device. The user activates again through the new link.
+     */
+    public function reset(ActivationToken $activation): void
+    {
+        if (UserStatus::DISABLED === $this->status) {
+            throw UserStateConflict::disabled();
+        }
+
+        $this->status = UserStatus::PENDING_ACTIVATION;
+        $this->activation = $activation;
+        $this->passwordHash = null;
+        $this->totpSecret = null;
+        $this->totpConfirmedAt = null;
+        $this->pendingTotpSecret = null;
+        $this->endSessions();
+    }
+
+    public function disable(): void
+    {
+        if (UserStatus::ACTIVE !== $this->status) {
+            throw UserStateConflict::notActive();
+        }
+
+        $this->status = UserStatus::DISABLED;
+        $this->endSessions();
+    }
+
+    public function enable(): void
+    {
+        if (UserStatus::DISABLED !== $this->status) {
+            throw UserStateConflict::notDisabled();
+        }
+
+        $this->status = UserStatus::ACTIVE;
+    }
+
+    public function changeRole(Role $role): void
+    {
+        $this->role = $role;
+    }
+
+    /**
+     * The caller has already checked the current password and a TOTP code.
+     */
+    public function changePassword(PasswordHash $passwordHash): void
+    {
+        $this->assertActive();
+
+        $this->passwordHash = $passwordHash;
+        $this->endSessions();
+    }
+
+    /**
+     * The current device keeps working until the new one is confirmed (PD-38).
+     */
+    public function startTotpReEnrollment(EncryptedTotpSecret $secret): void
+    {
+        $this->assertActive();
+
+        $this->pendingTotpSecret = $secret;
+    }
+
+    /**
+     * The caller has already checked a code from the new device.
+     */
+    public function confirmTotpReEnrollment(\DateTimeImmutable $now): void
+    {
+        $this->assertActive();
+        if (null === $this->pendingTotpSecret) {
+            throw UserStateConflict::noTotpReEnrollment();
+        }
+
+        $this->totpSecret = $this->pendingTotpSecret;
+        $this->totpConfirmedAt = $now;
+        $this->pendingTotpSecret = null;
+        $this->endSessions();
+    }
+
+    /**
+     * A TOTP code is accepted once: its time step must come after the last one this user used.
+     *
+     * @return bool false when the step was already used (or is older), so the code is a replay
+     */
+    public function claimTotpStep(int $step): bool
+    {
+        if (null !== $this->lastTotpStep && $step <= $this->lastTotpStep) {
+            return false;
+        }
+
+        $this->lastTotpStep = $step;
+
+        return true;
     }
 
     public function id(): UserId
@@ -176,6 +294,16 @@ final class User
         return $this->createdBy;
     }
 
+    public function sessionVersion(): int
+    {
+        return $this->sessionVersion;
+    }
+
+    public function lastTotpStep(): ?int
+    {
+        return $this->lastTotpStep;
+    }
+
     /**
      * @throws ActivationLinkNotValid when the link is not this user's current one, has expired or was used
      */
@@ -188,5 +316,17 @@ final class User
         ) {
             throw ActivationLinkNotValid::create();
         }
+    }
+
+    private function assertActive(): void
+    {
+        if (UserStatus::ACTIVE !== $this->status) {
+            throw UserStateConflict::notActive();
+        }
+    }
+
+    private function endSessions(): void
+    {
+        ++$this->sessionVersion;
     }
 }

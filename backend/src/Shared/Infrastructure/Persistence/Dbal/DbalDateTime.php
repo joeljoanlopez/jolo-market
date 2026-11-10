@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Catalog\Infrastructure\Persistence\Dbal;
+namespace App\Shared\Infrastructure\Persistence\Dbal;
 
 /**
  * DATETIME(6) columns hold UTC with microseconds.
