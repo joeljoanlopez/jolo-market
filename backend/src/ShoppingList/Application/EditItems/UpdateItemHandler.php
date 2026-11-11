@@ -1,0 +1,44 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\ShoppingList\Application\EditItems;
+
+use App\Shared\Domain\Clock;
+use App\Shared\Domain\ValueObject\UserId;
+use App\ShoppingList\Application\ListUpdater;
+use App\ShoppingList\Domain\Model\ShoppingList;
+use App\ShoppingList\Domain\ValueObject\Quantity;
+
+final readonly class UpdateItemHandler
+{
+    public function __construct(
+        private ListUpdater $updater,
+        private Clock $clock,
+    ) {
+    }
+
+    public function __invoke(UpdateItemCommand $command): void
+    {
+        $actor = UserId::fromString($command->actorId);
+        $quantity = null === $command->quantity ? null : Quantity::of($command->quantity);
+
+        $this->updater->update($command->listId, function (ShoppingList $list) use ($actor, $command, $quantity): void {
+            $itemId = ItemReference::in($list, $actor, $command->itemId);
+            $now = $this->clock->now();
+
+            if (null !== $quantity) {
+                $list->changeQuantity($actor, $itemId, $quantity, $now);
+            }
+            if (true === $command->checked) {
+                $list->check($actor, $itemId, $now);
+            }
+            if (false === $command->checked) {
+                $list->uncheck($actor, $itemId, $now);
+            }
+            if (null !== $command->position) {
+                $list->moveItem($actor, $itemId, $command->position, $now);
+            }
+        });
+    }
+}
