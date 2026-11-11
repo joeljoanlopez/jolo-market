@@ -194,5 +194,108 @@
         }
       }
     }
+  },
+  "lists": {
+    "mine": {
+      "title": "Mis listas",
+      "loading": "Cargando tus listas…",
+      "loadFailed": "No se han podido cargar tus listas.",
+      "retry": "Reintentar",
+      "empty": "Aún no tienes listas. Crea una o abre un enlace que te hayan compartido.",
+      "owned": "Tuya",
+      "sharedBy": "Compartida por {{username}}",
+      "itemCount_one": "{{count}} elemento",
+      "itemCount_other": "{{count}} elementos"
+    },
+    "create": {
+      "name": "Nombre de la nueva lista",
+      "submit": "Crear lista",
+      "invalid": "El nombre debe tener entre 1 y 80 caracteres.",
+      "failed": "No se ha podido crear la lista. Inténtalo de nuevo."
+    },
+    "page": {
+      "loading": "Cargando la lista…",
+      "loadFailed": "No se ha podido cargar la lista.",
+      "retry": "Reintentar",
+      "ownedBy": "Lista de {{username}}",
+      "items": "Elementos de la lista",
+      "empty": "La lista está vacía. Añade lo que necesites.",
+      "itemFailed": "No se ha podido guardar el cambio. Inténtalo de nuevo."
+    },
+    "notFound": {
+      "title": "Lista no encontrada",
+      "description": "Esta lista no existe, se ha borrado o ya no tienes acceso a ella.",
+      "backHome": "Volver a mis listas"
+    },
+    "item": {
+      "quantity": "× {{count}}",
+      "unavailable": "No disponible",
+      "unknownProduct": "Producto retirado del catálogo",
+      "remove": "Quitar {{name}}",
+      "removeShort": "Quitar"
+    },
+    "add": {
+      "text": "Qué necesitas",
+      "quantity": "Cantidad",
+      "submit": "Añadir",
+      "invalid": "Escribe entre 1 y 120 caracteres y una cantidad de 1 a 99.",
+      "failed": "No se ha podido añadir. Inténtalo de nuevo."
+    },
+    "totals": {
+      "title": "Total estimado por supermercado",
+      "empty": "Añade productos desde la búsqueda para ver el total estimado por supermercado.",
+      "itemCount_one": "{{count}} producto",
+      "itemCount_other": "{{count}} productos",
+      "excluded": "No se incluyen en el total porque ya no están disponibles: {{names}}."
+    },
+    "share": {
+      "label": "Enlace para compartir",
+      "hint": "Quien lo abra con su cuenta se unirá a la lista.",
+      "copy": "Copiar enlace",
+      "copied": "Enlace copiado"
+    },
+    "members": {
+      "title": "Miembros",
+      "owner": "{{username}} (quien creó la lista)",
+      "none": "Todavía no se ha unido nadie.",
+      "remove": "Quitar a {{username}}",
+      "regenerate": "Generar enlace nuevo",
+      "confirmRegenerate": "¿Generar un enlace nuevo? El enlace actual dejará de funcionar. Los miembros actuales seguirán en la lista.",
+      "confirm": "Confirmar",
+      "cancel": "Cancelar"
+    },
+    "actions": {
+      "delete": "Borrar lista",
+      "confirmDelete": "¿Borrar «{{name}}»? Se borrará para todos sus miembros y no se puede deshacer.",
+      "leave": "Abandonar lista",
+      "confirm": "Confirmar",
+      "cancel": "Cancelar",
+      "errors": {
+        "regenerateLink": "No se ha podido generar el enlace nuevo. Inténtalo de nuevo.",
+        "removeMember": "No se ha podido quitar al miembro. Inténtalo de nuevo.",
+        "delete": "No se ha podido borrar la lista. Inténtalo de nuevo.",
+        "leave": "No se ha podido abandonar la lista. Inténtalo de nuevo."
+      }
+    },
+    "join": {
+      "joining": "Uniéndote a la lista…",
+      "invalidTitle": "Este enlace no funciona",
+      "invalid": "El enlace no es válido o ya no está activo. Pide uno nuevo a quien te lo envió.",
+      "failed": "No se ha podido abrir el enlace.",
+      "retry": "Reintentar",
+      "backHome": "Ir a mis listas"
+    },
+    "addToList": {
+      "open": "Añadir a una lista",
+      "openLabel": "Añadir {{name}} a una lista",
+      "list": "Lista",
+      "submit": "Añadir",
+      "cancel": "Cancelar",
+      "added": "Añadido a «{{name}}».",
+      "failed": "No se ha podido añadir. Inténtalo de nuevo.",
+      "loading": "Cargando tus listas…",
+      "noLists": "Aún no tienes listas.",
+      "createList": "Crear una lista"
+    }
   }
 }

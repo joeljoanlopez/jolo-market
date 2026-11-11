@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Text } from '@/shared/ui/atoms/Text/Text';
@@ -12,9 +13,11 @@ interface ProductCardProps {
   product: Product;
   /** The cheapest unit price of its unit group (PD-33). */
   highlighted?: boolean;
+  /** Actions on the product from other features, e.g. "Add to list". */
+  actions?: ReactNode;
 }
 
-export function ProductCard({ product, highlighted = false }: ProductCardProps) {
+export function ProductCard({ product, highlighted = false, actions }: ProductCardProps) {
   const { t } = useTranslation();
   const unitSymbols = useUnitSymbols();
 
@@ -49,6 +52,7 @@ export function ProductCard({ product, highlighted = false }: ProductCardProps) 
             ? t('catalog.product.noPackaging')
             : formatPackaging(product.packaging, unitSymbols)}
         </Text>
+        {actions}
       </div>
       <PriceTag
         priceCents={product.priceCents}
