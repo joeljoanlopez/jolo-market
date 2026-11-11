@@ -68,6 +68,9 @@ Decisions confirmed by the product owner. Changing any of them requires asking f
 | PD-40 | **Renewing the session cookie keeps the session id.** Once an hour (and on the first request after an activation) the API re-sends the session cookie with 7 more days, with the **same id**. Changing the id there would destroy the old one, and a request the browser sent at the same moment would get a `401` and log the user out. The id still changes on every login (session fixation), and logout still ends the session on the server. *(Bug found while protecting the catalog in E3.21; fix confirmed by the product owner on 2026-11-10.)* |
 | PD-41 | **The TOTP QR code is drawn in the browser** with the npm package `qrcode` (pinned), from the `provisioningUri` the API already returns. The API contract does not change and the secret never leaves the user's browser. *(Confirmed by the product owner on 2026-11-10.)* |
 | PD-42 | **Admin actions that remove access ask first.** On the users page, "Resetear" (removes password and TOTP, ends sessions) and "Desactivar" (ends sessions) turn into an inline "¿…? Confirmar / Cancelar" in the user's row. Regenerating a link, enabling and changing the role apply at once. An admin is not offered to reset or disable their own account. *(Confirmed by the product owner on 2026-11-10.)* |
+| PD-43 | **Concurrent list edits: last write wins, per operation.** Operations state the intent (check sets `checked = true`, it never toggles), so two people checking the same item agree. Two edits of the same field keep the last one; edits to different items or fields never undo each other, because saving a list checks the `version` it was loaded with and the API retries the operation on a fresh copy when someone else saved first. The user never sees a conflict error. *(Answers OQ-3, confirmed by the product owner on 2026-11-11.)* |
+| PD-44 | **The owner can delete a list; a member can leave it; ownership cannot be transferred.** Deleting asks for confirmation and removes the list for everyone: it disappears from every "My lists" and anyone who has it open sees "list not found" (`404`). A member can leave on their own and can join again later through the link while it is valid. The owner cannot leave their own list, only delete it. *(Answers OQ-4, confirmed by the product owner on 2026-11-11.)* |
+| PD-45 | **List details.** A list name is required, 1 to 80 characters after trimming. A free-text item has 1 to 120 characters after trimming. A quantity is a whole number from 1 to 99, 1 by default. Adding a product that is already in the list and unchecked adds the quantity to that item instead of creating another one (above 99 → `422`). New items go to the end; the list shows unchecked items first, in their order, then checked ones. The total per supermarket adds `price × quantity` of every **available** product item, checked or not (the estimated cost of the whole list). A removed member can join again while the link is valid (the owner regenerates it to stop that). *(Confirmed by the product owner on 2026-11-11.)* |
 
 ## Stack
 
@@ -150,6 +153,8 @@ Solid arrows are calls, and dashed arrows are interface implementations. Every d
 | `Application` | Domain, `Shared\Domain`, `Shared\Application` | Infrastructure, Symfony, Doctrine |
 | `Infrastructure` | Everything above + vendor | — |
 | Context A | Context B **only** through B's `Application` public API (query services) | B's Domain or Infrastructure |
+
+Allowed cross-context paths today: ShoppingList Infrastructure → Catalog Application (`GetProductsHandler`) and Identity Application (`FindUsernamesHandler`).
 
 ### Rules of thumb
 
@@ -265,24 +270,31 @@ Use cases (`Identity\Application`). Admin use cases first check the actor throug
 ShoppingList (aggregate root)
   id: ShoppingListId           internal UUID
   ownerId: UserId
-  members: UserId[]            users who joined through the link (owner excluded)
-  shareToken: ShareToken       ≥128-bit random, URL-safe; the "secret link" used only to JOIN
-  name: string
-  items: ListItem[]
+  members: Member[]            userId + joinedAt of users who joined through the link (owner excluded), in join order
+  shareToken: ShareToken       base64url, 22–64 characters (≥128 bits); the "secret link" used only to JOIN
+  name: ListName               1–80 characters after trimming (PD-45)
+  items: ListItem[]            in position order; an item's position is its index
   createdAt, updatedAt
-  version: int                 incremented on every change (used for ETag)
+  version: int                 moves on every real change (ETag, optimistic lock); loadedVersion is the one it was loaded with (0 = new)
 
 ListItem (entity inside the aggregate)
   id: ListItemId
-  content: FreeTextItem(text) | ProductItem(productId, supermarketId)
-  quantity: positive int
+  content: FreeTextItem(ItemText, 1–120 characters) | ProductItem(ProductId)
+  quantity: Quantity           whole number 1–99, 1 by default (PD-45)
   checked: bool
-  position: int
 ```
 
-**Access rules:** owner and members can read and edit items. Only the owner can rename the list, remove members and regenerate the share token. Joining with a valid token is idempotent, and joining your own list is a no-op.
+`ProductItem` keeps only the product id: name, price and supermarket are always read fresh from the catalog.
 
-**Totals:** the estimated total per supermarket is the sum of `price × quantity` of product items belonging to that supermarket. Free-text items are listed but not priced. It is computed in the Application layer with a fresh price from the `ProductCatalog` port.
+**Access rules:** owner and members can read and edit items. Only the owner can rename the list, remove members, regenerate the share token and delete the list (PD-44). A member can leave; the owner cannot (`OwnerCannotLeave`, 409). Anyone else, and a member trying an owner-only action, gets `ShoppingListNotFound` (404, PD-15). Joining with a valid token is idempotent, joining your own list is a no-op, and a removed member can join again. Operations state their intent (PD-43): `check`/`uncheck` set the flag, and a call that changes nothing does not move the version. `moveItem` takes a 0-based position; a position past the end moves the item last, a negative one is `InvalidItemPosition` (422).
+
+**Ports (ShoppingList Domain):** `ShoppingListRepository` (`save` with the version check, throwing `ShoppingListChangedConcurrently`; `remove`; `findById`; `findByShareToken`; `findByUser`, owned or joined) and `ShareTokenGenerator`. **Ports (ShoppingList Application):** `ProductCatalog` (`findByIds` → `CatalogProduct`, available or not) and `UserDirectory` (`usernamesOf`).
+
+**Use cases** (`ShoppingList\Application`), each with an explicit `actorId`: `CreateList`, `JoinList`, `ManageList/{RenameList, RegenerateShareToken, RemoveMember, LeaveList, DeleteList}`, `EditItems/{AddItem, UpdateItem, RemoveItem, ClearCheckedItems}`, and the queries `GetList` and `GetMyLists`. Changing use cases go through `ListUpdater`: load, apply the operation, save; when someone else saved first it runs the whole operation again on a fresh copy, up to 5 attempts (PD-43). Adding a product checks through `ProductCatalog` that it exists and is available (`ProductNotAvailable`, 422).
+
+**Totals:** the estimated total per supermarket is the sum of `price × quantity` of the **available** product items of that supermarket, checked or not (PD-45); unavailable products are flagged and left out (PD-22). Free-text items are listed but not priced. It is computed in `GetList` with a fresh price from the `ProductCatalog` port.
+
+**Adapters (ShoppingList Infrastructure):** `DbalShoppingListRepository` (`UPDATE … WHERE version = :loaded`, then members and items rewritten in the same transaction), `RandomShareTokenGenerator` (`random_bytes(32)`, base64url, 43 characters), `CatalogProductCatalog` on Catalog's `GetProductsHandler` (ids → `ProductView`s, one lookup per product) and `IdentityUserDirectory` on Identity's `FindUsernamesHandler`. Controllers take the actor id from the session user's identifier (`UserInterface::getUserIdentifier()`), so they do not depend on Identity's infrastructure.
 
 ## Backend structure
 
@@ -299,7 +311,7 @@ backend/
 │   │   ├── Application/
 │   │   │   ├── IngestCatalog/   # IngestCatalogCommand + IngestCatalogHandler
 │   │   │   ├── SearchProducts/  # SearchProductsQuery + handler + result DTO
-│   │   │   ├── GetProduct/      # GetProductQuery + handler + ProductView
+│   │   │   ├── GetProduct/      # GetProductQuery + handler + ProductView; GetProductsHandler (query API for lists)
 │   │   │   ├── ListSupermarkets/ # ListSupermarketsQuery + handler
 │   │   │   └── GetPriceHistory/
 │   │   └── Infrastructure/
@@ -572,17 +584,40 @@ All routes require a fully authenticated session (login + 2FA) except those mark
 | GET | `/api/products?q=&supermarket=&page=` | search available products, grouped by unit and ranked by unit price (PD-33), 20 per page. `q` (≥ 2 characters after trimming) is required; `page` ≥ 1 defaults to 1; `supermarket` must be enabled. Invalid input → `422` |
 | GET | `/api/products/{id}` | product detail with `available`, also for unavailable products (PD-22). Unknown or malformed id → `404` |
 | GET | `/api/products/{id}/price-history` | Price snapshots |
-| GET | `/api/lists` | Lists the current user owns or is a member of |
-| POST | `/api/lists` | Create list (current user is the owner) |
-| POST | `/api/lists/join/{shareToken}` | Join a list through its secret link → `{ id }` |
-| GET | `/api/lists/{id}` | List with items, members and per-supermarket totals (ETag) |
-| PATCH | `/api/lists/{id}` | Owner — rename list |
-| POST | `/api/lists/{id}/share-token` | Owner — regenerate the secret link |
-| DELETE | `/api/lists/{id}/members/{userId}` | Owner — remove a member |
-| POST | `/api/lists/{id}/items` | Add free-text or product item |
-| PATCH | `/api/lists/{id}/items/{itemId}` | Change quantity, check/uncheck, reorder |
-| DELETE | `/api/lists/{id}/items/{itemId}` | Remove item |
-| DELETE | `/api/lists/{id}/items?checked=true` | Clear checked items |
+| GET | `/api/lists` | Lists the current user owns or is a member of: `[{id, name, role, ownerUsername, itemCount, updatedAt}]` (`role` is `owner` or `member`), most recently updated first |
+| POST | `/api/lists` | `{name}` (PD-45) → `201 {id}`; the current user is the owner. Invalid name → `422` |
+| POST | `/api/lists/join/{shareToken}` | Join a list through its secret link → `200 {id}` (idempotent; the owner joining is a no-op). Unknown, malformed or revoked token → `404` |
+| GET | `/api/lists/{id}` | The list (shape below), with `ETag: "<version>"`; `If-None-Match` with the current ETag → `304` |
+| PATCH | `/api/lists/{id}` | Owner — `{name}` → `204` |
+| DELETE | `/api/lists/{id}` | Owner — delete the list for everyone (PD-44) → `204` |
+| POST | `/api/lists/{id}/share-token` | Owner — regenerate the secret link → `200 {shareToken}`; the old token stops working, members stay |
+| DELETE | `/api/lists/{id}/members/{userId}` | Owner — remove a member → `204`; a user who is not a member → `404` |
+| POST | `/api/lists/{id}/leave` | Member — leave the list (PD-44) → `204`; the owner → `409` |
+| POST | `/api/lists/{id}/items` | `{type: "text", text, quantity?}` or `{type: "product", productId, quantity?}` (PD-45) → `201 {id}`. A product already in the list and unchecked gets the quantity added instead (`201` with that item's id). Unknown or unavailable product, invalid text or quantity → `422` |
+| PATCH | `/api/lists/{id}/items/{itemId}` | Any of `{quantity, checked, position}` → `204`. `position` is the 0-based index to move the item to. Unknown item → `404` |
+| DELETE | `/api/lists/{id}/items/{itemId}` | Remove item → `204`; unknown item → `404` |
+| DELETE | `/api/lists/{id}/items?checked=true` | Clear checked items → `204` |
+
+List routes (`/api/lists/{id}…`) answer `404` to anyone who is neither owner nor member, and owner-only routes also answer `404` to members (same rule as admin areas, PD-15). Every change increments the list `version`.
+
+`GET /api/lists/{id}` returns:
+
+```json
+{
+  "id": "0193…", "name": "Compra semanal", "role": "owner", "version": 7,
+  "shareToken": "kq3…",
+  "owner": { "id": "0192…", "username": "maria" },
+  "members": [{ "id": "0192…", "username": "joan" }],
+  "items": [
+    { "id": "0193…", "position": 0, "quantity": 2, "checked": false, "type": "text", "text": "pan", "product": null },
+    { "id": "0193…", "position": 1, "quantity": 1, "checked": true, "type": "product", "text": null,
+      "product": { "id": "0191…", "name": "Leche entera", "brand": "Hacendado", "supermarketId": "mercadona", "priceCents": 125, "imageUrl": null, "available": true } }
+  ],
+  "totals": [{ "supermarketId": "mercadona", "supermarketName": "Mercadona", "totalCents": 125, "itemCount": 1 }]
+}
+```
+
+`shareToken` is `null` for members. Items come in `position` order (the SPA shows unchecked first, PD-45). `totals` has one entry per supermarket with at least one available product item, ordered by supermarket name; unavailable products are flagged and left out (PD-22). A product the catalog no longer knows is shown as unavailable with `name: null`.
 
 A list the user cannot access returns `404` (never `403`), and so do unknown, invalid or revoked share and activation tokens. The API never reveals whether a resource exists.
 
@@ -599,9 +634,9 @@ Tables (draft, finalized in migrations):
 | `setup_code` | `code_hash`, `created_at` — at most one row, deleted when the first admin is created |
 | `user` | `id`, `username` UNIQUE, `role`, `status`, `password_hash`, `totp_secret_encrypted`, `totp_confirmed_at`, `pending_totp_secret_encrypted`, `activation_token_hash` UNIQUE, `activation_expires_at`, `session_version`, `totp_last_used_step`, `created_at`, `created_by` (FK to `user`) |
 | `setup_code` | `id` (always 1), `code_hash`, `created_at` — the current first-admin setup code (PD-14) |
-| `shopping_list` | `id`, `owner_id`, `share_token` UNIQUE, `name`, `version`, `created_at`, `updated_at` |
-| `list_member` | `list_id`, `user_id`, `joined_at` — PK(`list_id`, `user_id`) |
-| `list_item` | `id`, `list_id`, `type` (`free_text`/`product`), `text`, `product_id`, `quantity`, `checked`, `position` |
+| `shopping_list` | `id` (BINARY(16)), `owner_id`, `share_token` (ascii_bin, case-sensitive) UNIQUE, `name` (80), `version`, `created_at`, `updated_at` — INDEX(`owner_id`) |
+| `list_member` | `list_id`, `user_id`, `joined_at` — PK(`list_id`, `user_id`), INDEX(`user_id`), FK `list_id` ON DELETE CASCADE |
+| `list_item` | `id`, `list_id`, `type` (`free_text`/`product`), `text` (120), `product_id`, `quantity`, `checked`, `position` (0-based) — INDEX(`list_id`, `position`), FK `list_id` ON DELETE CASCADE. `owner_id`, `user_id` and `product_id` belong to other contexts and have no foreign key |
 
 Charset and collation: `utf8mb4` / `utf8mb4_0900_ai_ci`.
 
@@ -713,7 +748,5 @@ These have **not** been decided. Implementation must stop and ask before coding 
 | ID | Question | Raised in |
 | --- | --- | --- |
 | OQ-2 | Price history retention: keep forever, or downsample/prune after N months? | E5 |
-| OQ-3 | Concurrent edits on the same item (two people check/uncheck at once): is last-write-wins acceptable? | E4 |
-| OQ-4 | Can a list be deleted (by whom, and what do members see)? Can a member leave a list on their own? Can ownership be transferred? | E4 |
 
 Once answered, move each item to [Product decisions](#product-decisions) with a new `PD-n` id.
