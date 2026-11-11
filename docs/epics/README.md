@@ -8,7 +8,7 @@ Progress tracking for jolo-market. Each epic file lists its tasks as checkboxes.
 | [E1 — Catalog ingestion](E1-catalog-ingestion.md) | Catalog domain + Mercadona, Bonpreu i Esclat and Aldi adapters | E0 | Done |
 | [E2 — Search & comparison](E2-search-and-comparison.md) | Search products and rank by unit price | E1 | Done |
 | [E3 — Identity & access](E3-identity-and-access.md) | Admin-created users, activation link, mandatory TOTP 2FA, login | E0 | Done |
-| [E4 — Shared shopping lists](E4-shared-shopping-lists.md) | Owned lists, join through secret link, members, items, totals, polling | E3 (E2 for product items) | In progress |
+| [E4 — Shared shopping lists](E4-shared-shopping-lists.md) | Owned lists, join through secret link, members, items, totals, polling | E3 (E2 for product items) | Done |
 | [E5 — Price history](E5-price-history.md) | Expose and chart price evolution | E1 | Not started |
 | [E6 — Self-hosting](E6-self-hosting.md) | Production compose, backups, operator docs | E0–E4 | Not started |
 
