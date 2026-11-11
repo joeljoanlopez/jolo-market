@@ -1,15 +1,17 @@
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 import { expect, request, test as setup, type APIRequestContext } from '@playwright/test';
 
 import {
-  credentialsPath,
+  ADMIN,
   csrfHeaders,
+  saveCredentials,
+  savedCredentials,
   storageStatePath,
   type E2eCredentials,
 } from './support/session';
+import { setupCode } from './support/setupCode';
 import { msUntilNextCode, totpCode } from './support/totp';
 
 /**
@@ -30,10 +32,11 @@ setup('a logged-in session', async ({ baseURL }) => {
   }
 
   const setupResponse = await api.get('/api/setup');
+  const credentials = savedCredentials();
   if (setupResponse.ok()) {
     await createFirstAdmin(api);
-  } else if (existsSync(credentialsPath)) {
-    await logIn(api, JSON.parse(readFileSync(credentialsPath, 'utf8')) as E2eCredentials);
+  } else if (credentials !== null) {
+    await logIn(api, credentials);
   } else {
     throw new Error(
       'This instance already has users, but no saved e2e credentials. Run the end-to-end tests ' +
@@ -61,7 +64,7 @@ async function hasSavedSession(baseURL: string): Promise<boolean> {
 }
 
 async function createFirstAdmin(api: APIRequestContext): Promise<void> {
-  const credentials = { username: 'e2e-admin', password: 'E2e-Password-123!' };
+  const credentials = ADMIN;
 
   const created = await api.post('/api/setup', {
     headers: csrfHeaders,
@@ -76,7 +79,7 @@ async function createFirstAdmin(api: APIRequestContext): Promise<void> {
   });
   expect(enrolled.status(), await enrolled.text()).toBe(200);
   const { secret } = (await enrolled.json()) as { secret: string };
-  writeCredentials({ ...credentials, totpSecret: secret });
+  saveCredentials({ ...credentials, totpSecret: secret });
 
   // Confirming the code activates the account and logs this context in.
   const activated = await api.post('/api/auth/activation/totp', {
@@ -106,23 +109,4 @@ async function logIn(api: APIRequestContext, credentials: E2eCredentials): Promi
     });
   }
   expect(codeStep.status(), await codeStep.text()).toBe(200);
-}
-
-/** The same command the php container runs at startup; it prints the code. */
-function setupCode(): string {
-  const output = execFileSync(
-    'docker',
-    ['compose', 'exec', '-T', 'php', 'bin/console', 'app:setup:ensure-code', '--no-interaction'],
-    { encoding: 'utf8' },
-  );
-  const code = /Setup code: (\S+)/.exec(output)?.[1];
-  if (code === undefined) {
-    throw new Error(`app:setup:ensure-code printed no setup code:\n${output}`);
-  }
-  return code;
-}
-
-function writeCredentials(credentials: E2eCredentials): void {
-  mkdirSync(dirname(credentialsPath), { recursive: true });
-  writeFileSync(credentialsPath, JSON.stringify(credentials), { mode: 0o600 });
 }

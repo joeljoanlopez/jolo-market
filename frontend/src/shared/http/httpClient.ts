@@ -3,6 +3,7 @@ import { httpErrorFor, NetworkError, type ProblemDetails } from './errors';
 export interface HttpClient {
   get(path: string, options?: RequestOptions): Promise<unknown>;
   post(path: string, body?: unknown, options?: RequestOptions): Promise<unknown>;
+  put(path: string, body?: unknown, options?: RequestOptions): Promise<unknown>;
   patch(path: string, body?: unknown, options?: RequestOptions): Promise<unknown>;
   delete(path: string, options?: RequestOptions): Promise<unknown>;
 }
@@ -64,6 +65,7 @@ export function createHttpClient({ baseUrl }: HttpClientConfig): HttpClient {
   return {
     get: (path, options) => request('GET', path, undefined, options),
     post: (path, body, options) => request('POST', path, body, options),
+    put: (path, body, options) => request('PUT', path, body, options),
     patch: (path, body, options) => request('PATCH', path, body, options),
     delete: (path, options) => request('DELETE', path, undefined, options),
   };

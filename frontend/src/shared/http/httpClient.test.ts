@@ -73,6 +73,19 @@ describe('httpClient', () => {
     expect(received).toEqual(['XMLHttpRequest', 'XMLHttpRequest', 'XMLHttpRequest']);
   });
 
+  it('supports PUT with a JSON body and the CSRF header', async () => {
+    server.use(
+      http.put(`${baseUrl}/api/admin/users/1/role`, async ({ request }) => {
+        expect(request.headers.get('X-Requested-With')).toBe('XMLHttpRequest');
+        return HttpResponse.json({ received: await request.json() });
+      }),
+    );
+
+    await expect(client.put('/api/admin/users/1/role', { role: 'ADMIN' })).resolves.toEqual({
+      received: { role: 'ADMIN' },
+    });
+  });
+
   it('supports PATCH and DELETE', async () => {
     server.use(
       http.patch(`${baseUrl}/api/lists/1`, () => HttpResponse.json({ patched: true })),

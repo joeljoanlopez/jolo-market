@@ -33,3 +33,15 @@ function base32Decode(secret: string): Buffer {
   }
   return Buffer.from(bytes);
 }
+
+/**
+ * A code the API will accept after one used at `lastUsedAt`: codes are single-use per 30-second
+ * step, so it waits for the next step when needed.
+ */
+export async function nextUnusedCode(secret: string, lastUsedAt: Date): Promise<string> {
+  const step = (date: Date) => Math.floor(date.getTime() / 1000 / STEP_SECONDS);
+  while (step(new Date()) <= step(lastUsedAt)) {
+    await new Promise((resolve) => setTimeout(resolve, msUntilNextCode() + 250));
+  }
+  return totpCode(secret);
+}

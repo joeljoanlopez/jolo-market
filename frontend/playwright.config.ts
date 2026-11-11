@@ -13,10 +13,17 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    // Creates (or reuses) a logged-in user, so the other tests start authenticated.
-    { name: 'session', testMatch: /session\.setup\.ts/ },
+    // E3.29 runs first: on a fresh instance it is the one that goes through /setup.
+    {
+      name: 'onboarding',
+      testMatch: /onboarding\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // Creates (or reuses) a logged-in admin, so the other tests start authenticated.
+    { name: 'session', testMatch: /session\.setup\.ts/, dependencies: ['onboarding'] },
     {
       name: 'chromium',
+      testIgnore: /onboarding\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], storageState: storageStatePath },
       dependencies: ['session'],
     },

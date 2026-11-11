@@ -5,6 +5,7 @@ import { createBrowserRouter } from 'react-router';
 
 import { App } from '@/app/App';
 import { routes } from '@/app/routes';
+import { createAdminApi } from '@/features/admin/infrastructure/adminApi';
 import { createAuthApi } from '@/features/auth/infrastructure/authApi';
 import { createCatalogApi } from '@/features/catalog/infrastructure/catalogApi';
 import { createHttpClient } from '@/shared/http/httpClient';
@@ -28,6 +29,7 @@ createRoot(root).render(
       i18n={createI18n()}
       productCatalog={createCatalogApi(http)}
       authGateway={createAuthApi(http)}
+      userAdministration={createAdminApi(http)}
     />
   </StrictMode>,
 );
