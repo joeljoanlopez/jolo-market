@@ -22,6 +22,12 @@ describe('Text', () => {
     expect(screen.getByText('Hola')).toHaveClass('text-foreground', 'text-base');
   });
 
+  it('supports the danger tone, for errors', () => {
+    render(<Text tone="danger">Error</Text>);
+
+    expect(screen.getByText('Error')).toHaveClass('text-danger');
+  });
+
   it('supports the muted tone', () => {
     render(<Text tone="muted">Hola</Text>);
 

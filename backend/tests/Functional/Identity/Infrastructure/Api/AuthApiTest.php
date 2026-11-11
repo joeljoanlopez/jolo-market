@@ -271,12 +271,10 @@ final class AuthApiTest extends IdentityApiTestCase
     }
 
     #[Test]
-    public function the_health_check_and_the_catalog_stay_public_for_now(): void
+    public function the_health_check_stays_public(): void
     {
         $this->client->request('GET', '/api/health');
-        self::assertResponseIsSuccessful();
 
-        $this->client->request('GET', '/api/supermarkets');
         self::assertResponseIsSuccessful();
     }
 }
