@@ -6,7 +6,17 @@ export interface HttpClient {
   put(path: string, body?: unknown, options?: RequestOptions): Promise<unknown>;
   patch(path: string, body?: unknown, options?: RequestOptions): Promise<unknown>;
   delete(path: string, options?: RequestOptions): Promise<unknown>;
+  /** A GET that sends `If-None-Match` and reports a `304` instead of rejecting with it. */
+  getConditional(path: string, options?: ConditionalRequestOptions): Promise<ConditionalResponse>;
 }
+
+export interface ConditionalRequestOptions extends RequestOptions {
+  /** The ETag of the copy the caller holds; leave it out to always get the body. */
+  etag?: string | null;
+}
+
+export type ConditionalResponse =
+  { notModified: true } | { notModified: false; body: unknown; etag: string | null };
 
 export interface RequestOptions {
   signal?: AbortSignal;
@@ -23,13 +33,13 @@ interface HttpClientConfig {
  * each feature's infrastructure maps them to domain types.
  */
 export function createHttpClient({ baseUrl }: HttpClientConfig): HttpClient {
-  async function request(
+  async function send(
     method: string,
     path: string,
     body: unknown,
-    options: RequestOptions = {},
-  ): Promise<unknown> {
-    const headers = new Headers({ Accept: 'application/json' });
+    options: RequestOptions,
+    headers: Headers,
+  ): Promise<Response> {
     if (method !== 'GET') {
       // The API refuses state-changing requests without it (CSRF): another site cannot
       // add a custom header without a CORS preflight, which the API never allows.
@@ -44,22 +54,49 @@ export function createHttpClient({ baseUrl }: HttpClientConfig): HttpClient {
       init.signal = options.signal;
     }
 
-    let response: Response;
     try {
-      response = await fetch(new URL(path, baseUrl), init);
+      return await fetch(new URL(path, baseUrl), init);
     } catch (cause) {
       if (isAbortError(cause)) {
         throw cause;
       }
       throw new NetworkError({ cause });
     }
+  }
 
+  async function request(
+    method: string,
+    path: string,
+    body: unknown,
+    options: RequestOptions = {},
+  ): Promise<unknown> {
+    const response = await send(method, path, body, options, jsonHeaders());
     if (!response.ok) {
       throw httpErrorFor(await problemFrom(response));
     }
+    return bodyOf(response);
+  }
 
-    const text = await response.text();
-    return text === '' ? undefined : (JSON.parse(text) as unknown);
+  async function getConditional(
+    path: string,
+    { etag, ...options }: ConditionalRequestOptions = {},
+  ): Promise<ConditionalResponse> {
+    const headers = jsonHeaders();
+    if (etag !== undefined && etag !== null) {
+      headers.set('If-None-Match', etag);
+    }
+    const response = await send('GET', path, undefined, options, headers);
+    if (response.status === 304) {
+      return { notModified: true };
+    }
+    if (!response.ok) {
+      throw httpErrorFor(await problemFrom(response));
+    }
+    return {
+      notModified: false,
+      body: await bodyOf(response),
+      etag: response.headers.get('ETag'),
+    };
   }
 
   return {
@@ -68,7 +105,17 @@ export function createHttpClient({ baseUrl }: HttpClientConfig): HttpClient {
     put: (path, body, options) => request('PUT', path, body, options),
     patch: (path, body, options) => request('PATCH', path, body, options),
     delete: (path, options) => request('DELETE', path, undefined, options),
+    getConditional,
   };
+}
+
+function jsonHeaders(): Headers {
+  return new Headers({ Accept: 'application/json' });
+}
+
+async function bodyOf(response: Response): Promise<unknown> {
+  const text = await response.text();
+  return text === '' ? undefined : (JSON.parse(text) as unknown);
 }
 
 async function problemFrom(response: Response): Promise<ProblemDetails> {
