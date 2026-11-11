@@ -220,4 +220,59 @@ describe('httpClient', () => {
     expect(error).not.toBeInstanceOf(NetworkError);
     expect(error).toMatchObject({ name: 'AbortError' });
   });
+  describe('getConditional', () => {
+    it('returns the body and the ETag of a changed resource', async () => {
+      server.use(
+        http.get(`${baseUrl}/api/lists/1`, () =>
+          HttpResponse.json({ id: '1' }, { headers: { ETag: '"7"' } }),
+        ),
+      );
+
+      await expect(client.getConditional('/api/lists/1')).resolves.toEqual({
+        notModified: false,
+        body: { id: '1' },
+        etag: '"7"',
+      });
+    });
+
+    it('sends If-None-Match and reports 304 as not modified', async () => {
+      let received: string | null = null;
+      server.use(
+        http.get(`${baseUrl}/api/lists/1`, ({ request }) => {
+          received = request.headers.get('If-None-Match');
+          return new HttpResponse(null, { status: 304 });
+        }),
+      );
+
+      await expect(client.getConditional('/api/lists/1', { etag: '"7"' })).resolves.toEqual({
+        notModified: true,
+      });
+      expect(received).toBe('"7"');
+    });
+
+    it('omits If-None-Match without an ETag, and the ETag is null when the API sends none', async () => {
+      let received: string | null = 'unset';
+      server.use(
+        http.get(`${baseUrl}/api/lists/1`, ({ request }) => {
+          received = request.headers.get('If-None-Match');
+          return HttpResponse.json({ id: '1' });
+        }),
+      );
+
+      await expect(client.getConditional('/api/lists/1')).resolves.toEqual({
+        notModified: false,
+        body: { id: '1' },
+        etag: null,
+      });
+      expect(received).toBeNull();
+    });
+
+    it('rejects with the typed error of a failed response', async () => {
+      server.use(http.get(`${baseUrl}/api/lists/1`, () => problem(404, 'Not Found')));
+
+      await expect(client.getConditional('/api/lists/1', { etag: '"7"' })).rejects.toBeInstanceOf(
+        NotFoundError,
+      );
+    });
+  });
 });
