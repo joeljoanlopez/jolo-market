@@ -8,6 +8,7 @@ import { routes } from '@/app/routes';
 import { createAdminApi } from '@/features/admin/infrastructure/adminApi';
 import { createAuthApi } from '@/features/auth/infrastructure/authApi';
 import { createCatalogApi } from '@/features/catalog/infrastructure/catalogApi';
+import { createShoppingListApi } from '@/features/shopping-list/infrastructure/shoppingListApi';
 import { createHttpClient } from '@/shared/http/httpClient';
 import { createI18n } from '@/shared/i18n/i18n';
 
@@ -30,6 +31,7 @@ createRoot(root).render(
       productCatalog={createCatalogApi(http)}
       authGateway={createAuthApi(http)}
       userAdministration={createAdminApi(http)}
+      shoppingLists={createShoppingListApi(http)}
     />
   </StrictMode>,
 );

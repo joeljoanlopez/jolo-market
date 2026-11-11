@@ -49,4 +49,16 @@ describe('ProductResultList', () => {
 
     expect(highlightedNames()).toEqual([]);
   });
+  it('shows the actions other features give for each product', () => {
+    renderWithProviders(
+      <ProductResultList
+        products={products}
+        cheapestUnitPriceCents={{}}
+        renderActions={(product) => <button type="button">{`Acción ${product.name}`}</button>}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Acción Leche A' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^Acción / })).toHaveLength(products.length);
+  });
 });

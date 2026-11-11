@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   type NavigateOptions,
@@ -13,6 +13,7 @@ import { Pagination } from '@/shared/ui/molecules/Pagination/Pagination';
 import { SearchBox } from '@/shared/ui/molecules/SearchBox/SearchBox';
 
 import { useProductSearch } from '../../application/useProductSearch';
+import type { Product } from '../../domain/product';
 import { useSupermarkets } from '../../application/useSupermarkets';
 import { ProductResultList } from '../components/ProductResultList';
 import { SupermarketFilter } from '../components/SupermarketFilter';
@@ -24,8 +25,13 @@ interface SearchUrl {
   page: number | undefined;
 }
 
+interface SearchPageContainerProps {
+  /** Actions on each result that belong to other features (the app wires "Add to list"). */
+  renderProductActions?: (product: Product) => ReactNode;
+}
+
 /** `/search?q=&supermarket=&page=`: the URL is the source of truth of the search. */
-export function SearchPageContainer() {
+export function SearchPageContainer({ renderProductActions }: SearchPageContainerProps = {}) {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const url = readSearchUrl(searchParams);
@@ -87,6 +93,7 @@ export function SearchPageContainer() {
           <ProductResultList
             products={search.data.items}
             cheapestUnitPriceCents={search.data.cheapestUnitPriceCents}
+            {...(renderProductActions === undefined ? {} : { renderActions: renderProductActions })}
           />
           <Pagination
             page={search.data.page}

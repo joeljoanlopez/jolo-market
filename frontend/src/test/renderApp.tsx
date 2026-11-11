@@ -6,6 +6,7 @@ import { routes as appRoutes } from '@/app/routes';
 
 import { FakeAuthGateway } from './FakeAuthGateway';
 import { FakeProductCatalog } from './FakeProductCatalog';
+import { FakeShoppingLists } from './FakeShoppingLists';
 import { FakeUserAdministration } from './FakeUserAdministration';
 import { testI18n } from './i18n';
 import { createTestQueryClient } from './render';
@@ -14,6 +15,7 @@ interface RenderAppOptions {
   auth?: FakeAuthGateway;
   catalog?: FakeProductCatalog;
   administration?: FakeUserAdministration;
+  lists?: FakeShoppingLists;
   routes?: RouteObject[];
 }
 
@@ -24,6 +26,7 @@ export function renderApp(
     auth = new FakeAuthGateway(),
     catalog = new FakeProductCatalog(),
     administration = new FakeUserAdministration(),
+    lists = new FakeShoppingLists(),
     routes = appRoutes,
   }: RenderAppOptions = {},
 ) {
@@ -36,6 +39,7 @@ export function renderApp(
       productCatalog={catalog}
       authGateway={auth}
       userAdministration={administration}
+      shoppingLists={lists}
     />,
   );
   return router;

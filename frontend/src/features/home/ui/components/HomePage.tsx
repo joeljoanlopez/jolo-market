@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
+import { MyListsContainer } from '@/features/shopping-list/ui/containers/MyListsContainer';
 import { Text } from '@/shared/ui/atoms/Text/Text';
 import { SearchBox } from '@/shared/ui/molecules/SearchBox/SearchBox';
 
@@ -11,7 +12,7 @@ export function HomePage() {
   const [text, setText] = useState('');
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-8">
       <div className="flex flex-col gap-2">
         <Text as="h1" size="2xl" weight="bold">
           {t('home.title')}
@@ -31,6 +32,7 @@ export function HomePage() {
           });
         }}
       />
+      <MyListsContainer />
     </section>
   );
 }
