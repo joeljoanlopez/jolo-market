@@ -5,3 +5,14 @@ services:
 
     App\ShoppingList\:
         resource: '../../src/ShoppingList/'
+
+    App\ShoppingList\Domain\Port\ShoppingListRepository: '@App\ShoppingList\Infrastructure\Persistence\Dbal\DbalShoppingListRepository'
+    App\ShoppingList\Domain\Port\ShareTokenGenerator: '@App\ShoppingList\Infrastructure\Security\RandomShareTokenGenerator'
+    App\ShoppingList\Application\ProductCatalog: '@App\ShoppingList\Infrastructure\Catalog\CatalogProductCatalog'
+    App\ShoppingList\Application\UserDirectory: '@App\ShoppingList\Infrastructure\Identity\IdentityUserDirectory'
+
+when@test:
+    services:
+        test.shopping_list.repository:
+            alias: App\ShoppingList\Domain\Port\ShoppingListRepository
+            public: true

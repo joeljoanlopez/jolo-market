@@ -169,6 +169,19 @@ curl -b jar 'http://localhost:8080/api/products?q=leche%20entera&supermarket=ald
 curl -b jar 'http://localhost:8080/api/products/<id>'                                 # product detail
 ```
 
+### Shopping list API
+
+Lists, joining through the secret link and items. Writes need `X-Requested-With: XMLHttpRequest`. Full table and the `GET /api/lists/{id}` shape in [`docs/architecture.md`](docs/architecture.md#http-api-draft):
+
+```sh
+H='X-Requested-With: XMLHttpRequest'
+curl -b jar 'http://localhost:8080/api/lists'                                           # my lists
+curl -b jar -H "$H" -H 'Content-Type: application/json' -d '{"name":"Compra"}' http://localhost:8080/api/lists   # 201 {id}
+curl -b jar -H "$H" -X POST http://localhost:8080/api/lists/join/<shareToken>           # 200 {id}
+curl -b jar -i 'http://localhost:8080/api/lists/<id>'                                   # list + ETag; If-None-Match → 304
+curl -b jar -H "$H" -H 'Content-Type: application/json' -d '{"type":"text","text":"pan"}' http://localhost:8080/api/lists/<id>/items   # 201 {id}
+```
+
 ### Backend checks
 
 Run them inside the php container (`docker compose exec php composer <script>`):
