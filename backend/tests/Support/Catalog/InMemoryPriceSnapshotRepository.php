@@ -28,4 +28,25 @@ final class InMemoryPriceSnapshotRepository implements PriceSnapshotRepository
     {
         return $this->snapshots;
     }
+
+    public function deleteCapturedBefore(\DateTimeImmutable $cutoff): int
+    {
+        $latest = [];
+        foreach ($this->snapshots as $snapshot) {
+            $id = $snapshot->productId()->value();
+            if (!isset($latest[$id]) || $snapshot->capturedAt() > $latest[$id]) {
+                $latest[$id] = $snapshot->capturedAt();
+            }
+        }
+
+        $kept = array_values(array_filter(
+            $this->snapshots,
+            static fn (PriceSnapshot $snapshot): bool => $snapshot->capturedAt() >= $cutoff
+                || $snapshot->capturedAt() == $latest[$snapshot->productId()->value()],
+        ));
+        $deleted = \count($this->snapshots) - \count($kept);
+        $this->snapshots = $kept;
+
+        return $deleted;
+    }
 }

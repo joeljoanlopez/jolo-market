@@ -68,6 +68,69 @@ final class DbalPriceSnapshotRepositoryTest extends DbalTestCase
         self::assertSame(0, $this->countRows('price_snapshot'));
     }
 
+    #[Test]
+    public function it_deletes_the_snapshots_captured_before_the_cutoff(): void
+    {
+        $milk = $this->storedProduct('1', null);
+        $this->repository->append(
+            $milk->captureSnapshot(self::utc('2024-11-12 04:59:59.999999')),
+            $milk->captureSnapshot(self::utc('2024-11-12 05:00:00')),
+            $milk->captureSnapshot(self::utc('2026-11-12 05:00:00')),
+        );
+
+        $deleted = $this->repository->deleteCapturedBefore(self::utc('2024-11-12 05:00:00'));
+
+        self::assertSame(1, $deleted);
+        self::assertSame(['2024-11-12 05:00:00.000000', '2026-11-12 05:00:00.000000'], $this->capturedAt('1'));
+    }
+
+    #[Test]
+    public function it_keeps_the_latest_snapshot_of_each_product_however_old(): void
+    {
+        $milk = $this->storedProduct('1', null);
+        $bread = $this->storedProduct('2', null);
+        $this->repository->append(
+            $milk->captureSnapshot(self::utc('2023-06-01 05:00:00')),
+            $milk->captureSnapshot(self::utc('2023-01-01 05:00:00')),
+            $bread->captureSnapshot(self::utc('2023-02-01 05:00:00')),
+            $bread->captureSnapshot(self::utc('2026-11-01 05:00:00')),
+        );
+
+        $deleted = $this->repository->deleteCapturedBefore(self::utc('2024-11-12 05:00:00'));
+
+        self::assertSame(2, $deleted);
+        self::assertSame(['2023-06-01 05:00:00.000000'], $this->capturedAt('1'));
+        self::assertSame(['2026-11-01 05:00:00.000000'], $this->capturedAt('2'));
+    }
+
+    #[Test]
+    public function it_deletes_nothing_when_every_snapshot_is_recent(): void
+    {
+        $milk = $this->storedProduct('1', null);
+        $this->repository->append($milk->captureSnapshot(self::utc('2026-11-01 05:00:00')));
+
+        self::assertSame(0, $this->repository->deleteCapturedBefore(self::utc('2024-11-12 05:00:00')));
+        self::assertSame(1, $this->countRows('price_snapshot'));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function capturedAt(string $id): array
+    {
+        $capturedAt = $this->connection->fetchFirstColumn(
+            "SELECT captured_at FROM price_snapshot WHERE LOWER(HEX(product_id)) = CONCAT('0000000000004000800000000000000', ?) ORDER BY captured_at",
+            [$id],
+        );
+
+        return array_map(static fn (mixed $value): string => \is_string($value) ? $value : throw new \UnexpectedValueException(), $capturedAt);
+    }
+
+    private static function utc(string $dateTime): \DateTimeImmutable
+    {
+        return new \DateTimeImmutable($dateTime, new \DateTimeZone('UTC'));
+    }
+
     private function storedProduct(string $id, ?Packaging $packaging): Product
     {
         $product = Product::register(

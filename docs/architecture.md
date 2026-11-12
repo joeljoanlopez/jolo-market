@@ -223,7 +223,7 @@ How it is modelled:
 **Ports (Catalog Domain):**
 
 - `ProductRepository`: `save` (insert or update), `findBySupermarketAndExternalId`, `findAvailableNotSeenSince(supermarketId, instant)` (the products a run did not see). Search is added in E2.
-- `PriceSnapshotRepository`: `append(...snapshots)` in one batch. The history of a product is read through the application read model `PriceHistoryReadModel` (E5).
+- `PriceSnapshotRepository`: `append(...snapshots)` in one batch; `deleteCapturedBefore(cutoff)` deletes older snapshots but never the latest of a product (PD-46). The history of a product is read through the application read model `PriceHistoryReadModel` (E5).
 - `SupermarketCatalogSource`: `supermarketId()` and `fetchCatalog(PostalCode): iterable<SourceProduct>`. **One adapter per chain.** `SourceProduct` carries plain values (external id, name, price in cents, packaging text, brand, category segments, image URL and, for approximate sizes only, a reference unit price in cents with its unit `kg`/`l`/`unit`), so one malformed product does not stop a source from returning the rest of its catalog.
 
 `Product` is created with `register` and changed only through `updateFromSource` (new details, price and packaging; makes it available again) and `markUnavailable`. `Supermarket` is created with `create(id, name)`; `SupermarketId` is a slug of lowercase letters, digits and inner hyphens.
@@ -317,6 +317,7 @@ backend/
 │   │   │   ├── SearchProducts/  # SearchProductsQuery + handler + result DTO
 │   │   │   ├── GetProduct/      # GetProductQuery + handler + ProductView; GetProductsHandler (query API for lists)
 │   │   │   ├── ListSupermarkets/ # ListSupermarketsQuery + handler
+│   │   │   ├── PrunePriceHistory/ # PrunePriceHistoryCommand + handler (PD-46)
 │   │   │   └── GetPriceHistory/ # GetPriceHistoryQuery (PriceHistoryRange, PD-47) + handler + PriceHistory DTO
 │   │   └── Infrastructure/
 │   │       ├── Persistence/Dbal/
@@ -325,7 +326,8 @@ backend/
 │   │       ├── Source/Aldi/
 │   │       ├── Api/             # controllers
 │   │       ├── Http/            # HTTP client of the supermarket sources
-│   │       └── Console/         # app:catalog:ingest
+│   │       ├── Scheduler/       # CatalogSchedule: ingestion and price history prune
+│   │       └── Console/         # app:catalog:ingest, app:catalog:prune-history
 │   ├── Identity/
 │   │   ├── Domain/ Application/ Infrastructure/   # same layout; Symfony Security + scheb/2fa adapters live in Infrastructure/Security
 │   ├── ShoppingList/
@@ -720,7 +722,7 @@ flowchart LR
 
 In development, a `frontend` service runs the Vite dev server (HMR), and nginx proxies to it instead of serving the static build.
 
-Configuration lives in `.env` (`APP_SECRET`, `DATABASE_URL`, `INSTANCE_POSTAL_CODE`, `ENABLED_SUPERMARKETS`, `INGESTION_SCHEDULE`, `TOTP_ENCRYPTION_KEY`). TLS is terminated by the user's own reverse proxy.
+Configuration lives in `.env` (`APP_SECRET`, `DATABASE_URL`, `INSTANCE_POSTAL_CODE`, `ENABLED_SUPERMARKETS`, `INGESTION_SCHEDULE`, `PRICE_HISTORY_RETENTION_MONTHS`, `PRICE_HISTORY_PRUNE_SCHEDULE`, `TOTP_ENCRYPTION_KEY`). TLS is terminated by the user's own reverse proxy.
 
 ### Development environment
 
@@ -746,6 +748,8 @@ Symfony variables (`backend/.env`, committed with non-secret defaults; real valu
 | `ENABLED_SUPERMARKETS` | Comma-separated slugs of the supermarkets to import and show (PD-24). Default `mercadona,aldi,bonpreu` (PD-31, PD-32). |
 | `CATALOG_HTTP_USER_AGENT` | User-Agent sent to the supermarkets (PD-26). |
 | `INGESTION_SCHEDULE` | Cron expression for catalog ingestion, evaluated in Europe/Madrid (PD-27). Default `0 5 * * *`. |
+| `PRICE_HISTORY_RETENTION_MONTHS` | Price snapshots older than this many months are deleted, except the latest of each product (PD-46). Default `24`; below 1 the prune command refuses to run. |
+| `PRICE_HISTORY_PRUNE_SCHEDULE` | Cron expression for `app:catalog:prune-history`, evaluated in Europe/Madrid (PD-46). Default `30 4 * * *`. |
 | `TOTP_ENCRYPTION_KEY` | 32 random bytes in base64 that encrypt TOTP secrets at rest (libsodium secretbox). Empty in `backend/.env`: required in production (`php -r "echo base64_encode(random_bytes(32)), PHP_EOL;"`); public placeholders in `.env.dev` and `.env.test`. Changing it makes every enrolled TOTP device unreadable, so every user must then be reset. |
 
 - nginx routes `/api` to Symfony (`backend/public/index.php`) and every other path to the Vite dev server (`frontend:5173`), including the HMR websocket. The SPA and the API share the origin `http://localhost:${HTTP_PORT}`.
@@ -756,12 +760,13 @@ Symfony variables (`backend/.env`, committed with non-secret defaults; real valu
 - Frontend quality commands run in `frontend/` with Node 26 (`npm ci` first): `npm run test`, `npm run typecheck`, `npm run lint`, `npm run format:check` and `npm run check` (runs all of them).
 - Schema changes are Doctrine migrations in `backend/migrations/` (raw SQL, UTC `DATETIME(6)`, UUIDs as `BINARY(16)`). Apply them with `bin/console doctrine:migrations:migrate`. `composer test` first runs `composer db:test`, which migrates the test database.
 - Catalog ingestion: `bin/console app:catalog:ingest [--supermarket=<slug>]`. It prints one row per run (status, seen, skipped, marked unavailable, duration, error). Exit code `0` when every run succeeded, `1` when any run failed, `2` for invalid input or configuration (unknown or disabled `--supermarket`, invalid `INSTANCE_POSTAL_CODE`), in which case nothing is ingested. Supermarket adapters implement `SupermarketCatalogSource` and are collected through the `catalog.supermarket_source` tag (`_instanceof` in `config/services/catalog.yaml`). In the test environment two `ConfigurableCatalogSource` fakes replace them.
-- Scheduling (E1.21): `Catalog\Infrastructure\Scheduler\CatalogIngestionSchedule` (Symfony Scheduler, schedule `default`) sends `app:catalog:ingest` as a `RunCommandMessage` on `INGESTION_SCHEDULE`. A failing command does not throw (the runs are already recorded and logged), so Messenger never retries a whole ingestion. The schedule is stateful (cache): if the worker was down at the scheduled time, it runs once when it comes back. The `scheduler` Compose service runs `messenger:consume scheduler_default --time-limit=3600` and restarts after each hour. `bin/console debug:scheduler` shows the next run.
+- Scheduling (E1.21, E5.4): `Catalog\Infrastructure\Scheduler\CatalogSchedule` (Symfony Scheduler, schedule `default`) sends `app:catalog:ingest` as a `RunCommandMessage` on `INGESTION_SCHEDULE` and `app:catalog:prune-history` on `PRICE_HISTORY_PRUNE_SCHEDULE`. A failing command does not throw (it is already recorded and logged), so Messenger never retries a whole ingestion or prune. The schedule is stateful (cache): if the worker was down at the scheduled time, it runs once when it comes back. The `scheduler` Compose service runs `messenger:consume scheduler_default --time-limit=3600` and restarts after each hour. `bin/console debug:scheduler` shows the next run.
 - Supermarket HTTP (E1.19): adapters use the `catalog.http_client` service built by `CatalogHttpClientFactory` on Symfony HttpClient. It sends the PD-26 User-Agent, uses a 10 s idle timeout and a 30 s maximum per request, leaves at least 1 s between the start of two requests (`PoliteHttpClient`, with an injected `Sleeper` so tests never sleep) and retries `429`/`5xx` up to 3 times with exponential backoff from 1 s (a `Retry-After` header wins). The numbers are arguments of `CatalogHttpOptions` in `config/services/catalog.yaml`; the spikes may tune them per chain.
 - Mercadona adapter (E1.14, PD-28): `Catalog\Infrastructure\Source\Mercadona\MercadonaCatalogSource`. It turns the postal code into a warehouse (`PUT /api/postal-codes/actions/change-pc/`, header `x-customer-wh`), lists the categories and reads every leaf category with `?wh=`. Packaging text is `unit_size` + `size_format` (already the total size of a pack); approximate sizes pass Mercadona's `reference_price` instead (PD-29). Prices are converted from decimal strings with `DecimalCents` (no floats). A full run is about 150 requests and 2.5 minutes. Tests use recorded fixtures in `backend/tests/Fixtures/Mercadona/`; in the test container `ConfigurableCatalogSource` decorates the adapter so it is never called.
 - Logging: Monolog. Ingestion logs go to the `ingestion` channel through the `IngestionLogger` application port (`PsrIngestionLogger`): a warning per skipped product and one record per finished run (`info` on success, `error` on failure) with `run_id`, `supermarket`, `status`, counts, `duration_ms` and `error` in the context. In `prod` this channel is written as JSON to stderr at `info` level, outside the `fingers_crossed` buffer.
 - Identity adapters (E3.16): `DbalUserRepository` (insert or update by id; never `ON DUPLICATE KEY UPDATE`, which would also fire on the unique username), `SymfonyPasswordHasher` (Symfony `NativePasswordHasher`, the "auto" algorithm; cost 4 in the test environment), `OtphpTotpService` (`spomky-labs/otphp`: SHA-1, 6 digits, 30 s, 160-bit secrets, 15 s of tolerated clock drift), `SodiumSecretEncrypter` (base64 of nonce + ciphertext, `TOTP_ENCRYPTION_KEY`) and `RandomActivationTokenGenerator` (256 random bits, base64url, 43 characters). `BinaryUuid` and `DbalDateTime` live in `Shared\Infrastructure\Persistence\Dbal`.
 - First-admin setup (E3.22, PD-14): the `php` service runs `bin/console app:setup:ensure-code` before `php-fpm`. While there are no users it stores the SHA-256 of a new code in `setup_code` (one row, replaced on each start) and prints `Setup code: XXXX-XXXX-XXXX-XXXX` (Crockford base32, 80 bits; case, spaces and hyphens are ignored when typed). Once a user exists it prints nothing useful and removes any old code. A failure (no `vendor/` or migrations yet) never stops `php-fpm`.
+- Price history prune (E5.4, PD-46): `bin/console app:catalog:prune-history` → `PrunePriceHistoryHandler` (`PrunePriceHistoryCommand` with `PRICE_HISTORY_RETENTION_MONTHS`, at least 1, else `InvalidRetentionPeriod`). The cutoff is the same instant N months before now (UTC), moved to the last day of a shorter month (31 May − 3 months → 28 February). `DbalPriceSnapshotRepository::deleteCapturedBefore` runs one `DELETE … JOIN (SELECT product_id, MAX(captured_at) …)` that keeps every row at the latest instant of its product. It prints the count and the cutoff; exit code `0`, or `2` for an invalid retention (nothing deleted).
 - User reset (PD-35): `bin/console app:user:reset <username>` sends the user back to activation, ends their sessions and prints a new activation link built on `DEFAULT_URI` (`<DEFAULT_URI>/activate/<token>`), shown only once. Exit code `0` on success, `1` for an unknown user or one that cannot be reset (disabled).
 - Backend quality commands run inside the php container: `composer db:test`, `composer test`, `composer test:unit`, `composer analyse`, `composer deptrac`, `composer cs` and `composer check` (runs all of them).
 

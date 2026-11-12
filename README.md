@@ -121,6 +121,16 @@ The `scheduler` service runs it automatically on `INGESTION_SCHEDULE` (daily at 
 
 It prints a summary per supermarket and exits with `0` when every run succeeded, `1` when any failed and `2` for invalid input or configuration. Each run is stored in the `ingestion_run` table and logged on the `ingestion` channel.
 
+### Price history retention
+
+Every run stores a price snapshot per product. Snapshots older than `PRICE_HISTORY_RETENTION_MONTHS` (default `24`) are deleted, except the latest one of each product, so an unavailable product keeps its last known price (PD-46). The `scheduler` service does it on `PRICE_HISTORY_PRUNE_SCHEDULE` (daily at 04:30 Europe/Madrid by default), and you can run it by hand:
+
+```sh
+docker compose exec php bin/console app:catalog:prune-history
+```
+
+It prints how many snapshots it deleted and the cutoff, and exits with `0`, or `2` when `PRICE_HISTORY_RETENTION_MONTHS` is below 1 (nothing is deleted).
+
 ### First admin
 
 A fresh instance has no users. The `php` container prints a one-time setup code in its logs on every start until the first user exists:

@@ -50,4 +50,19 @@ final readonly class DbalPriceSnapshotRepository implements PriceSnapshotReposit
             $types,
         );
     }
+
+    /**
+     * MySQL cannot select from the table a DELETE targets, but it can join a derived table, which it materializes first.
+     * Rows at the latest instant of their product are never deleted, however old.
+     */
+    public function deleteCapturedBefore(\DateTimeImmutable $cutoff): int
+    {
+        return (int) $this->connection->executeStatement(
+            'DELETE s FROM price_snapshot s
+             JOIN (SELECT product_id, MAX(captured_at) AS latest FROM price_snapshot GROUP BY product_id) l
+               ON l.product_id = s.product_id
+             WHERE s.captured_at < :cutoff AND s.captured_at < l.latest',
+            ['cutoff' => DbalDateTime::toDatabase($cutoff)],
+        );
+    }
 }
