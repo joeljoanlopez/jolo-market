@@ -48,7 +48,8 @@ Rationale for each choice and exact pinned versions: [`docs/architecture.md`](do
 jolo-market/
 ├── backend/            # Symfony API, hexagonal architecture
 ├── frontend/           # React + TypeScript SPA (Vite)
-├── docker/             # Dockerfiles and nginx config
+├── deploy/             # Optional auto-deploy (systemd timer) and its bats tests
+├── docker/             # Dockerfiles, nginx config and the bats test image
 ├── docs/
 │   ├── architecture.md # Stack, architecture, domain model, decisions
 │   └── epics/          # Epics with task checklists (progress tracking)
@@ -130,6 +131,34 @@ docker compose exec php bin/console app:catalog:prune-history
 ```
 
 It prints how many snapshots it deleted and the cutoff, and exits with `0`, or `2` when `PRICE_HISTORY_RETENTION_MONTHS` is below 1 (nothing is deleted).
+
+### Auto-deploy (optional)
+
+The server can update itself when a pull request is merged into `main`, without opening ports or installing a GitHub runner: a user systemd timer runs `deploy/auto-deploy.sh` every 5 minutes. When `origin/main` has a new commit whose CI is green, the script fast-forwards to it and runs `docker compose up -d --build`, then `deploy/post-deploy.sh`: `composer install`, the database migrations and a restart of the scheduler and the frontend. A CI that is still running is checked again on the next run, and a red one is not deployed. It never touches a copy on another branch, with uncommitted changes in tracked files or with commits that are not in `origin/main`: it logs why and exits.
+
+It is off by default. To turn it on, on the server:
+
+```sh
+# 1. In the root .env
+AUTO_DEPLOY=true
+
+# 2. Install and start the timer (no sudo; AUTO_DEPLOY_INTERVAL=10min changes the interval)
+deploy/install-auto-deploy.sh
+
+# 3. Let the timer run without an open session
+loginctl enable-linger "$USER"
+```
+
+Requirements: your user can run `docker` without sudo, and either `gh` is installed and logged in or `curl` and `jq` are (the repository is public, so the API is read without a token). The service runs with systemd's default `PATH`; tools installed only in your home folder are not found.
+
+```sh
+systemctl --user list-timers jolo-market-deploy.timer   # next run
+journalctl --user -u jolo-market-deploy.service -f      # logs
+systemctl --user start jolo-market-deploy.service       # check now
+deploy/install-auto-deploy.sh uninstall                 # remove it
+```
+
+With `AUTO_DEPLOY` other than `true` the timer keeps running and does nothing. If anything fails after the merge (compose, dependencies or a migration), it is retried on every run until it succeeds. `docker compose` uses the root `.env`, so a `COMPOSE_FILE` set there is deployed too.
 
 ### First admin
 
@@ -266,6 +295,7 @@ GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on 
 | --- | --- |
 | Backend check | `composer check` inside the same php and mysql containers as development |
 | Frontend check | `npm run check` on the Node version of `frontend/.nvmrc` |
+| Deploy scripts | ShellCheck and the bats tests of `deploy/` (`deploy/test.sh`) |
 | End-to-end | The Docker stack without the scheduler, migrated and loaded with the e2e catalog, plus `npm run test:e2e`, after both checks pass |
 
 ## Development principles

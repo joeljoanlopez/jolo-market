@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Fake loginctl: `loginctl show-user <user> --property=Linger --value` prints $FAKE_LINGER (yes by default).
+printf 'loginctl %s\n' "$*" >>"$CALLS_LOG"
+printf '%s\n' "${FAKE_LINGER:-yes}"

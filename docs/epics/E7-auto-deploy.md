@@ -18,6 +18,6 @@ Related decisions: PD-50, PD-51.
 - [x] E7.1 Add a bats-core test harness in Docker (with ShellCheck) and a CI job that runs it.
 - [x] E7.2 Add `deploy/auto-deploy.sh` with the checks on `AUTO_DEPLOY`, branch, local changes, local commits and CI state, the fast-forward, `docker compose up` and the retry marker.
 - [x] E7.3 Add `deploy/post-deploy.sh`: `composer install`, database migrations, restart the scheduler and the frontend.
-- [ ] E7.4 Add `deploy/install-auto-deploy.sh`, which installs and uninstalls the user systemd units `jolo-market-deploy.service` and `.timer` with the absolute path of the repository.
-- [ ] E7.5 Document `AUTO_DEPLOY` in `.env.example`, and the setup, logs and requirements in the README and the architecture doc.
+- [x] E7.4 Add `deploy/install-auto-deploy.sh`, which installs and uninstalls the user systemd units `jolo-market-deploy.service` and `.timer` with the absolute path of the repository.
+- [x] E7.5 Document `AUTO_DEPLOY` in `.env.example`, and the setup, logs and requirements in the README and the architecture doc.
 - [ ] E7.6 Try it on the server: no-op while disabled, deploy after a merge, a red CI blocks it. *(Done by the product owner.)*
