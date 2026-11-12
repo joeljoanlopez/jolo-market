@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 
 import { formatPrice } from '@/features/catalog/domain/format';
+import { productPath } from '@/features/catalog/domain/productPath';
 import { Button } from '@/shared/ui/atoms/Button/Button';
 import { Checkbox } from '@/shared/ui/atoms/Checkbox/Checkbox';
 import { Text } from '@/shared/ui/atoms/Text/Text';
@@ -37,7 +39,13 @@ export function ListItemRow({
       />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <Text as="span" weight="medium" className={cn(item.checked && 'text-muted line-through')}>
-          {name}
+          {item.type === 'product' && item.product.name !== null ? (
+            <Link to={productPath(item.product.id)} className="underline-offset-2 hover:underline">
+              {name}
+            </Link>
+          ) : (
+            name
+          )}
         </Text>
         <Text as="span" size="sm" tone="muted">
           {t('lists.item.quantity', { count: item.quantity })}

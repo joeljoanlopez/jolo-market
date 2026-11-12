@@ -1,14 +1,30 @@
 import { screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import es from '@/shared/i18n/locales/es.json';
-import { renderWithProviders } from '@/test/render';
+import { renderWithProviders as renderWithoutRouter } from '@/test/render';
 
 import { formatPrice } from '../../domain/format';
 import { ProductCard } from './ProductCard';
 import { aProduct, asShown } from './testProduct';
 
+/** The product name links to its page, so the card needs a router. */
+function renderWithProviders(ui: ReactElement) {
+  return renderWithoutRouter(<MemoryRouter>{ui}</MemoryRouter>);
+}
+
 describe('ProductCard', () => {
+  it('links the product name to the product page (PD-48)', () => {
+    renderWithProviders(<ProductCard product={aProduct({ id: 'p1' })} />);
+
+    expect(screen.getByRole('link', { name: 'Leche entera' })).toHaveAttribute(
+      'href',
+      '/product/p1',
+    );
+  });
+
   it('shows the product with its supermarket, packaging and prices', () => {
     renderWithProviders(<ProductCard product={aProduct()} />);
 

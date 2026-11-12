@@ -1,8 +1,10 @@
 import { screen, within } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import es from '@/shared/i18n/locales/es.json';
-import { renderWithProviders } from '@/test/render';
+import { renderWithProviders as renderWithoutRouter } from '@/test/render';
 
 import { ProductResultList } from './ProductResultList';
 import { aProduct } from './testProduct';
@@ -19,6 +21,11 @@ function highlightedNames(): string[] {
     .getAllByRole('listitem')
     .filter((item) => within(item).queryByText(es.catalog.product.cheapest) !== null)
     .map((item) => within(item).getByRole('heading').textContent);
+}
+
+/** Product names link to their page, so the list needs a router. */
+function renderWithProviders(ui: ReactElement) {
+  return renderWithoutRouter(<MemoryRouter>{ui}</MemoryRouter>);
 }
 
 describe('ProductResultList', () => {

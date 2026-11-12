@@ -126,6 +126,41 @@ describe('ListPageContainer', () => {
     expect(unavailableRow).toHaveTextContent(copy.item.unavailable);
   });
 
+  it('links the name of a product item to its page, but not a text item or a product the catalog no longer knows (PD-48)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = lists.seed({
+      items: [
+        { id: 'a', position: 0, quantity: 1, checked: false, type: 'product', product: MILK },
+        {
+          id: 'b',
+          position: 1,
+          quantity: 1,
+          checked: false,
+          type: 'product',
+          product: {
+            ...MILK,
+            id: 'gone',
+            name: null,
+            brand: null,
+            supermarketId: null,
+            priceCents: null,
+            available: false,
+          },
+        },
+        { id: 'c', position: 2, quantity: 1, checked: false, type: 'text', text: 'pan' },
+      ],
+    });
+    renderList(lists, stored.id);
+
+    const items = await itemList();
+    expect(within(items).getByRole('link', { name: 'Leche entera' })).toHaveAttribute(
+      'href',
+      '/product/product-milk',
+    );
+    expect(within(items).getAllByRole('link')).toHaveLength(1);
+    expect(within(items).getByText(copy.item.unknownProduct)).toBeVisible();
+  });
+
   it('gives the owner the full share link to copy', async () => {
     const lists = new FakeShoppingLists();
     const stored = lists.seed();
