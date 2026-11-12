@@ -17,7 +17,7 @@ Related decisions: PD-6, PD-46 to PD-49 (OQ-2 answered by PD-46).
 - [x] E5.1 Add the `GetPriceHistory` query and handler (unit tests: ordering, range filter, unknown product).
 - [x] E5.2 Add a DBAL read model for snapshots by product and range (integration test).
 - [x] E5.3 Add the `GET /api/products/{id}/price-history` endpoint (functional tests).
-- [ ] E5.4 Add the `app:catalog:prune-history` command and schedule it daily (PD-46: 24 months, the latest snapshot of each product is kept).
+- [x] E5.4 Add the `app:catalog:prune-history` command and schedule it daily (PD-46: 24 months, the latest snapshot of each product is kept).
 
 ### Frontend
 

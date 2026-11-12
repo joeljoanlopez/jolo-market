@@ -50,7 +50,7 @@ services:
       mysql:
         condition: service_healthy
 
-  # Runs scheduled jobs (catalog ingestion, INGESTION_SCHEDULE). Same image and code as php.
+  # Runs scheduled jobs (catalog ingestion, INGESTION_SCHEDULE; price history prune, PRICE_HISTORY_PRUNE_SCHEDULE). Same image and code as php.
   # The time limit makes it restart regularly, so it picks up code and config changes.
   scheduler:
     build:

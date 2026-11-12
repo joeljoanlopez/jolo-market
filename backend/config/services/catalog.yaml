@@ -44,6 +44,9 @@ when@test:
         test.catalog.search_products_handler:
             alias: App\Catalog\Application\SearchProducts\SearchProductsHandler
             public: true
+        test.catalog.prune_price_history_handler:
+            alias: App\Catalog\Application\PrunePriceHistory\PrunePriceHistoryHandler
+            public: true
         test.catalog_http_client:
             alias: catalog.http_client
             public: true
