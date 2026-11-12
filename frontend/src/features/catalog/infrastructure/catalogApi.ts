@@ -2,6 +2,7 @@ import { UnexpectedResponseError } from '@/shared/http/errors';
 import type { HttpClient } from '@/shared/http/httpClient';
 
 import type { ProductCatalog } from '../application/ProductCatalog';
+import type { PriceHistory, PricePoint } from '../domain/priceHistory';
 import type {
   CheapestUnitPriceCents,
   Packaging,
@@ -34,6 +35,23 @@ export function createCatalogApi(http: HttpClient): ProductCatalog {
     async listSupermarkets(options) {
       return list(await http.get('/api/supermarkets', options), 'supermarkets').map(toSupermarket);
     },
+
+    async getPriceHistory(productId, { from, to }, options) {
+      const params = new URLSearchParams();
+      if (from !== undefined) {
+        params.set('from', from);
+      }
+      if (to !== undefined) {
+        params.set('to', to);
+      }
+      const query = params.size === 0 ? '' : `?${params.toString()}`;
+      return toPriceHistory(
+        await http.get(
+          `/api/products/${encodeURIComponent(productId)}/price-history${query}`,
+          options,
+        ),
+      );
+    },
   };
 }
 
@@ -47,6 +65,27 @@ function toSearchPage(body: unknown): ProductSearchPage {
     perPage: integer(json.perPage, 'perPage'),
     total: integer(json.total, 'total'),
     cheapestUnitPriceCents: toCheapest(json.cheapestUnitPriceCents),
+  };
+}
+
+function toPriceHistory(body: unknown): PriceHistory {
+  const json = object(body, 'price history');
+  return {
+    productId: string(json.productId, 'priceHistory.productId'),
+    points: list(json.points, 'priceHistory.points').map(toPricePoint),
+  };
+}
+
+function toPricePoint(value: unknown): PricePoint {
+  const json = object(value, 'price point');
+  const capturedAt = new Date(string(json.capturedAt, 'pricePoint.capturedAt'));
+  if (Number.isNaN(capturedAt.getTime())) {
+    throw unexpected('pricePoint.capturedAt', json.capturedAt);
+  }
+  return {
+    capturedAt,
+    priceCents: integer(json.priceCents, 'pricePoint.priceCents'),
+    unitPrice: nullable(json.unitPrice, toUnitPrice),
   };
 }
 
