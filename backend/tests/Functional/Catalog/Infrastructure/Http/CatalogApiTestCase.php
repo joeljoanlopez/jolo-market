@@ -78,6 +78,17 @@ abstract class CatalogApiTestCase extends WebTestCase
         ], ['id' => ParameterType::BINARY, 'available' => ParameterType::BOOLEAN]);
     }
 
+    protected function seedSnapshot(int $productNumber, string $capturedAt, int $priceCents, ?int $unitPriceCents = null, ?string $unit = null): void
+    {
+        $this->connection->insert('price_snapshot', [
+            'product_id' => BinaryUuid::toDatabase(self::id($productNumber)),
+            'price_cents' => $priceCents,
+            'unit_price_cents' => $unitPriceCents,
+            'unit_price_unit' => $unit,
+            'captured_at' => $capturedAt,
+        ], ['product_id' => ParameterType::BINARY]);
+    }
+
     protected static function id(int $number): string
     {
         return \sprintf('00000000-0000-4000-8000-%012d', $number);
