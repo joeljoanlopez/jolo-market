@@ -44,6 +44,37 @@
       "noPackaging": "Formato no disponible",
       "noUnitPrice": "Sin precio por unidad",
       "cheapest": "Más barato"
+    },
+    "detail": {
+      "loading": "Cargando producto…",
+      "error": "No se ha podido cargar el producto.",
+      "retry": "Reintentar",
+      "unavailable": "No disponible",
+      "notFound": {
+        "title": "Producto no encontrado",
+        "description": "Puede que el enlace no sea correcto o que el producto ya no exista.",
+        "backHome": "Volver al inicio"
+      }
+    },
+    "history": {
+      "title": "Evolución del precio",
+      "periods": "Periodo",
+      "period": {
+        "30d": "30 días",
+        "6m": "6 meses",
+        "1y": "1 año",
+        "all": "Todo"
+      },
+      "loading": "Cargando el historial…",
+      "error": "No se ha podido cargar el historial de precios.",
+      "retry": "Reintentar",
+      "empty": "No hay precios registrados en este periodo.",
+      "summary": "Resumen de precios",
+      "min": "Mínimo",
+      "max": "Máximo",
+      "current": "Actual",
+      "chart": "Precio del {{from}} al {{to}}: entre {{min}} y {{max}}.",
+      "chartSingle": "Precio el {{date}}: {{price}}."
     }
   },
   "auth": {

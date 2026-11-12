@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatPackaging, formatPrice, formatUnitPrice, type UnitSymbols } from './format';
+import {
+  formatDay,
+  formatPackaging,
+  formatPrice,
+  formatUnitPrice,
+  type UnitSymbols,
+} from './format';
 
 // Intl separates the amount and the symbol with a non-breaking space.
 const nbsp = ' ';
@@ -45,5 +51,16 @@ describe('unit symbols', () => {
 
     expect(formatUnitPrice({ cents: 30, unit: 'unit' }, english)).toBe(`0,30${nbsp}€/pc`);
     expect(formatPackaging({ quantity: 6, unit: 'unit' }, english)).toBe('6 pc');
+  });
+});
+
+describe('formatDay', () => {
+  it('writes the day in Madrid as dd/mm/yyyy', () => {
+    expect(formatDay(new Date('2026-11-08T05:00:00Z'))).toBe('08/11/2026');
+  });
+
+  it('uses the Madrid day, which starts before midnight UTC', () => {
+    // 23:30 UTC on 31 October is 00:30 on 1 November in Madrid (UTC+1).
+    expect(formatDay(new Date('2026-10-31T23:30:00Z'))).toBe('01/11/2026');
   });
 });

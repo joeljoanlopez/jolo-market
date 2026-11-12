@@ -25,5 +25,5 @@ Related decisions: PD-6, PD-46 to PD-49 (OQ-2 answered by PD-46).
   - Decided: no library, our own SVG component (PD-49).
 - [x] E5.6 Add pure functions to compute min, max and current values and to collapse equal consecutive points.
   - "Current" is the product's current price (PD-48), so only min and max are computed from the points (`priceRange`).
-- [ ] E5.7 Add a `PriceHistoryChart` presentational component and a product detail container (`/product/:id`).
-- [ ] E5.8 Link the detail view from search results and from list product items.
+- [x] E5.7 Add a `PriceHistoryChart` presentational component and a product detail container (`/product/:id`).
+- [x] E5.8 Link the detail view from search results and from list product items.

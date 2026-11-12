@@ -3,6 +3,9 @@
 -- It replaces only its own rows (external ids starting with "e2e-"), so it can be loaded again.
 -- Search "leche" expects, by PD-33: the L group (4 results) by unit price, then kg (2), then
 -- unit (1), then the product without a unit price. The unavailable one must not appear.
+-- "Leche entera" also has a price history (E5): 0,95 € → 0,99 € → 0,89 € over the last 20 days, so its
+-- page shows a minimum of 0,89 €, a maximum of 0,99 € and a current price of 0,89 €. The dates are relative
+-- to now, so they always fall within the default period of 6 months (PD-48).
 
 DELETE FROM product WHERE external_id LIKE 'e2e-%';
 
@@ -32,3 +35,12 @@ VALUES
     -- Does not match "leche".
     (UUID_TO_BIN('01960000-0000-7000-8000-00000000000a'), 'mercadona', 'e2e-10', 'Yogur natural', 'Hacendado', 'Lácteos', NULL,
      500, 'kg', 120, 240, 'kg', 1, '2026-11-09 05:00:00');
+
+-- Deleting a product deletes its snapshots (ON DELETE CASCADE), so loading this file again starts from scratch.
+INSERT INTO price_snapshot (product_id, price_cents, unit_price_cents, unit_price_unit, captured_at)
+VALUES
+    (UUID_TO_BIN('01960000-0000-7000-8000-000000000001'), 95, 95, 'l', UTC_TIMESTAMP(6) - INTERVAL 20 DAY),
+    (UUID_TO_BIN('01960000-0000-7000-8000-000000000001'), 95, 95, 'l', UTC_TIMESTAMP(6) - INTERVAL 15 DAY),
+    (UUID_TO_BIN('01960000-0000-7000-8000-000000000001'), 99, 99, 'l', UTC_TIMESTAMP(6) - INTERVAL 10 DAY),
+    (UUID_TO_BIN('01960000-0000-7000-8000-000000000001'), 89, 89, 'l', UTC_TIMESTAMP(6) - INTERVAL 5 DAY),
+    (UUID_TO_BIN('01960000-0000-7000-8000-000000000001'), 89, 89, 'l', UTC_TIMESTAMP(6) - INTERVAL 1 DAY);

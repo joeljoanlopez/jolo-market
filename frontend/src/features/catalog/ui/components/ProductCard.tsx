@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 
 import { Text } from '@/shared/ui/atoms/Text/Text';
 
 import { formatPackaging } from '../../domain/format';
 import type { Product } from '../../domain/product';
+import { productPath } from '../../domain/productPath';
 import { useUnitSymbols } from '../useUnitSymbols';
 import { PriceTag } from './PriceTag';
 import { SupermarketBadge } from './SupermarketBadge';
@@ -39,7 +41,9 @@ export function ProductCard({ product, highlighted = false, actions }: ProductCa
       )}
       <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
         <Text as="h2" weight="medium">
-          {product.name}
+          <Link to={productPath(product.id)} className="underline-offset-2 hover:underline">
+            {product.name}
+          </Link>
         </Text>
         {product.brand !== null && (
           <Text as="span" size="sm" tone="muted">
