@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Fake docker: records each call in $CALLS_LOG and the folder it ran in (where Compose looks for compose.yaml
+# and .env) in $CALLS_LOG.cwd. A call whose arguments contain $FAKE_DOCKER_FAIL_ON fails.
+printf 'docker %s\n' "$*" >>"$CALLS_LOG"
+printf '%s\n' "$PWD" >>"$CALLS_LOG.cwd"
+if [[ -n ${FAKE_DOCKER_FAIL_ON:-} && "$*" == *"$FAKE_DOCKER_FAIL_ON"* ]]; then
+    echo "fake docker: failing on purpose" >&2
+    exit 1
+fi

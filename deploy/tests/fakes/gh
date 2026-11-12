@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Fake gh. `gh auth status` exits with $FAKE_GH_AUTH (0 by default). `gh api <path> --jq <filter>` answers
+# with $FAKE_CHECK_RUNS or $FAKE_STATUS (JSON) through the real jq, as GitHub would.
+printf 'gh %s\n' "$*" >>"$CALLS_LOG"
+case $1 in
+    auth) exit "${FAKE_GH_AUTH:-0}" ;;
+    api)
+        path=$2 filter=$4
+        case $path in
+            */check-runs*) printf '%s' "$FAKE_CHECK_RUNS" | jq -r "$filter" ;;
+            */status) printf '%s' "$FAKE_STATUS" | jq -r "$filter" ;;
+            *) echo "fake gh: unexpected path $path" >&2; exit 1 ;;
+        esac
+        ;;
+    *) echo "fake gh: unexpected command $*" >&2; exit 1 ;;
+esac
