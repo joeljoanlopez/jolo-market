@@ -221,6 +221,15 @@ The frontend needs Node 26 (see `frontend/.nvmrc`). Install the dependencies onc
 
 `npm run dev` starts the Vite dev server on port 5173 (the Docker stack already runs it).
 
+### Deploy scripts
+
+The scripts in `deploy/` (auto-deploy, E7) are checked with ShellCheck and tested with bats, both in Docker, so nothing needs to be installed:
+
+```sh
+deploy/test.sh                                # everything
+deploy/test.sh deploy/tests/auto-deploy.bats  # one file
+```
+
 ### End-to-end tests
 
 Playwright runs against a running Docker stack that holds a known catalog, [`backend/tests/Fixtures/e2e/catalog.sql`](backend/tests/Fixtures/e2e/catalog.sql). The journeys expect exactly those products, so run them against a **separate Compose project** with its own database: loading the fixture into your development database would mix it with the real catalog (the fixture only replaces its own `e2e-` rows, but real "leche" products would change the results). Leave the `scheduler` service down, so nothing is ingested from the real supermarkets:

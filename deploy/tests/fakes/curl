@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Fake curl for the GitHub API: answers with $FAKE_CHECK_RUNS or $FAKE_STATUS depending on the URL (last argument).
+url=${*: -1}
+printf 'curl %s\n' "$url" >>"$CALLS_LOG"
+case $url in
+    */check-runs*) printf '%s' "$FAKE_CHECK_RUNS" ;;
+    */status) printf '%s' "$FAKE_STATUS" ;;
+    *) echo "fake curl: unexpected URL $url" >&2; exit 22 ;;
+esac

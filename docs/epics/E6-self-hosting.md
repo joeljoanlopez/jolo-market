@@ -16,6 +16,7 @@ Related decisions: PD-5, PD-9.
 
 - [ ] E6.1 Add multi-stage Dockerfiles: a PHP production image (no dev dependencies, opcache on) and a frontend build stage copied into nginx.
 - [ ] E6.2 Add `compose.prod.yaml` with health checks, restart policies and named volumes.
+  - Auto-deploy (E7) runs `deploy/post-deploy.sh` after each deploy. It is written for the development stack (code mounted from the host): adapt it to the production images here.
 - [ ] E6.3 Add an entrypoint that waits for MySQL and runs migrations.
 - [ ] E6.4 Validate configuration at boot: fail fast with a clear message if `INSTANCE_POSTAL_CODE`, `ENABLED_SUPERMARKETS` or `TOTP_ENCRYPTION_KEY` is missing or invalid (covered by tests).
 - [ ] E6.5 Add an nginx config with SPA fallback, cache headers for static assets and `/api` proxying.

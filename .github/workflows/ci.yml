@@ -69,6 +69,17 @@ jobs:
       - name: npm run check
         run: npm run check
 
+  deploy-scripts:
+    name: Deploy scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      # ShellCheck and the bats tests of deploy/, both in Docker (PD-51).
+      - name: deploy/test.sh
+        run: deploy/test.sh
+
   e2e:
     name: End-to-end (Playwright)
     runs-on: ubuntu-latest
