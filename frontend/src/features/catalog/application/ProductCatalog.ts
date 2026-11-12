@@ -1,3 +1,4 @@
+import type { PriceHistory } from '../domain/priceHistory';
 import type { ProductDetail, ProductSearchPage, Supermarket } from '../domain/product';
 
 export interface SearchProductsParams {
@@ -9,6 +10,12 @@ export interface SearchProductsParams {
   page?: number;
 }
 
+/** Days as YYYY-MM-DD in Europe/Madrid, both inclusive (PD-47). Leave one out for an open end. */
+export interface PriceHistoryRangeParams {
+  from?: string;
+  to?: string;
+}
+
 export interface CallOptions {
   signal?: AbortSignal;
 }
@@ -18,4 +25,9 @@ export interface ProductCatalog {
   searchProducts(params: SearchProductsParams, options?: CallOptions): Promise<ProductSearchPage>;
   getProduct(id: string, options?: CallOptions): Promise<ProductDetail>;
   listSupermarkets(options?: CallOptions): Promise<Supermarket[]>;
+  getPriceHistory(
+    productId: string,
+    range: PriceHistoryRangeParams,
+    options?: CallOptions,
+  ): Promise<PriceHistory>;
 }

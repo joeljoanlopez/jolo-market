@@ -6,7 +6,8 @@ import { I18nextProvider } from 'react-i18next';
 import { testI18n } from './i18n';
 
 export function createTestQueryClient(): QueryClient {
-  return new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  // retryDelay 0: hooks with their own retry policy (useProduct) fail at once instead of backing off.
+  return new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } });
 }
 
 /** Renders a component with the same providers as the app (except the router). */

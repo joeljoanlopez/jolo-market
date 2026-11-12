@@ -159,6 +159,92 @@ describe('catalogApi.getProduct', () => {
   });
 });
 
+describe('catalogApi.getPriceHistory', () => {
+  const historyPath = `${baseUrl}/api/products/${milkJson.id}/price-history`;
+
+  it('maps the points to domain types, oldest first as the API sends them', async () => {
+    server.use(
+      http.get(historyPath, () =>
+        HttpResponse.json({
+          productId: milkJson.id,
+          points: [
+            {
+              capturedAt: '2026-11-08T04:00:00+00:00',
+              priceCents: 125,
+              unitPrice: { cents: 83, unit: 'l' },
+            },
+            { capturedAt: '2026-11-09T04:00:00+00:00', priceCents: 129, unitPrice: null },
+          ],
+        }),
+      ),
+    );
+
+    await expect(api.getPriceHistory(milkJson.id, {})).resolves.toEqual({
+      productId: milkJson.id,
+      points: [
+        {
+          capturedAt: new Date('2026-11-08T04:00:00Z'),
+          priceCents: 125,
+          unitPrice: { cents: 83, unit: 'l' },
+        },
+        { capturedAt: new Date('2026-11-09T04:00:00Z'), priceCents: 129, unitPrice: null },
+      ],
+    });
+  });
+
+  it('sends no range for the whole history', async () => {
+    let query: string | undefined;
+    server.use(
+      http.get(historyPath, ({ request }) => {
+        query = new URL(request.url).search;
+        return HttpResponse.json({ productId: milkJson.id, points: [] });
+      }),
+    );
+
+    await api.getPriceHistory(milkJson.id, {});
+
+    expect(query).toBe('');
+  });
+
+  it('sends the range it is given', async () => {
+    let params: URLSearchParams | undefined;
+    server.use(
+      http.get(historyPath, ({ request }) => {
+        params = new URL(request.url).searchParams;
+        return HttpResponse.json({ productId: milkJson.id, points: [] });
+      }),
+    );
+
+    await api.getPriceHistory(milkJson.id, { from: '2026-05-12', to: '2026-11-12' });
+
+    expect(params?.get('from')).toBe('2026-05-12');
+    expect(params?.get('to')).toBe('2026-11-12');
+  });
+
+  it('lets a 404 reach the caller as a NotFoundError', async () => {
+    server.use(
+      http.get(`${baseUrl}/api/products/unknown/price-history`, () => problem(404, 'Not Found')),
+    );
+
+    await expect(api.getPriceHistory('unknown', {})).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('rejects a point with an invalid date with an UnexpectedResponseError', async () => {
+    server.use(
+      http.get(historyPath, () =>
+        HttpResponse.json({
+          productId: milkJson.id,
+          points: [{ capturedAt: 'yesterday', priceCents: 125, unitPrice: null }],
+        }),
+      ),
+    );
+
+    await expect(api.getPriceHistory(milkJson.id, {})).rejects.toBeInstanceOf(
+      UnexpectedResponseError,
+    );
+  });
+});
+
 describe('catalogApi.listSupermarkets', () => {
   it('maps the supermarkets in the order of the API', async () => {
     const supermarkets = [

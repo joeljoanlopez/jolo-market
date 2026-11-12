@@ -49,6 +49,10 @@ class FakeProductCatalog implements ProductCatalog {
   listSupermarkets(): never {
     throw new Error('Not used by useProductSearch.');
   }
+
+  getPriceHistory(): never {
+    throw new Error('Not used by useProductSearch.');
+  }
 }
 
 let catalog: FakeProductCatalog;
