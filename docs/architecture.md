@@ -71,6 +71,10 @@ Decisions confirmed by the product owner. Changing any of them requires asking f
 | PD-43 | **Concurrent list edits: last write wins, per operation.** Operations state the intent (check sets `checked = true`, it never toggles), so two people checking the same item agree. Two edits of the same field keep the last one; edits to different items or fields never undo each other, because saving a list checks the `version` it was loaded with and the API retries the operation on a fresh copy when someone else saved first. The user never sees a conflict error. *(Answers OQ-3, confirmed by the product owner on 2026-11-11.)* |
 | PD-44 | **The owner can delete a list; a member can leave it; ownership cannot be transferred.** Deleting asks for confirmation and removes the list for everyone: it disappears from every "My lists" and anyone who has it open sees "list not found" (`404`). A member can leave on their own and can join again later through the link while it is valid. The owner cannot leave their own list, only delete it. *(Answers OQ-4, confirmed by the product owner on 2026-11-11.)* |
 | PD-45 | **List details.** A list name is required, 1 to 80 characters after trimming. A free-text item has 1 to 120 characters after trimming. A quantity is a whole number from 1 to 99, 1 by default. Adding a product that is already in the list and unchecked adds the quantity to that item instead of creating another one (above 99 → `422`). New items go to the end; the list shows unchecked items first, in their order, then checked ones. The total per supermarket adds `price × quantity` of every **available** product item, checked or not (the estimated cost of the whole list). A removed member can join again while the link is valid (the owner regenerates it to stop that). *(Confirmed by the product owner on 2026-11-11.)* |
+| PD-46 | **Price history retention: 24 months.** Snapshots older than `PRICE_HISTORY_RETENTION_MONTHS` (default `24`) are deleted by `app:catalog:prune-history`, which the scheduler runs daily at `PRICE_HISTORY_PRUNE_SCHEDULE` (cron in Europe/Madrid, default `30 4 * * *`, before the ingestion) and the operator can also run by hand. The **latest snapshot of each product is always kept**, however old, so an unavailable product still shows its last known price. *(Answers OQ-2, confirmed by the product owner on 2026-11-12.)* |
+| PD-47 | **Price history range.** `GET /api/products/{id}/price-history` takes optional `from` and `to` dates (`YYYY-MM-DD`), both **inclusive** and read as days in **Europe/Madrid**. Without them it returns the whole history. A malformed date or `from` after `to` is a `422`; an unknown product a `404`. *(Confirmed by the product owner on 2026-11-12.)* |
+| PD-48 | **Product detail page** `/product/:id`: image, name, brand, supermarket, packaging, price, an "unavailable" flag, "Añadir a una lista" (available products only) and the price history. The chart shows the **shelf price**. A range selector offers "30 días", "6 meses" (default), "1 año" and "Todo"; minimum and maximum are those of the selected range, and "current" is the product's current price. With no snapshot in the range it says so (no minimum or maximum); one snapshot is drawn as a single point. The time axis goes from the first to the last snapshot of the range. The **product name** links to this page from search results and from the product items of a list (not for a product the catalog no longer knows). *(Confirmed by the product owner on 2026-11-12.)* |
+| PD-49 | **The price chart is our own SVG component** (`PriceHistoryChart`), with no chart library: a step line of the price over time, colored with theme tokens and testable in jsdom. *(E5.5, confirmed by the product owner on 2026-11-12.)* |
 
 ## Stack
 
@@ -219,7 +223,7 @@ How it is modelled:
 **Ports (Catalog Domain):**
 
 - `ProductRepository`: `save` (insert or update), `findBySupermarketAndExternalId`, `findAvailableNotSeenSince(supermarketId, instant)` (the products a run did not see). Search is added in E2.
-- `PriceSnapshotRepository`: `append(...snapshots)` in one batch. History by product is added in E5.
+- `PriceSnapshotRepository`: `append(...snapshots)` in one batch. The history of a product is read through the application read model `PriceHistoryReadModel` (E5).
 - `SupermarketCatalogSource`: `supermarketId()` and `fetchCatalog(PostalCode): iterable<SourceProduct>`. **One adapter per chain.** `SourceProduct` carries plain values (external id, name, price in cents, packaging text, brand, category segments, image URL and, for approximate sizes only, a reference unit price in cents with its unit `kg`/`l`/`unit`), so one malformed product does not stop a source from returning the rest of its catalog.
 
 `Product` is created with `register` and changed only through `updateFromSource` (new details, price and packaging; makes it available again) and `markUnavailable`. `Supermarket` is created with `create(id, name)`; `SupermarketId` is a slug of lowercase letters, digits and inner hyphens.
@@ -313,7 +317,7 @@ backend/
 │   │   │   ├── SearchProducts/  # SearchProductsQuery + handler + result DTO
 │   │   │   ├── GetProduct/      # GetProductQuery + handler + ProductView; GetProductsHandler (query API for lists)
 │   │   │   ├── ListSupermarkets/ # ListSupermarketsQuery + handler
-│   │   │   └── GetPriceHistory/
+│   │   │   └── GetPriceHistory/ # GetPriceHistoryQuery (PriceHistoryRange, PD-47) + handler + PriceHistory DTO
 │   │   └── Infrastructure/
 │   │       ├── Persistence/Dbal/
 │   │       ├── Source/Mercadona/
@@ -498,7 +502,21 @@ Adapter tests run against **recorded fixtures**. Tests never call a real superma
 
 `GET /api/supermarkets` → `ListSupermarketsHandler` returns the supermarkets of `ENABLED_SUPERMARKETS` (port `EnabledSupermarkets`, PD-24) in that order, with their names from the `supermarket` table (port `SupermarketNames`, adapter `DbalSupermarketNames`): `[{"id":"mercadona","name":"Mercadona"}, …]`. An enabled slug without a `supermarket` row is left out.
 
-These three endpoints are **public** until E3.21 puts them behind login.
+`GET /api/products/{id}/price-history` → `GetPriceHistoryHandler` (`GetPriceHistoryQuery`; port `PriceHistoryReadModel`, adapter `DbalPriceHistoryReadModel`) returns the snapshots of the product oldest first (E5, PD-47). The query turns `from` and `to` into a `PriceHistoryRange`: the start of `from` and the start of the day after `to`, in Europe/Madrid, as UTC instants (`captured_at >= from AND captured_at < before`, an index range scan on `(product_id, captured_at)`); a malformed day or `from` after `to` is an `InvalidPriceHistoryRange` (422). An unknown or malformed product id is a `ProductNotFound` (404), checked through `ProductViewReadModel`, so an unavailable product keeps its history (PD-22).
+
+```json
+{
+  "productId": "0190f3c2-…",
+  "points": [
+    { "capturedAt": "2026-11-08T04:00:00+00:00", "priceCents": 125, "unitPrice": { "cents": 83, "unit": "l" } },
+    { "capturedAt": "2026-11-09T04:00:00+00:00", "priceCents": 129, "unitPrice": null }
+  ]
+}
+```
+
+`capturedAt` is UTC (ISO 8601). `unitPrice` is `null` when the packaging was unknown at that run.
+
+These endpoints are **public** until E3.21 puts them behind login.
 
 ### 3. User onboarding
 
@@ -589,7 +607,7 @@ All routes require a fully authenticated session (login + 2FA) except those mark
 | GET | `/api/supermarkets` | enabled supermarkets, in `ENABLED_SUPERMARKETS` order: `[{id, name}]` |
 | GET | `/api/products?q=&supermarket=&page=` | search available products, grouped by unit and ranked by unit price (PD-33), 20 per page. `q` (≥ 2 characters after trimming) is required; `page` ≥ 1 defaults to 1; `supermarket` must be enabled. Invalid input → `422` |
 | GET | `/api/products/{id}` | product detail with `available`, also for unavailable products (PD-22). Unknown or malformed id → `404` |
-| GET | `/api/products/{id}/price-history` | Price snapshots |
+| GET | `/api/products/{id}/price-history?from=&to=` | price snapshots of the product, oldest first, also for unavailable products: `{productId, points: [{capturedAt, priceCents, unitPrice}]}`. `from`/`to` are optional `YYYY-MM-DD` days in Europe/Madrid, both inclusive (PD-47). Malformed date or `from` after `to` → `422`; unknown or malformed id → `404` |
 | GET | `/api/lists` | Lists the current user owns or is a member of: `[{id, name, role, ownerUsername, itemCount, updatedAt}]` (`role` is `owner` or `member`), most recently updated first |
 | POST | `/api/lists` | `{name}` (PD-45) → `201 {id}`; the current user is the owner. Invalid name → `422` |
 | POST | `/api/lists/join/{shareToken}` | Join a list through its secret link → `200 {id}` (idempotent; the owner joining is a no-op). Unknown, malformed or revoked token → `404` |
@@ -751,8 +769,6 @@ Symfony variables (`backend/.env`, committed with non-secret defaults; real valu
 
 These have **not** been decided. Implementation must stop and ask before coding any of them.
 
-| ID | Question | Raised in |
-| --- | --- | --- |
-| OQ-2 | Price history retention: keep forever, or downsample/prune after N months? | E5 |
+None right now.
 
 Once answered, move each item to [Product decisions](#product-decisions) with a new `PD-n` id.

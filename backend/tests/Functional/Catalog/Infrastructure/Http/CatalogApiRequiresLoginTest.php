@@ -21,6 +21,7 @@ final class CatalogApiRequiresLoginTest extends CatalogApiTestCase
     {
         yield 'search' => ['/api/products?q=leche'];
         yield 'product detail' => ['/api/products/'.self::id(1)];
+        yield 'price history' => ['/api/products/'.self::id(1).'/price-history'];
         yield 'supermarkets' => ['/api/supermarkets'];
     }
 

@@ -167,6 +167,7 @@ Search and product endpoints. They need a logged-in session, like every other ro
 curl -b jar 'http://localhost:8080/api/supermarkets'                                 # enabled supermarkets
 curl -b jar 'http://localhost:8080/api/products?q=leche%20entera&supermarket=aldi&page=1'  # search, 20 per page
 curl -b jar 'http://localhost:8080/api/products/<id>'                                 # product detail
+curl -b jar 'http://localhost:8080/api/products/<id>/price-history?from=2026-10-01&to=2026-11-12'  # price snapshots, oldest first; from/to optional
 ```
 
 ### Shopping list API
