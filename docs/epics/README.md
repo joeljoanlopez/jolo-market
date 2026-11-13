@@ -12,6 +12,7 @@ Progress tracking for jolo-market. Each epic file lists its tasks as checkboxes.
 | [E5 — Price history](E5-price-history.md) | Expose and chart price evolution | E1 | Done |
 | [E6 — Self-hosting](E6-self-hosting.md) | Production compose, backups, operator docs | E0–E4 | Done |
 | [E7 — Auto-deploy](E7-auto-deploy.md) | Optional self-update of the server after a merge to `main` with a green CI | E0 | Done |
+| [E8 — Offline development environment](E8-offline-dev-environment.md) | Dummy catalog sources, price history backfill and dummy users, so dev works without internet | E1, E3, E5 | Not started |
 
 E2 can be built before E3. Its endpoints are put behind login in task E3.21.
 
