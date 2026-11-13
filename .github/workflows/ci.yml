@@ -80,6 +80,21 @@ jobs:
       - name: deploy/test.sh
         run: deploy/test.sh
 
+  # E6.8: the production stack builds (PHP without dev dependencies, the SPA build inside nginx).
+  production-images:
+    name: Production images
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: docker compose build
+        run: docker compose -f compose.prod.yaml build
+        env:
+          # Required by compose.prod.yaml even to build; nothing runs here.
+          APP_SECRET: ci-build-only
+
   e2e:
     name: End-to-end (Playwright)
     runs-on: ubuntu-latest

@@ -728,7 +728,19 @@ flowchart LR
 
 In development, a `frontend` service runs the Vite dev server (HMR), and nginx proxies to it instead of serving the static build.
 
-Configuration lives in `.env` (`APP_SECRET`, `DATABASE_URL`, `INSTANCE_POSTAL_CODE`, `ENABLED_SUPERMARKETS`, `INGESTION_SCHEDULE`, `PRICE_HISTORY_RETENTION_MONTHS`, `PRICE_HISTORY_PRUNE_SCHEDULE`, `TOTP_ENCRYPTION_KEY`). TLS is terminated by the user's own reverse proxy.
+Configuration lives in `.env` (`APP_SECRET`, `DATABASE_URL`, `INSTANCE_POSTAL_CODE`, `ENABLED_SUPERMARKETS`, `INGESTION_SCHEDULE`, `PRICE_HISTORY_RETENTION_MONTHS`, `PRICE_HISTORY_PRUNE_SCHEDULE`, `TOTP_ENCRYPTION_KEY`).
+
+### Production stack
+
+`compose.prod.yaml` (E6) has the same project name (`jolo-market`) and `mysql-data` volume as `compose.yaml`, so switching stacks keeps the database. Every service restarts `unless-stopped`.
+
+- Images are built from the repository root (`.dockerignore` keeps out `.git`, `vendor/`, `node_modules/`, the root `.env`, `backend/.env.local` and the public keys of `backend/.env.dev` and `backend/.env.test`). `docker/php/Dockerfile` has a `dev` target (`compose.yaml`) and a `prod` target: Composer dependencies without dev packages and an authoritative classmap, code owned by root and read-only for php-fpm, `var/` writable, `APP_ENV=prod`, the Symfony cache warmed at build time and OPcache without timestamp checks (`docker/php/prod.ini`). `docker/nginx/Dockerfile` builds the SPA with Node (`npm run build`) and copies `dist/` into nginx.
+- Configuration comes from the root `.env` only: the code is baked into the image, so `backend/.env.local` is not used. Compose passes `APP_SECRET` (required: Compose refuses to start without it), `DATABASE_URL` (built from the MySQL variables), and `DEFAULT_URI`, `INSTANCE_POSTAL_CODE`, `ENABLED_SUPERMARKETS`, `TOTP_ENCRYPTION_KEY`, `CATALOG_HTTP_USER_AGENT`, `INGESTION_SCHEDULE`, `PRICE_HISTORY_RETENTION_MONTHS`, `PRICE_HISTORY_PRUNE_SCHEDULE` and `SYMFONY_TRUSTED_PROXIES` only when the `.env` sets them; otherwise the defaults of `backend/.env` apply.
+- `docker/php/entrypoint.sh` (php and scheduler) first runs `bin/console app:config:check`, which stops the container with one message per missing or invalid variable (E6.4): `INSTANCE_POSTAL_CODE` (a valid Spanish postal code), `ENABLED_SUPERMARKETS` (slugs, each with a catalog adapter) and `TOTP_ENCRYPTION_KEY` (32 bytes in base64). Each context implements `Shared\Infrastructure\Configuration\ConfigurationCheck` (`CatalogConfigurationCheck`, `IdentityConfigurationCheck`), reusing the parsing and validation of `EnvIngestionSettings` and `SodiumSecretEncrypter`. For `php-fpm` it then waits up to 60 s for MySQL (`dbal:run-sql "SELECT 1"`), runs `doctrine:migrations:migrate --allow-no-migration` and `app:setup:ensure-code` (PD-14) before starting php-fpm.
+- Health checks: mysql (`mysqladmin ping`), php (php-fpm accepts connections on port 9000, which only happens after the migrations) and nginx (`GET /`). nginx and the scheduler start once php is healthy.
+- nginx (`docker/nginx/prod.conf`): `/api` goes to Symfony's front controller in the php container; files under `/assets/` (hashed by Vite) are cached for a year (`immutable`); any other path falls back to `index.html` with `Cache-Control: no-cache`; any other `.php` path is a 404. It appends the client address to `X-Forwarded-For`, so with `SYMFONY_TRUSTED_PROXIES=private_ranges` Symfony sees the real client IP (login rate limit) and the `https` scheme of a TLS proxy (secure cookies).
+- Backups (E6.6): `deploy/backup.sh [directory]` writes `jolo-market-<UTC timestamp>.sql.gz` (default `backups/`, git-ignored) with `mysqldump --single-transaction --set-gtid-purged=OFF --routines --triggers` run as root inside the mysql container (the application user lacks the `RELOAD`/`FLUSH_TABLES` privilege it needs). A failed dump leaves no file and exits `1`. Restore: see the README.
+- CI job "Production images" builds `compose.prod.yaml` on every push to `main` (E6.8). TLS is terminated by the user's own reverse proxy.
 
 ### Development environment
 
@@ -741,6 +753,8 @@ Configuration lives in `.env` (`APP_SECRET`, `DATABASE_URL`, `INSTANCE_POSTAL_CO
 | `UID`, `GID` | Host user and group the php container runs as, so files written through the bind mount stay yours. |
 | `INSTALL_XDEBUG` | Build argument: `true` installs Xdebug in the php image (rebuild after changing it). |
 | `XDEBUG_MODE` | Xdebug mode at runtime (`off`, `debug`, `coverage`, `develop`). |
+| `COMPOSE_FILE` | Compose files to use. `compose.prod.yaml` selects the production stack; auto-deploy requires it (PD-52). |
+| `APP_SECRET`, `DEFAULT_URI`, `INSTANCE_POSTAL_CODE`, `ENABLED_SUPERMARKETS`, `TOTP_ENCRYPTION_KEY`, `CATALOG_HTTP_USER_AGENT`, `INGESTION_SCHEDULE`, `PRICE_HISTORY_RETENTION_MONTHS`, `PRICE_HISTORY_PRUNE_SCHEDULE`, `SYMFONY_TRUSTED_PROXIES` | Production stack only: passed to the php and scheduler containers (see [Production stack](#production-stack)). In development they live in `backend/.env.local`. |
 | `AUTO_DEPLOY` | `true` turns on the auto-deploy of `deploy/` (E7, PD-50); anything else, or unset, keeps it off. Default `false`. Read by the scripts, not by Compose. |
 
 Symfony variables (`backend/.env`, committed with non-secret defaults; real values in `backend/.env.local`):
