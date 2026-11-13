@@ -10,8 +10,8 @@ use App\Catalog\Domain\ValueObject\PostalCode;
 use App\Catalog\Domain\ValueObject\SupermarketId;
 
 /**
- * Reads INSTANCE_POSTAL_CODE and ENABLED_SUPERMARKETS. Values are validated when used,
- * so a wrong value fails the ingestion command with a clear message instead of the whole container.
+ * Reads INSTANCE_POSTAL_CODE and ENABLED_SUPERMARKETS. Values are validated when used, so a wrong value fails the
+ * ingestion command with a clear message; the production entrypoint checks them at boot (app:config:check, E6.4).
  * Search reads the same ENABLED_SUPERMARKETS (PD-24).
  */
 final readonly class EnvIngestionSettings implements IngestionSettings, EnabledSupermarkets
