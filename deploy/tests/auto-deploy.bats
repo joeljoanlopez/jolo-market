@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# E7.2: deploy/auto-deploy.sh (PD-50).
+# E7.2: deploy/auto-deploy.sh (PD-50), on the production stack only (PD-52).
 
 load test_helper
 
@@ -37,7 +37,7 @@ setup() {
     [ -z "$(docker_calls)" ]
 }
 
-@test "it deploys a new commit with a green CI: fast-forward, compose up, then the post-deploy steps" {
+@test "it deploys a new commit with a green CI: fast-forward, then compose up waiting for a healthy stack" {
     local sha
     sha=$(merge_new_commit)
 
@@ -45,9 +45,43 @@ setup() {
 
     [ "$status" -eq 0 ]
     [ "$(server_head)" = "$sha" ]
-    [ "$(docker_calls | head -n 1)" = "docker compose up -d --build --remove-orphans" ]
-    [[ $(docker_calls) == *"doctrine:migrations:migrate"* ]]
+    [ "$(docker_calls)" = "docker compose up -d --build --remove-orphans --wait" ]
     [[ $output == *"Deployed ${sha:0:7}"* ]]
+}
+
+@test "it refuses to deploy unless COMPOSE_FILE selects the production stack" {
+    printf 'AUTO_DEPLOY=true\n' >"$SERVER/.env"
+    merge_new_commit >/dev/null
+    local before
+    before=$(server_head)
+
+    run auto_deploy
+
+    [ "$status" -eq 1 ]
+    [ "$(server_head)" = "$before" ]
+    [ -z "$(calls)" ]
+    [[ $output == *"COMPOSE_FILE=compose.prod.yaml"* ]]
+}
+
+@test "it refuses the development stack" {
+    printf 'AUTO_DEPLOY=true\nCOMPOSE_FILE=compose.yaml\n' >"$SERVER/.env"
+    merge_new_commit >/dev/null
+
+    run auto_deploy
+
+    [ "$status" -eq 1 ]
+    [ -z "$(calls)" ]
+}
+
+@test "it accepts the production stack together with other Compose files" {
+    printf 'AUTO_DEPLOY=true\nCOMPOSE_FILE="compose.prod.yaml:compose.override.yaml"\n' >"$SERVER/.env"
+    local sha
+    sha=$(merge_new_commit)
+
+    run auto_deploy
+
+    [ "$status" -eq 0 ]
+    [ "$(server_head)" = "$sha" ]
 }
 
 @test "it asks GitHub for the CI of the new commit of this repository" {
@@ -60,7 +94,7 @@ setup() {
 }
 
 @test "it reads AUTO_DEPLOY without running the .env: quotes, spaces and the last assignment count" {
-    printf 'AUTO_DEPLOY=false\nINGESTION_SCHEDULE=0 5 * * *\n  AUTO_DEPLOY = "true"  \n' >"$SERVER/.env"
+    printf 'AUTO_DEPLOY=false\nCOMPOSE_FILE=compose.prod.yaml\nINGESTION_SCHEDULE=0 5 * * *\n  AUTO_DEPLOY = "true"  \n' >"$SERVER/.env"
     local sha
     sha=$(merge_new_commit)
 
@@ -212,29 +246,13 @@ setup() {
     run auto_deploy
 
     [ "$status" -eq 0 ]
-    [ "$(docker_calls | head -n 1)" = "docker compose up -d --build --remove-orphans" ]
+    [ "$(docker_calls)" = "docker compose up -d --build --remove-orphans --wait" ]
     [[ $output == *"Deployed ${sha:0:7}"* ]]
 
     : >"$CALLS_LOG"
     run auto_deploy
 
     [ -z "$(docker_calls)" ]
-}
-
-@test "a failed post-deploy step (a migration) fails the run and is retried on the next one" {
-    merge_new_commit >/dev/null
-    export FAKE_DOCKER_FAIL_ON=doctrine:migrations:migrate
-
-    run auto_deploy
-
-    [ "$status" -eq 1 ]
-
-    unset FAKE_DOCKER_FAIL_ON
-    : >"$CALLS_LOG"
-    run auto_deploy
-
-    [ "$status" -eq 0 ]
-    [[ $(docker_calls) == *"doctrine:migrations:migrate"* ]]
 }
 
 @test "a run exits at once while another one holds the lock" {

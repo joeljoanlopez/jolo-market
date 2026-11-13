@@ -134,13 +134,14 @@ It prints how many snapshots it deleted and the cutoff, and exits with `0`, or `
 
 ### Auto-deploy (optional)
 
-The server can update itself when a pull request is merged into `main`, without opening ports or installing a GitHub runner: a user systemd timer runs `deploy/auto-deploy.sh` every 5 minutes. When `origin/main` has a new commit whose CI is green, the script fast-forwards to it and runs `docker compose up -d --build`, then `deploy/post-deploy.sh`: `composer install`, the database migrations and a restart of the scheduler and the frontend. A CI that is still running is checked again on the next run, and a red one is not deployed. It never touches a copy on another branch, with uncommitted changes in tracked files or with commits that are not in `origin/main`: it logs why and exits.
+The server can update itself when a pull request is merged into `main`, without opening ports or installing a GitHub runner: a user systemd timer runs `deploy/auto-deploy.sh` every 5 minutes. When `origin/main` has a new commit whose CI is green, the script fast-forwards to it and runs `docker compose up -d --build --wait` on the [production stack](#self-hosting-production): the new images are built, the php container applies the database migrations when it starts, and the deploy succeeds once every health check passes. A CI that is still running is checked again on the next run, and a red one is not deployed. It never touches a copy on another branch, with uncommitted changes in tracked files or with commits that are not in `origin/main`: it logs why and exits.
 
 It is off by default. To turn it on, on the server:
 
 ```sh
-# 1. In the root .env
+# 1. In the root .env (auto-deploy only deploys the production stack)
 AUTO_DEPLOY=true
+COMPOSE_FILE=compose.prod.yaml
 
 # 2. Install and start the timer (no sudo; AUTO_DEPLOY_INTERVAL=10min changes the interval)
 deploy/install-auto-deploy.sh
@@ -158,7 +159,7 @@ systemctl --user start jolo-market-deploy.service       # check now
 deploy/install-auto-deploy.sh uninstall                 # remove it
 ```
 
-With `AUTO_DEPLOY` other than `true` the timer keeps running and does nothing. If anything fails after the merge (compose, dependencies or a migration), it is retried on every run until it succeeds. `docker compose` uses the root `.env`, so a `COMPOSE_FILE` set there is deployed too.
+With `AUTO_DEPLOY` other than `true` the timer keeps running and does nothing. If `COMPOSE_FILE` does not list `compose.prod.yaml`, it logs why and fails without merging anything. If anything fails after the merge (a build, the configuration check or a migration), it is retried on every run until it succeeds. Other Compose files in `COMPOSE_FILE` (for example `compose.prod.yaml:compose.override.yaml`) are deployed too.
 
 ### First admin
 

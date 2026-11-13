@@ -2,7 +2,7 @@
 # Checks the deploy/ scripts with ShellCheck and runs their bats tests, both in Docker (PD-51).
 #
 #   deploy/test.sh                                # everything
-#   deploy/test.sh deploy/tests/post-deploy.bats  # one test file (any bats arguments)
+#   deploy/test.sh deploy/tests/auto-deploy.bats  # one test file (any bats arguments)
 
 set -euo pipefail
 

@@ -37,7 +37,7 @@ setup_repos() {
     git -C "$DEV" push --quiet origin main
 
     git clone --quiet "$GITHUB_URL" "$SERVER"
-    printf 'AUTO_DEPLOY=true\n' >"$SERVER/.env"
+    printf 'AUTO_DEPLOY=true\nCOMPOSE_FILE=compose.prod.yaml\n' >"$SERVER/.env"
 
     PATH="/code/deploy/tests/fakes:$PATH"
     ci_green
