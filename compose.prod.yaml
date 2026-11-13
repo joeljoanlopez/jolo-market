@@ -46,6 +46,8 @@ services:
     build: *backend-build
     restart: unless-stopped
     environment: *backend-environment
+    volumes:
+      - php-sessions:/var/www/backend/var/sessions
     healthcheck:
       # php-fpm accepts connections only after the entrypoint has migrated the database.
       test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1', 9000) ? 0 : 1);"]
@@ -89,3 +91,5 @@ services:
 
 volumes:
   mysql-data:
+  # Login sessions, kept across deploys (PD-37).
+  php-sessions:

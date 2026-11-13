@@ -160,7 +160,7 @@ systemctl --user start jolo-market-deploy.service       # check now
 deploy/install-auto-deploy.sh uninstall                 # remove it
 ```
 
-With `AUTO_DEPLOY` other than `true` the timer keeps running and does nothing. If `COMPOSE_FILE` does not list `compose.prod.yaml`, it logs why and fails without merging anything. If anything fails after the merge (a build, the configuration check or a migration), it is retried on every run until it succeeds. Other Compose files in `COMPOSE_FILE` (for example `compose.prod.yaml:compose.override.yaml`) are deployed too.
+With `AUTO_DEPLOY` other than `true` the timer keeps running and does nothing. If `COMPOSE_FILE` does not list `compose.prod.yaml`, or also lists `compose.yaml`, it logs why and fails without merging anything. A stack that is not healthy after 10 minutes fails the run. If anything fails after the merge (a build, the configuration check or a migration), it is retried on every run until it succeeds. Other Compose files in `COMPOSE_FILE` (for example `compose.prod.yaml:compose.override.yaml`) are deployed too.
 
 ### First admin
 
@@ -309,11 +309,12 @@ GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on 
 
 ```sh
 git clone https://github.com/joeljoanlopez/jolo-market.git && cd jolo-market
-cp .env.example .env    # then edit it: see the reference below
+cp .env.example .env
+echo "COMPOSE_FILE=compose.prod.yaml" >> .env   # then set the rest: see the reference below
 docker compose up -d --build --wait
 ```
 
-With `COMPOSE_FILE=compose.prod.yaml` in the `.env`, every `docker compose` command (including the ones below) uses the production stack. Without it, add `-f compose.prod.yaml` to each one.
+`COMPOSE_FILE=compose.prod.yaml` makes every `docker compose` command (including the ones below) use the production stack; without it they start the development stack. Never list `compose.yaml` in it as well: its bind mounts would hide the code inside the production images.
 
 On start the php container checks the configuration, waits for MySQL, applies the database migrations and starts php-fpm. A missing or invalid `INSTANCE_POSTAL_CODE`, `ENABLED_SUPERMARKETS` or `TOTP_ENCRYPTION_KEY` stops it with a message that names the variable, and `up --wait` reports the container as unhealthy:
 
@@ -429,7 +430,7 @@ On a new server, install as above with the same `.env` first, then restore.
 
 ### Switching from the development stack
 
-Both stacks share the project name and the `mysql-data` volume, so the database is kept. Move every value of `backend/.env.local` that production needs (see the reference above) to the root `.env`, add `COMPOSE_FILE=compose.prod.yaml`, and run `docker compose up -d --build --remove-orphans --wait` (`--remove-orphans` removes the Vite `frontend` container). Never run `docker compose down -v`: it deletes the database.
+Both stacks share the project name and the `mysql-data` volume, so the database is kept. Move every value of `backend/.env.local` that production needs (see the reference above) to the root `.env`, add `COMPOSE_FILE=compose.prod.yaml`, and run `docker compose up -d --build --remove-orphans --wait` (`--remove-orphans` removes the Vite `frontend` container). Never run `docker compose down -v`: it deletes the database. Users log in once more after the switch: development kept sessions inside the container, production keeps them in the `php-sessions` volume.
 
 ## Development principles
 

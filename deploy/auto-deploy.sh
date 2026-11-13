@@ -30,14 +30,18 @@ env_value() {
     printf '%s' "$line"
 }
 
-# True when a COMPOSE_FILE value lists compose.prod.yaml, alone or with other files (separated by ':').
+# True when a COMPOSE_FILE value lists compose.prod.yaml, alone or with override files (separated by ':'), and not
+# compose.yaml: merged in, its bind mounts would hide the code baked into the production images.
 selects_production_stack() {
-    local file files
+    local file files production=false
     IFS=: read -r -a files <<<"$1"
     for file in "${files[@]}"; do
-        [[ $file == compose.prod.yaml ]] && return 0
+        case $file in
+            compose.prod.yaml) production=true ;;
+            compose.yaml) return 1 ;;
+        esac
     done
-    return 1
+    [[ $production == true ]]
 }
 
 # owner/name of the origin remote, over SSH or HTTPS.
@@ -179,11 +183,12 @@ main() {
 }
 
 # Rebuilds the containers of the new commit and waits until they are healthy (configuration valid, migrations
-# applied). Until that succeeds, the commit stays in the pending marker so the next run tries again.
+# applied). A container that keeps restarting may never be reported as failed, so the wait is bounded: a hung run
+# would hold the lock for good. Until it succeeds, the commit stays in the pending marker and the next run retries it.
 deploy() {
     local sha=$1 pending_file=$2
     printf '%s\n' "$sha" >"$pending_file"
-    if ! docker compose up -d --build --remove-orphans --wait; then
+    if ! docker compose up -d --build --remove-orphans --wait --wait-timeout 600; then
         err "docker compose up failed with ${sha:0:7}, or the stack did not become healthy; trying again on the next run."
         return 1
     fi

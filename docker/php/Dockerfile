@@ -62,7 +62,9 @@ COPY docker/php/prod.ini /usr/local/etc/php/conf.d/zz-prod.ini
 COPY docker/php/entrypoint.sh /usr/local/bin/app-entrypoint
 # The code belongs to root and is read-only for php-fpm; only var/ (cache, sessions) is writable.
 COPY --from=vendor /var/www/backend /var/www/backend
+# var/sessions is the mount point of the sessions volume: a new volume takes its owner from the image.
 RUN bin/console cache:warmup --no-interaction \
+    && mkdir -p var/sessions \
     && chown -R www-data:www-data var
 
 USER www-data

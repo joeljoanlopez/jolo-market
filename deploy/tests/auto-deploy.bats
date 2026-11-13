@@ -45,7 +45,7 @@ setup() {
 
     [ "$status" -eq 0 ]
     [ "$(server_head)" = "$sha" ]
-    [ "$(docker_calls)" = "docker compose up -d --build --remove-orphans --wait" ]
+    [ "$(docker_calls)" = "docker compose up -d --build --remove-orphans --wait --wait-timeout 600" ]
     [[ $output == *"Deployed ${sha:0:7}"* ]]
 }
 
@@ -65,6 +65,16 @@ setup() {
 
 @test "it refuses the development stack" {
     printf 'AUTO_DEPLOY=true\nCOMPOSE_FILE=compose.yaml\n' >"$SERVER/.env"
+    merge_new_commit >/dev/null
+
+    run auto_deploy
+
+    [ "$status" -eq 1 ]
+    [ -z "$(calls)" ]
+}
+
+@test "it refuses the development stack merged with the production one" {
+    printf 'AUTO_DEPLOY=true\nCOMPOSE_FILE=compose.yaml:compose.prod.yaml\n' >"$SERVER/.env"
     merge_new_commit >/dev/null
 
     run auto_deploy
@@ -246,7 +256,7 @@ setup() {
     run auto_deploy
 
     [ "$status" -eq 0 ]
-    [ "$(docker_calls)" = "docker compose up -d --build --remove-orphans --wait" ]
+    [ "$(docker_calls)" = "docker compose up -d --build --remove-orphans --wait --wait-timeout 600" ]
     [[ $output == *"Deployed ${sha:0:7}"* ]]
 
     : >"$CALLS_LOG"
