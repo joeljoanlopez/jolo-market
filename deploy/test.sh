@@ -10,7 +10,7 @@ repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo_dir"
 
 docker run --rm -v "$repo_dir:/code:ro" -w /code koalaman/shellcheck:v0.10.0 \
-    deploy/*.sh deploy/tests/fakes/*
+    deploy/*.sh deploy/tests/fakes/* docker/php/entrypoint.sh
 
 image=$(docker build --quiet docker/bats)
 if [[ $# -eq 0 ]]; then

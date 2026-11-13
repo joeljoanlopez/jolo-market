@@ -1,0 +1,91 @@
+# Production stack (E6). Configure it in the root .env (see .env.example), then:
+#   docker compose -f compose.prod.yaml up -d --build --wait
+# Set COMPOSE_FILE=compose.prod.yaml in the .env to drop the -f (auto-deploy requires it, PD-52).
+# Same project name and volume as compose.yaml: switching from the development stack keeps the database.
+name: jolo-market
+
+# Variables without a value are passed only when the .env sets them; otherwise the default of backend/.env applies.
+x-backend-environment: &backend-environment
+  DATABASE_URL: "mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}?serverVersion=9.7.4&charset=utf8mb4"
+  APP_SECRET: ${APP_SECRET:?Set APP_SECRET in the root .env (openssl rand -hex 32)}
+  DEFAULT_URI:
+  INSTANCE_POSTAL_CODE:
+  ENABLED_SUPERMARKETS:
+  TOTP_ENCRYPTION_KEY:
+  CATALOG_HTTP_USER_AGENT:
+  INGESTION_SCHEDULE:
+  PRICE_HISTORY_RETENTION_MONTHS:
+  PRICE_HISTORY_PRUNE_SCHEDULE:
+  SYMFONY_TRUSTED_PROXIES:
+
+x-backend-build: &backend-build
+  context: .
+  dockerfile: docker/php/Dockerfile
+  target: prod
+
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      php:
+        condition: service_healthy
+
+  # On start: checks the configuration, waits for MySQL, migrates and prints the setup code (docker/php/entrypoint.sh).
+  php:
+    build: *backend-build
+    restart: unless-stopped
+    environment: *backend-environment
+    healthcheck:
+      # php-fpm accepts connections only after the entrypoint has migrated the database.
+      test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1', 9000) ? 0 : 1);"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # Scheduled jobs (catalog ingestion, price history prune). The time limit restarts it regularly to free memory.
+  scheduler:
+    build: *backend-build
+    command: ["php", "bin/console", "messenger:consume", "scheduler_default", "--time-limit=3600"]
+    restart: unless-stopped
+    environment: *backend-environment
+    depends_on:
+      php:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:9.7.4
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  mysql-data:

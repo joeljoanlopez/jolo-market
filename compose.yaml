@@ -28,7 +28,9 @@ services:
 
   php:
     build:
-      context: ./docker/php
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: dev
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
@@ -54,7 +56,9 @@ services:
   # The time limit makes it restart regularly, so it picks up code and config changes.
   scheduler:
     build:
-      context: ./docker/php
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: dev
       args:
         UID: ${UID:-1000}
         GID: ${GID:-1000}

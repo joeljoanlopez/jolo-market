@@ -1,0 +1,30 @@
+# Build context of the images (repository root). Keep secrets, dependencies and build output out of it.
+.git
+.github
+/.env
+/backups
+/odd
+docs
+deploy
+
+backend/vendor
+backend/var
+backend/tests
+backend/.env.local
+backend/.env.local.php
+backend/.env.*.local
+# Public development and test keys: they must never reach a production image.
+backend/.env.dev
+backend/.env.test
+backend/.phpunit.cache
+backend/.php-cs-fixer.cache
+backend/.deptrac.cache
+backend/coverage
+
+frontend/node_modules
+frontend/dist
+frontend/coverage
+frontend/playwright-report
+frontend/test-results
+frontend/blob-report
+frontend/.vite
