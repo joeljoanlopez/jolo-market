@@ -10,8 +10,8 @@ Progress tracking for jolo-market. Each epic file lists its tasks as checkboxes.
 | [E3 — Identity & access](E3-identity-and-access.md) | Admin-created users, activation link, mandatory TOTP 2FA, login | E0 | Done |
 | [E4 — Shared shopping lists](E4-shared-shopping-lists.md) | Owned lists, join through secret link, members, items, totals, polling | E3 (E2 for product items) | Done |
 | [E5 — Price history](E5-price-history.md) | Expose and chart price evolution | E1 | Done |
-| [E6 — Self-hosting](E6-self-hosting.md) | Production compose, backups, operator docs | E0–E4 | Not started |
-| [E7 — Auto-deploy](E7-auto-deploy.md) | Optional self-update of the server after a merge to `main` with a green CI | E0 | In progress |
+| [E6 — Self-hosting](E6-self-hosting.md) | Production compose, backups, operator docs | E0–E4 | Done |
+| [E7 — Auto-deploy](E7-auto-deploy.md) | Optional self-update of the server after a merge to `main` with a green CI | E0 | Done |
 
 E2 can be built before E3. Its endpoints are put behind login in task E3.21.
 

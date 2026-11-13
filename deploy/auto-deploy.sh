@@ -2,12 +2,13 @@
 # Auto-deploy of jolo-market (E7, PD-50). Modelled on E11 of jolo-PM.
 #
 # Meant to run every few minutes from the user systemd timer (see deploy/install-auto-deploy.sh). When main on
-# GitHub has a new commit whose CI is green, it fast-forwards to it, rebuilds the containers and runs
-# deploy/post-deploy.sh (dependencies, migrations, restarts). It does nothing unless the root .env has
-# AUTO_DEPLOY=true.
+# GitHub has a new commit whose CI is green, it fast-forwards to it and rebuilds the production stack, waiting until
+# it is healthy: the php container applies the migrations when it starts (docker/php/entrypoint.sh). It does nothing
+# unless the root .env has AUTO_DEPLOY=true, and it deploys only the production stack (PD-52): COMPOSE_FILE in the
+# root .env must include compose.prod.yaml.
 #
-# Exit code: 0 when there was nothing to do, it skipped on purpose or it deployed; 1 when the fetch, the merge,
-# the CI lookup, compose or a post-deploy step failed.
+# Exit code: 0 when there was nothing to do, it skipped on purpose or it deployed; 1 when COMPOSE_FILE does not select
+# the production stack, or the fetch, the merge, the CI lookup or compose failed.
 
 set -euo pipefail
 
@@ -27,6 +28,20 @@ env_value() {
     line=${line#\"}; line=${line%\"}
     line=${line#\'}; line=${line%\'}
     printf '%s' "$line"
+}
+
+# True when a COMPOSE_FILE value lists compose.prod.yaml, alone or with override files (separated by ':'), and not
+# compose.yaml: merged in, its bind mounts would hide the code baked into the production images.
+selects_production_stack() {
+    local file files production=false
+    IFS=: read -r -a files <<<"$1"
+    for file in "${files[@]}"; do
+        case $file in
+            compose.prod.yaml) production=true ;;
+            compose.yaml) return 1 ;;
+        esac
+    done
+    [[ $production == true ]]
 }
 
 # owner/name of the origin remote, over SSH or HTTPS.
@@ -87,6 +102,11 @@ main() {
     enabled=$(env_value AUTO_DEPLOY .env)
     if [[ $enabled != true ]]; then
         return 0
+    fi
+
+    if ! selects_production_stack "$(env_value COMPOSE_FILE .env)"; then
+        err "Auto-deploy only deploys the production stack: set COMPOSE_FILE=compose.prod.yaml in the root .env."
+        return 1
     fi
 
     # The lock and the pending-deploy marker live in .git, so they are never committed.
@@ -162,17 +182,14 @@ main() {
     deploy "$remote" "$pending_file"
 }
 
-# Rebuilds the containers and runs the post-deploy steps of the new commit. Until both succeed, the commit stays in
-# the pending marker so the next run tries again.
+# Rebuilds the containers of the new commit and waits until they are healthy (configuration valid, migrations
+# applied). A container that keeps restarting may never be reported as failed, so the wait is bounded: a hung run
+# would hold the lock for good. Until it succeeds, the commit stays in the pending marker and the next run retries it.
 deploy() {
     local sha=$1 pending_file=$2
     printf '%s\n' "$sha" >"$pending_file"
-    if ! docker compose up -d --build --remove-orphans; then
-        err "docker compose up failed with ${sha:0:7}; trying again on the next run."
-        return 1
-    fi
-    if ! deploy/post-deploy.sh; then
-        err "deploy/post-deploy.sh failed with ${sha:0:7}; trying again on the next run."
+    if ! docker compose up -d --build --remove-orphans --wait --wait-timeout 600; then
+        err "docker compose up failed with ${sha:0:7}, or the stack did not become healthy; trying again on the next run."
         return 1
     fi
     rm -f "$pending_file"

@@ -39,6 +39,13 @@ services:
             $postalCode: '%env(string:INSTANCE_POSTAL_CODE)%'
             $enabledSupermarkets: '%env(string:ENABLED_SUPERMARKETS)%'
 
+    # Boot-time check (E6.4): a missing variable must be reported, not throw, so it reads null instead.
+    App\Catalog\Infrastructure\Configuration\CatalogConfigurationCheck:
+        arguments:
+            $postalCode: '%env(default::INSTANCE_POSTAL_CODE)%'
+            $enabledSupermarkets: '%env(default::ENABLED_SUPERMARKETS)%'
+            $sources: !tagged_iterator catalog.supermarket_source
+
 when@test:
     services:
         test.catalog.search_products_handler:

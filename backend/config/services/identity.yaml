@@ -26,6 +26,11 @@ services:
         arguments:
             $base64Key: '%env(string:TOTP_ENCRYPTION_KEY)%'
 
+    # Boot-time check (E6.4): a missing variable must be reported, not throw, so it reads null instead.
+    App\Identity\Infrastructure\Configuration\IdentityConfigurationCheck:
+        arguments:
+            $totpEncryptionKey: '%env(default::TOTP_ENCRYPTION_KEY)%'
+
     App\Identity\Infrastructure\Console\ActivationLinkUrl:
         arguments:
             $baseUri: '%env(string:DEFAULT_URI)%'
