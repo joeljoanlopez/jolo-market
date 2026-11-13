@@ -64,6 +64,7 @@ Full description: [`docs/architecture.md`](docs/architecture.md#architecture-sty
 ## 5. Workflow and tracking
 
 - Work is tracked in [`docs/epics/`](docs/epics/README.md). Before starting, read the epic and the task.
+- New epics are created with the procedure in [`.claude/skills/new-epic/SKILL.md`](.claude/skills/new-epic/SKILL.md) (Claude Code: `/new-epic <request>`; other assistants: follow that file). It interviews the product owner about every undefined decision before writing the epic.
 - Tick a checkbox (`- [x]`) **only** when the task is implemented, tested, and all quality checks pass.
 - If a task turns out to be bigger, or needs a decision, add a note under it and ask. Do not silently change its scope.
 - Keep the epic index (`docs/epics/README.md`) status column up to date.
@@ -96,4 +97,5 @@ CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the backend che
 
 - Conventional Commits (`feat:`, `fix:`, `test:`, `refactor:`, `docs:`, `chore:`, `build:`, `ci:`), with a scope when useful: `feat(catalog): ...`.
 - Small commits that keep tests and code together. Tests are never committed in a separate commit from the behavior they cover.
-- Do not commit, push or open PRs unless the product owner asks.
+- Work on a branch. Committing, pushing it and opening a PR need no extra permission.
+- Never commit or push to `main`, and never merge a PR, without the product owner's explicit approval.
