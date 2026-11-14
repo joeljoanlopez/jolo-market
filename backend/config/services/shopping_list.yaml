@@ -5,6 +5,9 @@ services:
 
     App\ShoppingList\:
         resource: '../../src/ShoppingList/'
+        # Development-only code (PD-57) is registered in when@dev below.
+        exclude:
+            - '../../src/ShoppingList/Infrastructure/Dev/'
 
     App\ShoppingList\Domain\Port\ShoppingListRepository: '@App\ShoppingList\Infrastructure\Persistence\Dbal\DbalShoppingListRepository'
     App\ShoppingList\Domain\Port\ShareTokenGenerator: '@App\ShoppingList\Infrastructure\Security\RandomShareTokenGenerator'
@@ -16,3 +19,13 @@ when@test:
         test.shopping_list.repository:
             alias: App\ShoppingList\Domain\Port\ShoppingListRepository
             public: true
+
+# Development environment (PD-57).
+when@dev:
+    services:
+        _defaults:
+            autowire: true
+            autoconfigure: true
+
+        App\ShoppingList\Infrastructure\Dev\:
+            resource: '../../src/ShoppingList/Infrastructure/Dev/'

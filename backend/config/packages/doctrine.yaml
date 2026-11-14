@@ -14,3 +14,10 @@ when@test:
         dbal:
             # "TEST_TOKEN" is set by ParaTest when tests run in parallel.
             dbname_suffix: '_test%env(default::TEST_TOKEN)%'
+
+# No web profiler is installed, so the queries collected for it would only fill memory: a full
+# app:dev:seed runs tens of thousands of them (PD-55).
+when@dev:
+    doctrine:
+        dbal:
+            profiling: false
