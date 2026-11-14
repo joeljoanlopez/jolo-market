@@ -10,6 +10,10 @@ services:
 
     App\Catalog\:
         resource: '../../src/Catalog/'
+        # Development-only code (PD-53, PD-57) is registered in when@dev below.
+        exclude:
+            - '../../src/Catalog/Infrastructure/Source/Dummy/'
+            - '../../src/Catalog/Infrastructure/Dev/'
 
     App\Catalog\Application\IngestCatalog\IngestCatalogHandler:
         arguments:
@@ -74,3 +78,54 @@ when@test:
             decorates: App\Catalog\Infrastructure\Source\BonpreuEsclat\BonpreuEsclatCatalogSource
             public: true
             arguments: ['bonpreu']
+
+# Development environment (PD-53, PD-55): offline dummy sources and the price history backfill.
+when@dev:
+    parameters:
+        env(CATALOG_SOURCES): 'dummy'
+
+    services:
+        _defaults:
+            autowire: true
+            autoconfigure: true
+
+        App\Catalog\Infrastructure\Dev\:
+            resource: '../../src/Catalog/Infrastructure/Dev/'
+
+        # Not tagged catalog.supermarket_source: they replace the real adapters only through catalog.dev.sources.
+        catalog.dev.dummy_source.mercadona:
+            class: App\Catalog\Infrastructure\Source\Dummy\DummyCatalogSource
+            autoconfigure: false
+            arguments: ['mercadona', '@App\Shared\Infrastructure\Dev\SettableClock']
+        catalog.dev.dummy_source.bonpreu:
+            class: App\Catalog\Infrastructure\Source\Dummy\DummyCatalogSource
+            autoconfigure: false
+            arguments: ['bonpreu', '@App\Shared\Infrastructure\Dev\SettableClock']
+        catalog.dev.dummy_source.aldi:
+            class: App\Catalog\Infrastructure\Source\Dummy\DummyCatalogSource
+            autoconfigure: false
+            arguments: ['aldi', '@App\Shared\Infrastructure\Dev\SettableClock']
+
+        catalog.dev.sources:
+            class: App\Catalog\Infrastructure\Dev\DevCatalogSources
+            arguments:
+                $choice: '%env(string:CATALOG_SOURCES)%'
+                $real: !tagged_iterator catalog.supermarket_source
+                $dummy:
+                    - '@catalog.dev.dummy_source.mercadona'
+                    - '@catalog.dev.dummy_source.bonpreu'
+                    - '@catalog.dev.dummy_source.aldi'
+
+        App\Catalog\Application\IngestCatalog\IngestCatalogHandler:
+            arguments:
+                $sources: '@catalog.dev.sources'
+
+        # The backfill always ingests the dummy catalog, whatever CATALOG_SOURCES says, with a clock it can move (PD-55).
+        catalog.dev.backfill_handler:
+            class: App\Catalog\Application\IngestCatalog\IngestCatalogHandler
+            arguments:
+                $sources:
+                    - '@catalog.dev.dummy_source.mercadona'
+                    - '@catalog.dev.dummy_source.bonpreu'
+                    - '@catalog.dev.dummy_source.aldi'
+                $clock: '@App\Shared\Infrastructure\Dev\SettableClock'

@@ -5,3 +5,20 @@ services:
 
     App\Shared\:
         resource: '../../src/Shared/'
+        # Development-only code (PD-53, PD-57) is registered in when@dev below.
+        exclude:
+            - '../../src/Shared/Infrastructure/Dev/'
+
+# Development environment (PD-55, PD-57).
+when@dev:
+    services:
+        _defaults:
+            autowire: true
+            autoconfigure: true
+
+        App\Shared\Infrastructure\Dev\:
+            resource: '../../src/Shared/Infrastructure/Dev/'
+
+        App\Shared\Infrastructure\Dev\SettableClock:
+            arguments:
+                $clock: '@App\Shared\Domain\Clock'
