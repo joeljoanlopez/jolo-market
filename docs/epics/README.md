@@ -14,6 +14,7 @@ Progress tracking for jolo-market. Each epic file lists its tasks as checkboxes.
 | [E7 — Auto-deploy](E7-auto-deploy.md) | Optional self-update of the server after a merge to `main` with a green CI | E0 | Done |
 | [E8 — Offline development environment](E8-offline-dev-environment.md) | Dummy catalog sources, price history backfill and dummy users, so dev works without internet | E1, E3, E5 | Not started |
 | [E9 — Makefile](E9-makefile.md) | `make` targets for the development stack and its checks; agents ask about new targets | E0, E7 | Not started |
+| [E10 — Receipts and spending](E10-receipts-and-spending.md) | Upload receipt photos to a list, read them with local OCR, link lines to products and track monthly spending | E2, E4, E6 | Not started |
 
 E2 can be built before E3. Its endpoints are put behind login in task E3.21.
 
