@@ -40,7 +40,7 @@ Related decisions: PD-8, PD-20, PD-41, PD-74, PD-75, PD-76, PD-77, PD-78, PD-79.
 
 ### End to end
 
-- [ ] E11.9 Add `frontend/e2e/theme.spec.ts`: with an emulated light system scheme, a logged-in user picks "Oscuro" in the header and `<html>` has `data-theme="dark"`. After a reload it is still dark, and after logging out `/login` is dark too. Back in the app, picking "Sistema" with an emulated dark system scheme keeps it dark, and switching the emulated scheme to light makes it light without reloading.
+- [x] E11.9 Add `frontend/e2e/theme.spec.ts`: with an emulated light system scheme, a logged-in user picks "Oscuro" in the header and `<html>` has `data-theme="dark"`. After a reload it is still dark, and after logging out `/login` is dark too. Back in the app, picking "Sistema" with an emulated dark system scheme keeps it dark, and switching the emulated scheme to light makes it light without reloading.
 
 ### Docs
 
