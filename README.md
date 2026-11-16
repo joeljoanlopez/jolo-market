@@ -56,42 +56,43 @@ jolo-market/
 ├── compose.yaml        # Development stack: nginx, php-fpm, scheduler, mysql, Vite dev server
 ├── compose.prod.yaml   # Production stack: nginx with the built SPA, php-fpm, scheduler, mysql
 ├── .env.example        # Documented Compose variables (copy to .env)
+├── Makefile            # `make` targets for the development stack and its checks (`make` lists them)
 └── AGENTS.md           # Rules for AI assistants (TDD, hexagonal, English code)
 ```
 
 ## Getting started (development)
 
-Requirements: Docker with Docker Compose v2.
+Requirements: Docker with Docker Compose v2, and `make`. Node 26 (see `frontend/.nvmrc`) only if you will run the frontend tooling on your machine (checks, Playwright).
 
-1. Create your Compose environment file and review the values (passwords, `UID`/`GID`, port):
+1. Set up the clone. `make init` creates the root `.env` from `.env.example` and an empty `backend/.env.local` (only when they are missing: it never overwrites them), installs the frontend dependencies on your machine when Node is installed, starts the stack, installs the backend dependencies and applies the migrations:
 
    ```sh
-   cp .env.example .env
+   make init
    ```
 
-2. Backend secrets and machine-specific overrides go in `backend/.env.local`, which git ignores. `backend/.env` is committed and holds only non-secret defaults. Outside `dev` and `test`, set at least `APP_SECRET` there, for example:
+   Then review the values of `.env` (passwords, `UID`/`GID`, port) and run `make restart` if you changed any. Running `make init` again is safe: it changes nothing that is already set up.
+
+   Backend secrets and machine-specific overrides go in `backend/.env.local`, which git ignores. `backend/.env` is committed and holds only non-secret defaults. Outside `dev` and `test`, set at least `APP_SECRET` there, for example `echo "APP_SECRET=$(openssl rand -hex 32)" >> backend/.env.local`. Development overrides of `backend/.env.dev` go in `backend/.env.dev.local` (see [Development data](#development-data)).
+
+   <details>
+   <summary>What <code>make init</code> runs, to do it by hand</summary>
 
    ```sh
-   echo "APP_SECRET=$(openssl rand -hex 32)" >> backend/.env.local
-   ```
-
-3. If you will also run the frontend tooling on your machine (checks, Playwright), install its dependencies **before** the first `docker compose up`. Otherwise Docker creates `frontend/node_modules` as root (it is the mount point of the container's own `node_modules` volume) and `npm ci` fails with `EACCES` (fix it with `sudo chown -R "$(id -u):$(id -g)" frontend/node_modules`):
-
-   ```sh
-   (cd frontend && npm ci)
-   ```
-
-4. Start the stack and install the backend dependencies (the `frontend` service installs its own with `npm ci` on start):
-
-   ```sh
-   docker compose up -d --build
+   cp .env.example .env                 # only when missing
+   touch backend/.env.local             # only when missing
+   (cd frontend && npm ci)              # when Node is installed
+   docker compose up -d --build --wait
    docker compose exec php composer install
    docker compose exec php bin/console doctrine:migrations:migrate --no-interaction
    ```
 
-   Run the migrations again whenever you pull new ones. `composer test` migrates the test database by itself.
+   The frontend dependencies are installed **before** the first `docker compose up`. Otherwise Docker creates `frontend/node_modules` as root (it is the mount point of the container's own `node_modules` volume) and `npm ci` fails with `EACCES` (fix it with `sudo chown -R "$(id -u):$(id -g)" frontend/node_modules`). The `frontend` service installs its own dependencies with `npm ci` on start.
 
-5. Load the development data: two users and a dummy catalog of the three chains with 180 days of price history. It needs no internet and no configuration (see [Development data](#development-data)):
+   </details>
+
+   Run `make migrate` whenever you pull new migrations. `composer test` migrates the test database by itself.
+
+2. Load the development data: two users and a dummy catalog of the three chains with 180 days of price history. It needs no internet and no configuration (see [Development data](#development-data)):
 
    ```sh
    docker compose exec php bin/console app:dev:seed
@@ -103,7 +104,7 @@ Requirements: Docker with Docker Compose v2.
    docker compose exec php bin/console app:dev:totp admin
    ```
 
-6. Check that it works:
+3. Check that it works:
 
    ```sh
    curl http://localhost:8080/api/health   # {"status":"ok"}
@@ -255,9 +256,28 @@ curl -b jar -i 'http://localhost:8080/api/lists/<id>'                           
 curl -b jar -H "$H" -H 'Content-Type: application/json' -d '{"type":"text","text":"pan"}' http://localhost:8080/api/lists/<id>/items   # 201 {id}
 ```
 
+### Make targets
+
+`make` with no target lists them. They are for the **development stack only**: every target that runs Docker refuses to run when `COMPOSE_FILE` in the root `.env` lists `compose.prod.yaml`. Each one runs the command next to it, so you can also run it by hand:
+
+| Target | What it runs |
+| --- | --- |
+| `make init` | Sets up a fresh clone (see [Getting started](#getting-started-development)). Safe to run again |
+| `make start` | `docker compose up -d --build --wait` |
+| `make stop` | `docker compose down` (never removes volumes: the database is kept) |
+| `make restart` | `make stop`, then `make start` |
+| `make logs` | `docker compose logs -f`; `make logs s=php` follows one service |
+| `make shell` | `docker compose exec php sh` |
+| `make migrate` | `docker compose exec php bin/console doctrine:migrations:migrate --no-interaction` |
+| `make check` | `make check-backend`, `make check-frontend` and `make test-deploy`; runs all three and fails when any fails |
+| `make check-backend` | `docker compose exec php composer check` |
+| `make test-unit` | `docker compose exec php composer test:unit` |
+| `make check-frontend` | `cd frontend && npm run check`, on your machine like CI (fails when Node is missing) |
+| `make test-deploy` | `deploy/test.sh` |
+
 ### Backend checks
 
-Run them inside the php container (`docker compose exec php composer <script>`):
+`make check-backend` runs `check` and `make test-unit` runs `test:unit`. Run the others inside the php container (`docker compose exec php composer <script>`):
 
 | Script | What it runs |
 | --- | --- |
@@ -271,7 +291,7 @@ Run them inside the php container (`docker compose exec php composer <script>`):
 
 ### Frontend checks
 
-The frontend needs Node 26 (see `frontend/.nvmrc`). Install the dependencies once with `npm ci` inside `frontend/`, then run:
+The frontend needs Node 26 (see `frontend/.nvmrc`). `make init` installs the dependencies (or run `npm ci` inside `frontend/`). `make check-frontend` runs `check`; run the others with `npm run <script>` inside `frontend/`:
 
 | Script | What it runs |
 | --- | --- |
@@ -285,10 +305,11 @@ The frontend needs Node 26 (see `frontend/.nvmrc`). Install the dependencies onc
 
 ### Deploy scripts
 
-The scripts in `deploy/` (backup, auto-deploy) and the production entrypoint are checked with ShellCheck and tested with bats, both in Docker, so nothing needs to be installed:
+The scripts in `deploy/` (backup, auto-deploy) and the production entrypoint are checked with ShellCheck, and they and the root `Makefile` are tested with bats, both in Docker, so nothing needs to be installed:
 
 ```sh
-deploy/test.sh                                # everything
+make test-deploy                              # everything (deploy/test.sh)
+deploy/test.sh                                # the same
 deploy/test.sh deploy/tests/auto-deploy.bats  # one file
 ```
 
@@ -328,7 +349,7 @@ GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on 
 | --- | --- |
 | Backend check | `composer check` inside the same php and mysql containers as development |
 | Frontend check | `npm run check` on the Node version of `frontend/.nvmrc` |
-| Deploy scripts | ShellCheck and the bats tests of `deploy/` (`deploy/test.sh`) |
+| Deploy scripts | ShellCheck and the bats tests of `deploy/` and the root `Makefile` (`deploy/test.sh`) |
 | Production images | `docker compose -f compose.prod.yaml build`, on pushes to `main` only |
 | End-to-end | The Docker stack without the scheduler, migrated and loaded with the e2e catalog, plus `npm run test:e2e`, after both checks pass |
 

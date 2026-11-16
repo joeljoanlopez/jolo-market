@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Fake npm: records each call in $CALLS_LOG and the folder it ran in in $CALLS_LOG.cwd. A call whose arguments
+# contain $FAKE_NPM_FAIL_ON fails.
+printf 'npm %s\n' "$*" >>"$CALLS_LOG"
+printf '%s\n' "$PWD" >>"$CALLS_LOG.cwd"
+if [[ -n ${FAKE_NPM_FAIL_ON:-} && "$*" == *"$FAKE_NPM_FAIL_ON"* ]]; then
+    echo "fake npm: failing on purpose" >&2
+    exit 1
+fi
