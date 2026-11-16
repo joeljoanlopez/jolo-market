@@ -44,4 +44,4 @@ Related decisions: PD-8, PD-20, PD-41, PD-74, PD-75, PD-76, PD-77, PD-78, PD-79.
 
 ### Docs
 
-- [ ] E11.10 Update `docs/architecture.md` → Frontend structure (the `theme` feature, the `data-theme` mechanism, the inline script, the QR tokens and the token list) and the README (dark mode in "What it does" and the MVP scope table).
+- [x] E11.10 Update `docs/architecture.md` → Frontend structure (the `theme` feature, the `data-theme` mechanism, the inline script, the QR tokens and the token list) and the README (dark mode in "What it does" and the MVP scope table).
