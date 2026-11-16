@@ -328,5 +328,13 @@
       "noLists": "Aún no tienes listas.",
       "createList": "Crear una lista"
     }
+  },
+  "theme": {
+    "label": "Tema",
+    "options": {
+      "system": "Sistema",
+      "light": "Claro",
+      "dark": "Oscuro"
+    }
   }
 }

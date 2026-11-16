@@ -36,7 +36,7 @@ Related decisions: PD-8, PD-20, PD-41, PD-74, PD-75, PD-76, PD-77, PD-78, PD-79.
 
 ### UI
 
-- [ ] E11.8 Add the presentational `ThemeSelect` (`features/theme/ui/components`): a labelled `Select` with "Sistema", "Claro" and "Oscuro", the current value selected, and `onChange` with the new preference. Add `ThemeSelectContainer`, which wires it to `useThemePreference()`, and render it in the `AppShell` header next to `SessionMenuContainer` (PD-76). Add the copy to `es.json` (`theme.label` "Tema", `theme.options.system` "Sistema", `theme.options.light` "Claro", `theme.options.dark` "Oscuro"). Test that choosing an option updates `data-theme` and the stored choice.
+- [x] E11.8 Add the presentational `ThemeSelect` (`features/theme/ui/components`): a labelled `Select` with "Sistema", "Claro" and "Oscuro", the current value selected, and `onChange` with the new preference. Add `ThemeSelectContainer`, which wires it to `useThemePreference()`, and render it in the `AppShell` header next to `SessionMenuContainer` (PD-76). Add the copy to `es.json` (`theme.label` "Tema", `theme.options.system` "Sistema", `theme.options.light` "Claro", `theme.options.dark` "Oscuro"). Test that choosing an option updates `data-theme` and the stored choice.
 
 ### End to end
 
