@@ -69,14 +69,15 @@ Full description: [`docs/architecture.md`](docs/architecture.md#architecture-sty
 - If a task turns out to be bigger, or needs a decision, add a note under it and ask. Do not silently change its scope.
 - Keep the epic index (`docs/epics/README.md`) status column up to date.
 - When adding or changing an endpoint, command or config variable, update `docs/architecture.md` and the README in the same change.
+- When you add or change a development command (a Composer or npm script, a script in `deploy/`, a console command used while developing), **ask the product owner whether it should get a `make` target** in the root `Makefile` (PD-61).
 
 ## 6. Definition of done
 
 A task is done when all of these hold:
 
 - [ ] Tests were written first and cover every acceptance criterion of the task.
-- [ ] Backend: PHPUnit, PHPStan (max level), Deptrac and PHP-CS-Fixer pass: `docker compose exec php composer check`.
-- [ ] Frontend: Vitest, `tsc --noEmit`, ESLint and Prettier pass: `npm run check` in `frontend/`. Playwright passes if the journey is affected: `npm run test:e2e` in `frontend/`, with the Docker stack running.
+- [ ] Backend: PHPUnit, PHPStan (max level), Deptrac and PHP-CS-Fixer pass: `make check-backend` (`docker compose exec php composer check`).
+- [ ] Frontend: Vitest, `tsc --noEmit`, ESLint and Prettier pass: `make check-frontend` (`npm run check` in `frontend/`). Playwright passes if the journey is affected: `npm run test:e2e` in `frontend/`, with the Docker stack running.
 - [ ] No hard-coded user-facing strings. Spanish copy lives in translation files.
 - [ ] Docs updated (architecture, README, epic checkbox).
 - [ ] No unanswered assumptions. Every new decision has been confirmed and recorded.
@@ -85,9 +86,11 @@ Commands:
 
 | Scope | Command | Runs |
 | --- | --- | --- |
-| Backend | `docker compose exec php composer check` | PHP-CS-Fixer (dry run), PHPStan max, Deptrac, every PHPUnit suite |
-| Backend | `docker compose exec php composer test:unit` | Unit suite only (fast TDD loop) |
-| Frontend | `npm run check` (in `frontend/`) | Prettier check, ESLint, `tsc --noEmit`, Vitest |
+| Everything | `make check` | `make check-backend`, `make check-frontend` and `make test-deploy`; fails when any fails |
+| Backend | `make check-backend` (`docker compose exec php composer check`) | PHP-CS-Fixer (dry run), PHPStan max, Deptrac, every PHPUnit suite |
+| Backend | `make test-unit` (`docker compose exec php composer test:unit`) | Unit suite only (fast TDD loop) |
+| Frontend | `make check-frontend` (`npm run check` in `frontend/`) | Prettier check, ESLint, `tsc --noEmit`, Vitest |
+| Shell | `make test-deploy` (`deploy/test.sh`) | ShellCheck and the bats tests of `deploy/` and the `Makefile` |
 | Frontend | `npm run test:watch` (in `frontend/`) | Vitest in watch mode (fast TDD loop) |
 | End to end | `npm run test:e2e` (in `frontend/`) | Playwright against the running Docker stack |
 
