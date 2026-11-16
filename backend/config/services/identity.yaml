@@ -5,6 +5,9 @@ services:
 
     App\Identity\:
         resource: '../../src/Identity/'
+        # Development-only code (PD-56, PD-57) is registered in when@dev below.
+        exclude:
+            - '../../src/Identity/Infrastructure/Dev/'
 
     App\Identity\Domain\Port\UserRepository: '@App\Identity\Infrastructure\Persistence\Dbal\DbalUserRepository'
     App\Identity\Domain\Port\PasswordHasher: '@App\Identity\Infrastructure\Security\SymfonyPasswordHasher'
@@ -50,3 +53,13 @@ when@test:
         test.identity.password_hasher:
             alias: App\Identity\Domain\Port\PasswordHasher
             public: true
+
+# Development environment (PD-56, PD-57): dummy users, their TOTP codes and the reset.
+when@dev:
+    services:
+        _defaults:
+            autowire: true
+            autoconfigure: true
+
+        App\Identity\Infrastructure\Dev\:
+            resource: '../../src/Identity/Infrastructure/Dev/'

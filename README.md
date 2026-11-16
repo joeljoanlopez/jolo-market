@@ -91,11 +91,16 @@ Requirements: Docker with Docker Compose v2.
 
    Run the migrations again whenever you pull new ones. `composer test` migrates the test database by itself.
 
-5. Set the postal code whose prices are imported, then import the catalogs (see [Catalog ingestion](#catalog-ingestion)):
+5. Load the development data: two users and a dummy catalog of the three chains with 180 days of price history. It needs no internet and no configuration (see [Development data](#development-data)):
 
    ```sh
-   echo "INSTANCE_POSTAL_CODE=08001" >> backend/.env.local
-   docker compose exec php bin/console app:catalog:ingest
+   docker compose exec php bin/console app:dev:seed
+   ```
+
+   Log in as `admin` (admin) or `usuario` (user) with the password `Dev-password-1`. Two-factor authentication stays on: get the current code with
+
+   ```sh
+   docker compose exec php bin/console app:dev:totp admin
    ```
 
 6. Check that it works:
@@ -108,9 +113,33 @@ Requirements: Docker with Docker Compose v2.
 
 The MySQL test database (`<MYSQL_DATABASE>_test`) is created automatically the first time the `mysql-data` volume is initialised. If you created the volume before that script existed, recreate it with `docker compose down -v`.
 
+### Development data
+
+The development environment (`APP_ENV=dev`) works offline (PD-53 to PD-57). These commands exist only there:
+
+| Command | What it does |
+| --- | --- |
+| `app:dev:seed [--reset] [--force]` | Creates the dummy users that are missing and runs the backfill. Safe to run again: it never touches existing users and adds nothing that is already there. |
+| `app:dev:users` | Creates `admin` (`ADMIN`) and `usuario` (`USER`), active, with the password `Dev-password-1` and fixed TOTP secrets. A user with either name is left as it is. |
+| `app:dev:totp <username>` | Prints the current TOTP code of an active user and how many seconds it is still valid. Exits with `1` for an unknown or not active user. |
+| `app:dev:catalog:backfill [--days=180]` | Runs the dummy ingestion once per day for the last N days (1 to 730, today included), with the clock on that day, so products have a price history. Days that already have a run are skipped. Exits with `2` for an invalid `--days`. |
+| `app:dev:catalog:reset`, `app:dev:users:reset`, `app:dev:lists:reset` | Empty the tables of one context: the catalog (products, snapshots, runs), the users (with the setup code, which ends every session) or the shopping lists. They ask first; `--force` skips the question, and without interaction they refuse (exit `1`) unless forced. |
+
+**Dummy catalog.** `app:catalog:ingest` and the `scheduler` use dummy sources of Mercadona, Bonpreu i Esclat and Aldi instead of the real stores. Each chain has 30 to 40 products in several categories, many of them sold by the three chains at different prices (milk, olive oil, eggs…), with every case the app handles: prices per kg, L and unit, packs, products without a unit price, approximate sizes priced by the store's reference price and one malformed product that is skipped. The data depends only on the day: a few prices change from one day to the next or weekly, and one or two products per chain are missing one day out of five, so they become unavailable and come back.
+
+**Start again** from only the dummy data (it asks for confirmation):
+
+```sh
+docker compose exec php bin/console app:dev:seed --reset
+```
+
+**Use the real stores** in development: set `CATALOG_SOURCES=real` in `backend/.env.dev.local` (dev loads it after `backend/.env.dev`, which sets `CATALOG_SOURCES=dummy` and `INSTANCE_POSTAL_CODE=08001`; values in `backend/.env.local` do not override those two). The backfill always uses the dummy catalog. Production always uses the real stores.
+
+The dummy password and TOTP secrets are public: never use them outside development. Every SQL query is logged at debug level in `backend/var/log/dev.log`, so a full seed adds about 100 MB to it.
+
 ### Catalog ingestion
 
-`app:catalog:ingest` imports the catalog of every supermarket in `ENABLED_SUPERMARKETS` (`mercadona`, `aldi` and `bonpreu` have an adapter) for `INSTANCE_POSTAL_CODE` (both in `backend/.env`, override them in `backend/.env.local`):
+`app:catalog:ingest` imports the catalog of every supermarket in `ENABLED_SUPERMARKETS` (`mercadona`, `aldi` and `bonpreu` have an adapter) for `INSTANCE_POSTAL_CODE` (both in `backend/.env`, override them in `backend/.env.local`). In development it uses the [dummy catalog](#development-data) unless `CATALOG_SOURCES=real`:
 
 ```sh
 docker compose exec php bin/console app:catalog:ingest                         # every enabled supermarket
@@ -171,6 +200,8 @@ docker compose logs php | grep "Setup code"
 ```
 
 Open the app, go to `/setup`, enter the code and a username: that creates the first admin, who then sets a password and enrolls a TOTP device through the activation link. After that, `/setup` is gone for good.
+
+In development, `app:dev:seed` creates the [dummy users](#development-data) instead, so `/setup` is never needed there.
 
 ### User reset
 
