@@ -1,8 +1,10 @@
-import { screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import es from '@/shared/i18n/locales/es.json';
 import { FakeAuthGateway, maria } from '@/test/FakeAuthGateway';
+import { FakeSystemColorScheme } from '@/test/FakeSystemColorScheme';
+import { InMemoryThemePreferenceStore } from '@/test/InMemoryThemePreferenceStore';
 import { renderApp } from '@/test/renderApp';
 
 function renderLoggedInAt(path: string) {
@@ -34,5 +36,32 @@ describe('App', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: es.notFound.title }),
     ).toBeInTheDocument();
+  });
+
+  describe('theme', () => {
+    afterEach(() => {
+      delete document.documentElement.dataset.theme;
+    });
+
+    it('paints the stored theme on pages without the header too (PD-75)', async () => {
+      renderApp('/login', { themeStore: new InMemoryThemePreferenceStore('dark') });
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: es.auth.login.title }),
+      ).toBeInTheDocument();
+      expect(document.documentElement.dataset.theme).toBe('dark');
+    });
+
+    it('follows the system theme live on the login page (PD-74)', async () => {
+      const system = new FakeSystemColorScheme(false);
+      renderApp('/login', { systemColorScheme: system });
+      await screen.findByRole('heading', { level: 1, name: es.auth.login.title });
+
+      act(() => {
+        system.switchTo(true);
+      });
+
+      expect(document.documentElement.dataset.theme).toBe('dark');
+    });
   });
 });
