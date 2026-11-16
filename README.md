@@ -11,6 +11,7 @@ Self-hosted supermarket price comparator and shared shopping list, inspired by [
 - **Private instance**: users are created by an admin, activate their account through a one-time link, and log in with mandatory TOTP 2FA.
 - **Estimated totals** per supermarket for list items linked to a concrete product.
 - **Price history**: every catalog refresh stores a dated price snapshot. Each product has a page (`/product/:id`, linked from search results and lists) with a chart of its price over the last 30 days, 6 months, year or all of it, and its minimum, maximum and current price.
+- **Dark mode**: the app follows the light or dark theme of your device, and the "Tema" dropdown in the header forces Claro or Oscuro. The choice is remembered in your browser.
 
 ### MVP scope
 
@@ -26,6 +27,7 @@ Self-hosted supermarket price comparator and shared shopping list, inspired by [
 | Collaboration | Polling every few seconds while a list is open |
 | Price history | Stored on every refresh |
 | UI language | Spanish, with i18n ready for more languages |
+| Theme | Light and dark; follows the system by default, with a per-browser choice in the header |
 
 The full list of product decisions lives in [`docs/architecture.md`](docs/architecture.md#product-decisions).
 

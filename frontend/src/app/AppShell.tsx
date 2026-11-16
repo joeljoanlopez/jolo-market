@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Outlet } from 'react-router';
 
 import { SessionMenuContainer } from '@/features/auth/ui/containers/SessionMenuContainer';
+import { ThemeSelectContainer } from '@/features/theme/ui/containers/ThemeSelectContainer';
 import { Text } from '@/shared/ui/atoms/Text/Text';
 
 export function AppShell() {
@@ -13,7 +14,10 @@ export function AppShell() {
         <Text as="span" size="lg" weight="bold">
           {t('app.name')}
         </Text>
-        <SessionMenuContainer />
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <ThemeSelectContainer />
+          <SessionMenuContainer />
+        </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-8">
         <Outlet />

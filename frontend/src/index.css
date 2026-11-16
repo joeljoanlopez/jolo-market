@@ -27,6 +27,10 @@
   --color-danger-foreground: #ffffff;
   --color-focus: #2f80ed;
 
+  /* Fixed in both themes: scanners need a QR code dark on light (PD-78). */
+  --color-qr: #000000;
+  --color-qr-background: #ffffff;
+
   /* One color per supermarket (PD-20), inspired by each chain, with a readable foreground. */
   --color-mercadona: #007a3d;
   --color-mercadona-foreground: #ffffff;
@@ -60,6 +64,44 @@
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-full: 9999px;
+}
+
+/* Native controls (inputs, selects, scrollbars) follow the active theme. */
+:root {
+  color-scheme: light;
+}
+
+/*
+ * Dark theme (PD-74 to PD-79): the same tokens with dark values, so components never need
+ * `dark:` variants. `data-theme` is set on <html> by the script in index.html before the
+ * first paint, and then by the theme feature. Every text/background pair reaches WCAG AA.
+ */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* Neutrals */
+  --color-background: #121417;
+  --color-surface: #1c2026;
+  --color-border: #3a424c;
+  --color-foreground: #e6e9ed;
+  --color-muted: #9aa4b0;
+
+  /* Actions and states */
+  --color-primary: #4fb39a;
+  --color-primary-hover: #6cc7b0;
+  --color-primary-foreground: #0d1f1a;
+  --color-danger: #f0705f;
+  --color-danger-hover: #f48c7e;
+  --color-danger-foreground: #1f0a07;
+  --color-focus: #6aa8ff;
+
+  /* A shade per supermarket that still recalls its brand on a dark background (PD-79). */
+  --color-mercadona: #3fae6f;
+  --color-mercadona-foreground: #0b1a12;
+  --color-bonpreu: #f39200;
+  --color-bonpreu-foreground: #1b1f24;
+  --color-aldi: #5b8fe0;
+  --color-aldi-foreground: #0a1630;
 }
 
 @layer base {
