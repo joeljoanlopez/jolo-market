@@ -23,9 +23,9 @@ Related decisions: PD-8, PD-20, PD-41, PD-74, PD-75, PD-76, PD-77, PD-78, PD-79.
 
 ### Theme tokens
 
-- [ ] E11.1 Add a contrast test to `shared/ui/theme.test.ts` that reads the tokens of `frontend/src/index.css` for the light theme and checks that every pair the UI uses (`foreground` and `muted` on `background` and `surface`, `primary`/`danger` with their `-foreground`, and each supermarket with its `-foreground`) reaches 4.5:1 (PD-77). The current light palette must pass. If a pair fails, stop and ask before changing a light color.
-- [ ] E11.2 Add the dark palette to `index.css`: every color token is redefined under `:root[data-theme="dark"]`, with `color-scheme: dark` there and `color-scheme: light` on `:root`. Extend the E11.1 test so every color token has a dark value and every pair also passes in the dark theme. The supermarket tokens get dark shades that recall each brand (PD-79). Propose the shades in the pull request for the product owner to review (PD-77).
-- [ ] E11.3 Keep the activation QR code dark on light in both themes (PD-78): add the fixed tokens `qr` and `qr-background`, which are not redefined for the dark theme, add them to `cn()`, and make `QrCode` use them. Test that `QrCode` uses the QR tokens instead of `background`/`foreground`.
+- [x] E11.1 Add a contrast test to `shared/ui/theme.test.ts` that reads the tokens of `frontend/src/index.css` for the light theme and checks that every pair the UI uses (`foreground` and `muted` on `background` and `surface`, `primary`/`danger` with their `-foreground`, and each supermarket with its `-foreground`) reaches 4.5:1 (PD-77). The current light palette must pass. If a pair fails, stop and ask before changing a light color.
+- [x] E11.2 Add the dark palette to `index.css`: every color token is redefined under `:root[data-theme="dark"]`, with `color-scheme: dark` there and `color-scheme: light` on `:root`. Extend the E11.1 test so every color token has a dark value and every pair also passes in the dark theme. The supermarket tokens get dark shades that recall each brand (PD-79). Propose the shades in the pull request for the product owner to review (PD-77).
+- [x] E11.3 Keep the activation QR code dark on light in both themes (PD-78): add the fixed tokens `qr` and `qr-background`, which are not redefined for the dark theme, add them to `cn()`, and make `QrCode` use them. Test that `QrCode` uses the QR tokens instead of `background`/`foreground`.
 
 ### Feature `theme` (frontend)
 

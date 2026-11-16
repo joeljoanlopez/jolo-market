@@ -13,7 +13,8 @@ const QUIET_ZONE = 4;
 
 /**
  * Draws a QR code as SVG, dark modules on a light background, so it stays sharp at any size
- * and needs no canvas. The value never leaves the browser.
+ * and needs no canvas. Its colors are fixed, so it stays dark on light in the dark theme too
+ * (PD-78). The value never leaves the browser.
  */
 export function QrCode({ value, label }: QrCodeProps) {
   const { size, path } = useMemo(() => {
@@ -35,7 +36,7 @@ export function QrCode({ value, label }: QrCodeProps) {
       aria-label={label}
       viewBox={`0 0 ${String(size)} ${String(size)}`}
       shapeRendering="crispEdges"
-      className="size-48 bg-background fill-foreground"
+      className="size-48 bg-qr-background fill-qr"
     >
       <path d={path} />
     </svg>

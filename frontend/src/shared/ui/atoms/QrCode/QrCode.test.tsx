@@ -27,4 +27,12 @@ describe('QrCode', () => {
     );
     expect(image.querySelector('path')?.getAttribute('d')?.match(/M/g)).toHaveLength(darkModules);
   });
+
+  it('uses the fixed QR colors, so it stays dark on light in the dark theme too (PD-78)', () => {
+    render(<QrCode value={uri} label="QR" />);
+
+    const image = screen.getByRole('img', { name: 'QR' });
+    expect(image).toHaveClass('bg-qr-background', 'fill-qr');
+    expect(image).not.toHaveClass('bg-background', 'fill-foreground');
+  });
 });
