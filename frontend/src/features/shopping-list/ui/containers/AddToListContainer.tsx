@@ -1,16 +1,64 @@
 import { useState } from 'react';
 
 import { useAddProductToList } from '../../application/useListItems';
-import { useMyLists } from '../../application/useMyLists';
-import { AddToListButton, AddToListPicker } from '../components/AddToListPicker';
+import { useMyList, useMyLists } from '../../application/useMyLists';
+import {
+  AddToListButton,
+  AddToListPicker,
+  AddToTargetListButton,
+} from '../components/AddToListPicker';
 
 interface AddToListContainerProps {
   productId: string;
   productName: string;
+  /** The list the search came from (PD-82); ignored unless it is one of "My lists". */
+  targetListId?: string | undefined;
 }
 
 /** Adds a product from the search results to one of "My lists". */
-export function AddToListContainer({ productId, productName }: AddToListContainerProps) {
+export function AddToListContainer({
+  productId,
+  productName,
+  targetListId,
+}: AddToListContainerProps) {
+  return targetListId === undefined ? (
+    <PickAList productId={productId} productName={productName} />
+  ) : (
+    <AddToTargetList productId={productId} productName={productName} listId={targetListId} />
+  );
+}
+
+/** Adds straight to the list of the search, or offers the picker when it is not a list of mine. */
+function AddToTargetList({
+  productId,
+  productName,
+  listId,
+}: {
+  productId: string;
+  productName: string;
+  listId: string;
+}) {
+  const target = useMyList(listId);
+  const addition = useAddProductToList(productId);
+
+  if (target === null) {
+    return <PickAList productId={productId} productName={productName} />;
+  }
+  return (
+    <AddToTargetListButton
+      productName={productName}
+      listName={target.name}
+      pending={addition.pending}
+      added={addition.addedTo === target.id}
+      failed={addition.failed}
+      onAdd={() => {
+        addition.add(target.id);
+      }}
+    />
+  );
+}
+
+function PickAList({ productId, productName }: { productId: string; productName: string }) {
   const [open, setOpen] = useState(false);
   const addition = useAddProductToList(productId);
 

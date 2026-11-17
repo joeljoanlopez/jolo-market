@@ -335,8 +335,11 @@
       "failed": "No se ha podido añadir. Inténtalo de nuevo.",
       "loading": "Cargando tus listas…",
       "noLists": "Aún no tienes listas.",
-      "createList": "Crear una lista"
-    }
+      "createList": "Crear una lista",
+      "addToTarget": "Añadir a la lista",
+      "addToTargetLabel": "Añadir {{name}} a {{list}}"
+    },
+    "backToList": "Volver a {{name}}"
   },
   "theme": {
     "label": "Tema",

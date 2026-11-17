@@ -1,6 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ComponentProps } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -48,10 +49,11 @@ beforeEach(() => {
   catalog.respond = (params) => Promise.resolve(resultsPage(params.page ?? 1));
 });
 
-function renderAt(url: string) {
-  const router = createMemoryRouter([{ path: '/search', element: <SearchPageContainer /> }], {
-    initialEntries: [url],
-  });
+function renderAt(url: string, props: ComponentProps<typeof SearchPageContainer> = {}) {
+  const router = createMemoryRouter(
+    [{ path: '/search', element: <SearchPageContainer {...props} /> }],
+    { initialEntries: [url] },
+  );
   render(
     <QueryClientProvider client={createTestQueryClient()}>
       <I18nextProvider i18n={testI18n}>
@@ -211,5 +213,45 @@ describe('SearchPageContainer', () => {
     expect(urlOf(router)).toBe('?q=leche');
     expect(searchBox()).toHaveValue('leche');
     expect(filter()).toHaveValue('');
+  });
+
+  describe('with a list to add to (PD-82)', () => {
+    it('keeps the list when typing, filtering and paging', async () => {
+      const router = renderAt('/search?q=leche&list=l1');
+      await results();
+
+      await userEvent.type(searchBox(), 's');
+      expect(urlOf(router)).toBe('?q=leches&list=l1');
+
+      await userEvent.selectOptions(filter(), 'Aldi');
+      expect(urlOf(router)).toBe('?q=leches&supermarket=aldi&list=l1');
+
+      await userEvent.click(await screen.findByRole('button', { name: es.catalog.search.next }));
+      expect(urlOf(router)).toBe('?q=leches&supermarket=aldi&page=2&list=l1');
+    });
+
+    it('hands the list to the actions of each result and to the list link', async () => {
+      renderAt('/search?q=leche&list=l1', {
+        renderProductActions: (product, listId) => (
+          <span>{`${product.id} → ${listId ?? '-'}`}</span>
+        ),
+        renderListLink: (listId) => <a href={`/lists/${listId}`}>back</a>,
+      });
+
+      expect(await screen.findByText('1a → l1')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'back' })).toHaveAttribute('href', '/lists/l1');
+    });
+
+    it('shows no list link without a list', async () => {
+      renderAt('/search?q=leche', {
+        renderProductActions: (product, listId) => (
+          <span>{`${product.id} → ${listId ?? '-'}`}</span>
+        ),
+        renderListLink: () => <a href="/lists/x">back</a>,
+      });
+
+      expect(await screen.findByText('1a → -')).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'back' })).toBeNull();
+    });
   });
 });

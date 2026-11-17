@@ -23,15 +23,25 @@ interface SearchUrl {
   supermarket: string | undefined;
   /** 1-based; the first page is left out of the URL. */
   page: number | undefined;
+  /**
+   * A shopping list the results are added to (PD-82). The catalog only carries it along:
+   * the app wires what it means through the render props.
+   */
+  list: string | undefined;
 }
 
 interface SearchPageContainerProps {
   /** Actions on each result that belong to other features (the app wires "Add to list"). */
-  renderProductActions?: (product: Product) => ReactNode;
+  renderProductActions?: (product: Product, listId: string | undefined) => ReactNode;
+  /** Shown under the title while the URL names a list, e.g. a link back to it. */
+  renderListLink?: (listId: string) => ReactNode;
 }
 
-/** `/search?q=&supermarket=&page=`: the URL is the source of truth of the search. */
-export function SearchPageContainer({ renderProductActions }: SearchPageContainerProps = {}) {
+/** `/search?q=&supermarket=&page=&list=`: the URL is the source of truth of the search. */
+export function SearchPageContainer({
+  renderProductActions,
+  renderListLink,
+}: SearchPageContainerProps = {}) {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const url = readSearchUrl(searchParams);
@@ -45,8 +55,8 @@ export function SearchPageContainer({ renderProductActions }: SearchPageContaine
   const pageCount =
     search.status === 'success' ? Math.ceil(search.data.total / search.data.perPage) : 0;
 
-  function go(next: SearchUrl, options?: NavigateOptions) {
-    setSearchParams(writeSearchUrl(next), options);
+  function go(next: Omit<SearchUrl, 'list'>, options?: NavigateOptions) {
+    setSearchParams(writeSearchUrl({ ...next, list: url.list }), options);
   }
 
   return (
@@ -54,6 +64,7 @@ export function SearchPageContainer({ renderProductActions }: SearchPageContaine
       <Text as="h1" size="2xl" weight="bold">
         {t('catalog.search.title')}
       </Text>
+      {url.list === undefined ? null : renderListLink?.(url.list)}
       <SearchBox
         label={t('catalog.search.label')}
         value={text.value}
@@ -93,7 +104,9 @@ export function SearchPageContainer({ renderProductActions }: SearchPageContaine
           <ProductResultList
             products={search.data.items}
             cheapestUnitPriceCents={search.data.cheapestUnitPriceCents}
-            {...(renderProductActions === undefined ? {} : { renderActions: renderProductActions })}
+            {...(renderProductActions === undefined
+              ? {}
+              : { renderActions: (product: Product) => renderProductActions(product, url.list) })}
           />
           <Pagination
             page={search.data.page}
@@ -139,14 +152,16 @@ function useTypedText(urlText: string) {
 function readSearchUrl(params: URLSearchParams): SearchUrl {
   const supermarket = params.get('supermarket');
   const page = Number(params.get('page'));
+  const list = params.get('list');
   return {
     q: params.get('q') ?? '',
     supermarket: supermarket === null || supermarket === '' ? undefined : supermarket,
     page: Number.isInteger(page) && page > 1 ? page : undefined,
+    list: list === null || list === '' ? undefined : list,
   };
 }
 
-function writeSearchUrl({ q, supermarket, page }: SearchUrl): URLSearchParams {
+function writeSearchUrl({ q, supermarket, page, list }: SearchUrl): URLSearchParams {
   const params = new URLSearchParams();
   if (q !== '') {
     params.set('q', q);
@@ -156,6 +171,9 @@ function writeSearchUrl({ q, supermarket, page }: SearchUrl): URLSearchParams {
   }
   if (page !== undefined && page > 1) {
     params.set('page', String(page));
+  }
+  if (list !== undefined) {
+    params.set('list', list);
   }
   return params;
 }

@@ -7,11 +7,11 @@ import es from '@/shared/i18n/locales/es.json';
 import { FakeAuthGateway, maria } from '@/test/FakeAuthGateway';
 import { FakeProductCatalog } from '@/test/FakeProductCatalog';
 import { FakeShoppingLists, JOAN, MILK } from '@/test/FakeShoppingLists';
-import { renderApp } from '@/test/renderApp';
+import { locationOf, renderApp } from '@/test/renderApp';
 
 const copy = es.lists.addToList;
 
-function renderSearch(lists: FakeShoppingLists) {
+function renderSearch(lists: FakeShoppingLists, path = '/search?q=leche') {
   const catalog = new FakeProductCatalog();
   catalog.respond = () =>
     Promise.resolve({
@@ -21,7 +21,7 @@ function renderSearch(lists: FakeShoppingLists) {
       total: 1,
       cheapestUnitPriceCents: {},
     });
-  renderApp('/search?q=leche', { auth: FakeAuthGateway.loggedInAs(maria), catalog, lists });
+  return renderApp(path, { auth: FakeAuthGateway.loggedInAs(maria), catalog, lists });
 }
 
 describe('AddToListContainer (search results)', () => {
@@ -70,5 +70,44 @@ describe('AddToListContainer (search results)', () => {
 
     expect(screen.getByRole('button', { name: 'Añadir Leche entera a una lista' })).toBeVisible();
     expect(stored.items).toEqual([]);
+  });
+});
+
+describe('AddToListContainer (search results with a list, PD-82)', () => {
+  it('adds straight to the list of the URL, without the picker', async () => {
+    const lists = new FakeShoppingLists();
+    lists.seed({ name: 'Compra semanal' });
+    const target = lists.seed({ name: 'Cena', owner: JOAN, members: [lists.currentUser] });
+    renderSearch(lists, `/search?q=leche&list=${target.id}`);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: 'Añadir Leche entera a Cena' }));
+
+    expect(await screen.findByText('Añadido a «Cena».')).toBeVisible();
+    expect(target.items).toMatchObject([{ type: 'product', product: { id: MILK.id } }]);
+    expect(screen.queryByLabelText(copy.list)).toBeNull();
+  });
+
+  it('links back to the list', async () => {
+    const lists = new FakeShoppingLists();
+    const target = lists.seed({ name: 'Cena' });
+    const router = renderSearch(lists, `/search?q=leche&list=${target.id}`);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('link', { name: 'Volver a Cena' }));
+
+    expect(locationOf(router)).toBe(`/lists/${target.id}`);
+  });
+
+  it('ignores a list the user cannot access, or that does not exist', async () => {
+    const lists = new FakeShoppingLists();
+    lists.seed({ name: 'Compra semanal' });
+    const foreign = lists.seed({ name: 'Ajena', owner: JOAN });
+    renderSearch(lists, `/search?q=leche&list=${foreign.id}`);
+
+    expect(
+      await screen.findByRole('button', { name: 'Añadir Leche entera a una lista' }),
+    ).toBeVisible();
+    expect(screen.queryByRole('link', { name: /Volver a/u })).toBeNull();
   });
 });
