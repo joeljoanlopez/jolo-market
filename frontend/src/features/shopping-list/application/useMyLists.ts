@@ -28,6 +28,14 @@ export function useMyLists(): MyListsState {
   return { status: 'success', lists: query.data };
 }
 
+/** One of "My lists", or `null` while they load, when they fail or when it is not among them. */
+export function useMyList(listId: string): ListSummary | null {
+  const myLists = useMyLists();
+  return myLists.status === 'success'
+    ? (myLists.lists.find((list) => list.id === listId) ?? null)
+    : null;
+}
+
 export type CreateListError = 'invalid' | 'failed';
 
 export interface CreateList {

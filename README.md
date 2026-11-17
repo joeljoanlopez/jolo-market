@@ -8,6 +8,7 @@ Self-hosted supermarket price comparator and shared shopping list, inspired by [
 
 - **Compare prices** across supermarkets by searching a product (e.g. "leche entera") and ranking every result by **unit price** (€/kg, €/L or €/unit).
 - **Shared shopping lists**: share a list through a secret link. Whoever opens it while logged in joins the list, and the owner manages its members.
+- **Add products from inside a list**: the "Qué necesitas" field of a list suggests catalog products while you type (name, brand, supermarket and prices). Pick one with a click or the arrow keys and Enter, or add the text as a free-text item. "Ver todos los resultados" opens the search, which then adds straight to that list.
 - **Private instance**: users are created by an admin, activate their account through a one-time link, and log in with mandatory TOTP 2FA.
 - **Estimated totals** per supermarket for list items linked to a concrete product.
 - **Price history**: every catalog refresh stores a dated price snapshot. Each product has a page (`/product/:id`, linked from search results and lists) with a chart of its price over the last 30 days, 6 months, year or all of it, and its minimum, maximum and current price.

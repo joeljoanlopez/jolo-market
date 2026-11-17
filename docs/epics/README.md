@@ -16,7 +16,7 @@ Progress tracking for jolo-market. Each epic file lists its tasks as checkboxes.
 | [E9 — Makefile](E9-makefile.md) | `make` targets for the development stack and its checks; agents ask about new targets | E0, E7 | Done |
 | [E10 — Receipts and spending](E10-receipts-and-spending.md) | Upload receipt photos to a list, read them with local OCR, link lines to products and track monthly spending | E2, E4, E6 | Not started |
 | [E11 — Dark mode](E11-dark-mode.md) | Dark theme that follows the system by default, with a Sistema / Claro / Oscuro selector in the header, stored in the browser | E0 | Done |
-| [E12 — Product search in lists](E12-product-search-in-lists.md) | The add-item field of a list suggests catalog products while typing, so products are added without leaving the list | E2, E4 | Not started |
+| [E12 — Product search in lists](E12-product-search-in-lists.md) | The add-item field of a list suggests catalog products while typing, so products are added without leaving the list | E2, E4 | Done |
 
 E2 can be built before E3. Its endpoints are put behind login in task E3.21.
 

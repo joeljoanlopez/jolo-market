@@ -3,15 +3,26 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { formatPrice } from '@/features/catalog/domain/format';
+import type { Product } from '@/features/catalog/domain/product';
+import { aProduct } from '@/features/catalog/ui/components/testProduct';
 import es from '@/shared/i18n/locales/es.json';
 import { FakeAuthGateway, maria } from '@/test/FakeAuthGateway';
+import { FakeProductCatalog } from '@/test/FakeProductCatalog';
 import { FakeShoppingLists, JOAN, MILK, type StoredList } from '@/test/FakeShoppingLists';
 import { locationOf, renderApp } from '@/test/renderApp';
 
 const copy = es.lists;
 
-function renderList(lists: FakeShoppingLists, listId: string) {
-  return renderApp(`/lists/${listId}`, { auth: FakeAuthGateway.loggedInAs(maria), lists });
+function renderList(
+  lists: FakeShoppingLists,
+  listId: string,
+  catalog: FakeProductCatalog = new FakeProductCatalog(),
+) {
+  return renderApp(`/lists/${listId}`, {
+    auth: FakeAuthGateway.loggedInAs(maria),
+    lists,
+    catalog,
+  });
 }
 
 function seedSharedByJoan(lists: FakeShoppingLists, overrides: Partial<StoredList> = {}) {
@@ -261,5 +272,213 @@ describe('ListPageContainer', () => {
       await screen.findByRole('heading', { level: 1, name: copy.notFound.title }),
     ).toBeVisible();
     expect(screen.getByRole('link', { name: copy.notFound.backHome })).toHaveAttribute('href', '/');
+  });
+});
+
+const milk = aProduct({ id: MILK.id, name: 'Leche entera', brand: 'Hacendado' });
+const eggs = aProduct({
+  id: 'product-eggs',
+  name: 'Huevos camperos',
+  brand: null,
+  supermarket: { id: 'bonpreu', name: 'Bonpreu' },
+  priceCents: 300,
+});
+
+/** A catalog that finds `products` for any text, and lists that know them. */
+function withProducts(products: Product[]) {
+  const catalog = new FakeProductCatalog();
+  catalog.respond = () =>
+    Promise.resolve({
+      items: products,
+      page: 1,
+      perPage: 20,
+      total: products.length,
+      cheapestUnitPriceCents: {},
+    });
+  const lists = new FakeShoppingLists();
+  for (const product of products) {
+    lists.products.set(product.id, {
+      id: product.id,
+      name: product.name,
+      brand: product.brand,
+      supermarketId: product.supermarket.id,
+      priceCents: product.priceCents,
+      imageUrl: null,
+      available: true,
+    });
+  }
+  return { catalog, lists };
+}
+
+function textField() {
+  return screen.getByRole('combobox', { name: copy.add.text });
+}
+
+async function suggestion(name: string) {
+  return within(await screen.findByRole('listbox')).findByRole('option', {
+    name: new RegExp(name, 'u'),
+  });
+}
+
+describe('ListPageContainer: product suggestions (E12)', () => {
+  it('suggests products from 2 typed characters, with every supermarket (PD-80)', async () => {
+    const { catalog, lists } = withProducts([milk, eggs]);
+    const stored = lists.seed();
+    renderList(lists, stored.id, catalog);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(copy.add.text), 'l');
+    expect(screen.queryByRole('listbox')).toBeNull();
+    await user.type(textField(), 'e');
+
+    expect(await suggestion('Huevos camperos')).toBeVisible();
+    expect(catalog.searches.at(-1)).toEqual({ q: 'le' });
+    expect(screen.getByRole('link', { name: copy.suggestions.seeAll })).toHaveAttribute(
+      'href',
+      `/search?q=le&list=${stored.id}`,
+    );
+  });
+
+  it('adds a product with a click, with the quantity of the form, and resets the form (PD-81)', async () => {
+    const { catalog, lists } = withProducts([milk, eggs]);
+    const stored = lists.seed();
+    renderList(lists, stored.id, catalog);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(copy.add.text), 'huevos');
+    await user.clear(screen.getByLabelText(copy.add.quantity));
+    await user.type(screen.getByLabelText(copy.add.quantity), '2');
+    await user.click(await suggestion('Huevos camperos'));
+
+    expect(
+      await within(await itemList()).findByRole('checkbox', { name: 'Huevos camperos' }),
+    ).toBeVisible();
+    expect(stored.items).toMatchObject([{ type: 'product', quantity: 2 }]);
+    expect(textField()).toHaveValue('');
+    expect(screen.getByLabelText(copy.add.quantity)).toHaveValue(1);
+    expect(screen.queryByRole('listbox')).toBeNull();
+    expect(textField()).toHaveFocus();
+  });
+
+  it('adds the highlighted product with the keyboard (PD-81)', async () => {
+    const { catalog, lists } = withProducts([milk, eggs]);
+    const stored = lists.seed();
+    renderList(lists, stored.id, catalog);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(copy.add.text), 'leche');
+    await suggestion('Leche entera');
+    await user.keyboard('{ArrowDown}{ArrowDown}');
+    expect(textField()).toHaveAttribute(
+      'aria-activedescendant',
+      (await suggestion('Leche entera')).id,
+    );
+    await user.keyboard('{Enter}');
+
+    expect(
+      await within(await itemList()).findByRole('checkbox', { name: 'Leche entera' }),
+    ).toBeVisible();
+    expect(stored.items).toMatchObject([{ type: 'product', product: { id: MILK.id } }]);
+    expect(textField()).toHaveValue('');
+    expect(textField()).toHaveFocus();
+  });
+
+  it('adds the typed text with Enter when nothing is highlighted (PD-81)', async () => {
+    const { catalog, lists } = withProducts([milk]);
+    const stored = lists.seed();
+    renderList(lists, stored.id, catalog);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(copy.add.text), 'leche');
+    await suggestion('Leche entera');
+    await user.keyboard('{Enter}');
+
+    expect(await within(await itemList()).findByRole('checkbox', { name: 'leche' })).toBeVisible();
+    expect(stored.items).toMatchObject([{ type: 'text', text: 'leche' }]);
+    expect(screen.queryByRole('listbox')).toBeNull();
+    expect(textField()).toHaveFocus();
+  });
+
+  it('closes the suggestions with Escape', async () => {
+    const { catalog, lists } = withProducts([milk]);
+    const stored = lists.seed();
+    renderList(lists, stored.id, catalog);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(copy.add.text), 'leche');
+    await suggestion('Leche entera');
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('listbox')).toBeNull();
+    expect(textField()).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('says when no product matches and still adds the text (PD-80)', async () => {
+    const { catalog, lists } = withProducts([]);
+    const stored = lists.seed();
+    renderList(lists, stored.id, catalog);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(copy.add.text), 'pan bimbo');
+    expect(await screen.findByText('No hay productos para «pan bimbo».')).toBeVisible();
+    await user.click(await suggestion('Añadir «pan bimbo» como texto'));
+
+    expect(
+      await within(await itemList()).findByRole('checkbox', { name: 'pan bimbo' }),
+    ).toBeVisible();
+  });
+
+  it('shows a failed search with a retry, and the text can still be added (PD-80)', async () => {
+    const { catalog, lists } = withProducts([milk]);
+    const working = catalog.respond;
+    catalog.respond = () => Promise.reject(new Error('network down'));
+    const stored = lists.seed();
+    renderList(lists, stored.id, catalog);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(copy.add.text), 'leche');
+    expect(await screen.findByRole('alert')).toHaveTextContent(copy.suggestions.error);
+    catalog.respond = working;
+    await user.click(screen.getByRole('button', { name: copy.suggestions.retry }));
+    expect(await suggestion('Leche entera')).toBeVisible();
+
+    catalog.respond = () => Promise.reject(new Error('network down'));
+    await user.click(screen.getByRole('button', { name: copy.add.submit }));
+    expect(await within(await itemList()).findByRole('checkbox', { name: 'leche' })).toBeVisible();
+  });
+
+  it('adds to the quantity of a product already in the list and unchecked (PD-45)', async () => {
+    const { catalog, lists } = withProducts([milk]);
+    const stored = lists.seed({
+      items: [
+        { id: 'a', position: 0, quantity: 2, checked: false, type: 'product', product: MILK },
+      ],
+    });
+    renderList(lists, stored.id, catalog);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(copy.add.text), 'leche');
+    await user.click(await suggestion('Leche entera'));
+
+    await waitFor(() => {
+      expect(
+        within(screen.getByRole('list', { name: copy.page.items })).getByRole('listitem'),
+      ).toHaveTextContent('× 3');
+    });
+    expect(stored.items).toMatchObject([{ id: 'a', quantity: 3 }]);
+  });
+
+  it('says when the product could not be added, and keeps the text', async () => {
+    const { catalog, lists } = withProducts([milk]);
+    const stored = lists.seed();
+    renderList(lists, stored.id, catalog);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(copy.add.text), 'leche');
+    lists.changeError = new Error('network down');
+    await user.click(await suggestion('Leche entera'));
+
+    expect(await screen.findByText(copy.add.failed)).toBeVisible();
+    expect(textField()).toHaveValue('leche');
   });
 });

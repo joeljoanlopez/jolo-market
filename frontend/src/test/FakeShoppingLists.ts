@@ -197,6 +197,16 @@ export class FakeShoppingLists implements ShoppingLists {
       if (product === undefined || !product.available) {
         throw invalid();
       }
+      // PD-45: the same product, still unchecked, gets the quantity added instead of a new item.
+      const existing = list.items.find(
+        (candidate) =>
+          candidate.type === 'product' && candidate.product.id === product.id && !candidate.checked,
+      );
+      if (existing !== undefined) {
+        existing.quantity += base.quantity;
+        this.issued--;
+        return existing.id;
+      }
       list.items.push({ ...base, type: 'product', product });
       return base.id;
     });

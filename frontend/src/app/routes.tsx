@@ -10,6 +10,7 @@ import { ProductPageContainer } from '@/features/catalog/ui/containers/ProductPa
 import { SearchPageContainer } from '@/features/catalog/ui/containers/SearchPageContainer';
 import { HomePage } from '@/features/home/ui/components/HomePage';
 import { AddToListContainer } from '@/features/shopping-list/ui/containers/AddToListContainer';
+import { BackToListContainer } from '@/features/shopping-list/ui/containers/BackToListContainer';
 import { JoinPageContainer } from '@/features/shopping-list/ui/containers/JoinPageContainer';
 import { ListPageContainer } from '@/features/shopping-list/ui/containers/ListPageContainer';
 
@@ -20,8 +21,14 @@ import { RequireSetupDone } from './guards/RequireSetupDone';
 import { NotFoundPage } from './NotFoundPage';
 
 // The catalog never imports the shopping-list feature: its pages get this action from here.
-function addToList(product: Product) {
-  return <AddToListContainer productId={product.id} productName={product.name} />;
+function addToList(product: Product, listId?: string) {
+  return (
+    <AddToListContainer productId={product.id} productName={product.name} targetListId={listId} />
+  );
+}
+
+function backToList(listId: string) {
+  return <BackToListContainer listId={listId} />;
 }
 
 export const routes: RouteObject[] = [
@@ -40,7 +47,12 @@ export const routes: RouteObject[] = [
               { index: true, element: <HomePage /> },
               {
                 path: 'search',
-                element: <SearchPageContainer renderProductActions={addToList} />,
+                element: (
+                  <SearchPageContainer
+                    renderProductActions={addToList}
+                    renderListLink={backToList}
+                  />
+                ),
               },
               {
                 path: 'product/:productId',
