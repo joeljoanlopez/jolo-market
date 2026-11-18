@@ -37,7 +37,7 @@ The backend does not change: the filter works on the items and totals of `GET /a
 
 ### End to end
 
-- [ ] E13.5 Extend `frontend/e2e/lists.spec.ts`: a user opens a list with products of two supermarkets and a free-text item, sees the chips with their totals, chooses one supermarket and sees only its products and the notice, reloads and keeps the filter, changes a quantity and sees the chip total change, and goes back to "Todos" with every item still in the list.
+- [x] E13.5 Extend `frontend/e2e/lists.spec.ts`: a user opens a list with products of two supermarkets and a free-text item, sees the chips with their totals, chooses one supermarket and sees only its products and the notice, reloads and keeps the filter, changes a quantity and sees the chip total change, and goes back to "Todos" with every item still in the list.
 
 ### Docs
 
