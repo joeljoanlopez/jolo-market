@@ -41,4 +41,4 @@ The backend does not change: the filter works on the items and totals of `GET /a
 
 ### Docs
 
-- [ ] E13.6 Update `docs/architecture.md` → Frontend structure (the filter functions, `SupermarketFilter` and the `supermarket` parameter of `/lists/:listId`) and the README (filtering a list by supermarket in "What it does").
+- [x] E13.6 Update `docs/architecture.md` → Frontend structure (the filter functions, `SupermarketFilter` and the `supermarket` parameter of `/lists/:listId`) and the README (filtering a list by supermarket in "What it does").
