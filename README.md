@@ -11,6 +11,7 @@ Self-hosted supermarket price comparator and shared shopping list, inspired by [
 - **Add products from inside a list**: the "Qué necesitas" field of a list suggests catalog products while you type (name, brand, supermarket and prices). Pick one with a click or the arrow keys and Enter, or add the text as a free-text item. "Ver todos los resultados" opens the search, which then adds straight to that list.
 - **Private instance**: users are created by an admin, activate their account through a one-time link, and log in with mandatory TOTP 2FA.
 - **Estimated totals** per supermarket for list items linked to a concrete product.
+- **Filter a list by supermarket**: chips above the items show only the products of one chain, with its estimated total, so you know what to buy in each store. The filter is your own view (it never changes the list) and lives in the URL (`?supermarket=`), so it survives a reload.
 - **Price history**: every catalog refresh stores a dated price snapshot. Each product has a page (`/product/:id`, linked from search results and lists) with a chart of its price over the last 30 days, 6 months, year or all of it, and its minimum, maximum and current price.
 - **Dark mode**: the app follows the light or dark theme of your device, and the "Tema" dropdown in the header forces Claro or Oscuro. The choice is remembered in your browser.
 

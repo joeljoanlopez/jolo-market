@@ -253,6 +253,12 @@
       "empty": "La lista está vacía. Añade lo que necesites.",
       "itemFailed": "No se ha podido guardar el cambio. Inténtalo de nuevo."
     },
+    "filter": {
+      "label": "Filtrar por supermercado",
+      "all": "Todos",
+      "hidden_one": "{{count}} elemento sin supermercado no se muestra",
+      "hidden_other": "{{count}} elementos sin supermercado no se muestran"
+    },
     "notFound": {
       "title": "Lista no encontrada",
       "description": "Esta lista no existe, se ha borrado o ya no tienes acceso a ella.",
