@@ -1,6 +1,6 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { formatPrice } from '@/features/catalog/domain/format';
 import type { Product } from '@/features/catalog/domain/product';
@@ -9,6 +9,8 @@ import es from '@/shared/i18n/locales/es.json';
 import { FakeAuthGateway, maria } from '@/test/FakeAuthGateway';
 import { FakeProductCatalog } from '@/test/FakeProductCatalog';
 import { FakeShoppingLists, JOAN, MILK, type StoredList } from '@/test/FakeShoppingLists';
+import { LIST_REFRESH_INTERVAL_MS } from '@/features/shopping-list/application/useShoppingList';
+import type { ListItem, ListProduct } from '@/features/shopping-list/domain/shoppingList';
 import { locationOf, renderApp } from '@/test/renderApp';
 
 const copy = es.lists;
@@ -480,5 +482,226 @@ describe('ListPageContainer: product suggestions (E12)', () => {
 
     expect(await screen.findByText(copy.add.failed)).toBeVisible();
     expect(textField()).toHaveValue('leche');
+  });
+});
+
+const OIL: ListProduct = {
+  id: 'product-oil',
+  name: 'Aceite de oliva',
+  brand: 'Bonpreu',
+  supermarketId: 'bonpreu',
+  priceCents: 800,
+  imageUrl: null,
+  available: true,
+};
+
+function product(id: string, position: number, item: ListProduct, quantity = 1): ListItem {
+  return { id, position, quantity, checked: false, type: 'product', product: item };
+}
+
+function text(id: string, position: number, value: string): ListItem {
+  return { id, position, quantity: 1, checked: false, type: 'text', text: value };
+}
+
+/** Milk of Mercadona, oil of Bonpreu, a free-text item and a product removed from the catalog. */
+function seedMixedList(lists: FakeShoppingLists) {
+  return lists.seed({
+    items: [
+      product('milk', 0, MILK, 2),
+      product('oil', 1, OIL),
+      text('bread', 2, 'pan'),
+      product('removed', 3, {
+        id: 'product-removed',
+        name: null,
+        brand: null,
+        supermarketId: null,
+        priceCents: null,
+        imageUrl: null,
+        available: false,
+      }),
+    ],
+  });
+}
+
+function renderAt(lists: FakeShoppingLists, path: string) {
+  return renderApp(path, { auth: FakeAuthGateway.loggedInAs(maria), lists });
+}
+
+function filterGroup() {
+  return screen.findByRole('group', { name: copy.filter.label });
+}
+
+async function chip(name: string) {
+  return within(await filterGroup()).getByRole('button', { name: new RegExp(name, 'u') });
+}
+
+async function shownItemNames() {
+  return within(await itemList())
+    .getAllByRole('checkbox')
+    .map((box) => box.getAttribute('aria-label'));
+}
+
+function hiddenNotice(count: number) {
+  return (count === 1 ? copy.filter.hidden_one : copy.filter.hidden_other).replace(
+    '{{count}}',
+    String(count),
+  );
+}
+
+describe('ListPageContainer: filter by supermarket (E13)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('offers "Todos" and one chip per supermarket with its total (PD-84)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = seedMixedList(lists);
+    renderAt(lists, `/lists/${stored.id}`);
+
+    const group = await filterGroup();
+    expect(within(group).getByRole('button', { name: copy.filter.all })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(await chip('Bonpreu')).toHaveTextContent(asShown(formatPrice(800)));
+    expect(await chip('Mercadona')).toHaveTextContent(asShown(formatPrice(250)));
+    expect(screen.queryByText(hiddenNotice(2))).not.toBeInTheDocument();
+  });
+
+  it('gives no chip to a supermarket whose products are all unavailable, and shows them under "Todos" (PD-84)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = lists.seed({
+      items: [product('milk', 0, MILK), product('oil', 1, { ...OIL, available: false })],
+    });
+    renderAt(lists, `/lists/${stored.id}`);
+
+    const group = await filterGroup();
+    expect(within(group).queryByRole('button', { name: /Bonpreu/u })).not.toBeInTheDocument();
+    expect(await shownItemNames()).toEqual(['Leche entera', 'Aceite de oliva']);
+  });
+
+  it('shows only the products of the chosen supermarket and how many items without one are hidden (PD-85, PD-86)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = seedMixedList(lists);
+    const router = renderAt(lists, `/lists/${stored.id}`);
+    const user = userEvent.setup();
+
+    await user.click(await chip('Mercadona'));
+
+    expect(await shownItemNames()).toEqual(['Leche entera']);
+    expect(await chip('Mercadona')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText(hiddenNotice(2))).toBeVisible();
+    expect(locationOf(router)).toBe(`/lists/${stored.id}?supermarket=mercadona`);
+  });
+
+  it('shows no notice when the chosen supermarket hides no item without a supermarket (PD-85)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = lists.seed({ items: [product('milk', 0, MILK), product('oil', 1, OIL)] });
+    renderAt(lists, `/lists/${stored.id}?supermarket=bonpreu`);
+
+    expect(await shownItemNames()).toEqual(['Aceite de oliva']);
+    expect(screen.queryByText(/sin supermercado/u)).not.toBeInTheDocument();
+  });
+
+  it('goes back to "Todos" with every item still in the list (PD-83, PD-86)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = seedMixedList(lists);
+    const router = renderAt(lists, `/lists/${stored.id}?supermarket=bonpreu`);
+    const user = userEvent.setup();
+
+    expect(await shownItemNames()).toEqual(['Aceite de oliva']);
+    await user.click(await chip(copy.filter.all));
+
+    expect(await shownItemNames()).toEqual([
+      'Leche entera',
+      'Aceite de oliva',
+      'pan',
+      copy.item.unknownProduct,
+    ]);
+    expect(locationOf(router)).toBe(`/lists/${stored.id}`);
+    expect(stored.items).toHaveLength(4);
+  });
+
+  it('follows back and forward through the chosen supermarkets (PD-86)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = seedMixedList(lists);
+    const router = renderAt(lists, `/lists/${stored.id}`);
+    const user = userEvent.setup();
+
+    await user.click(await chip('Bonpreu'));
+    expect(await shownItemNames()).toEqual(['Aceite de oliva']);
+    await act(() => router.navigate(-1));
+
+    expect(await shownItemNames()).toHaveLength(4);
+    await act(() => router.navigate(1));
+    expect(await shownItemNames()).toEqual(['Aceite de oliva']);
+  });
+
+  it('shows "Todos" and drops a supermarket parameter that names no chip (PD-86)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = seedMixedList(lists);
+    const router = renderAt(lists, `/lists/${stored.id}?supermarket=aldi`);
+
+    expect(await shownItemNames()).toHaveLength(4);
+    await waitFor(() => {
+      expect(locationOf(router)).toBe(`/lists/${stored.id}`);
+    });
+  });
+
+  it('updates the filtered view and the chip totals with changes of other members (PD-7, PD-85)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const lists = new FakeShoppingLists();
+    const stored = seedMixedList(lists);
+    renderAt(lists, `/lists/${stored.id}?supermarket=bonpreu`);
+    expect(await shownItemNames()).toEqual(['Aceite de oliva']);
+
+    lists.addItemAsSomeoneElse(
+      stored.id,
+      product('oil-2', 0, {
+        ...OIL,
+        id: 'product-oil-2',
+        name: 'Aceite de girasol',
+        priceCents: 300,
+      }),
+    );
+    await act(() => vi.advanceTimersByTimeAsync(LIST_REFRESH_INTERVAL_MS));
+
+    await waitFor(async () => {
+      expect(await shownItemNames()).toEqual(['Aceite de oliva', 'Aceite de girasol']);
+    });
+    expect(await chip('Bonpreu')).toHaveTextContent(asShown(formatPrice(1100)));
+  });
+
+  it('goes back to "Todos" when another member removes the last available product of the chosen supermarket (PD-86)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const lists = new FakeShoppingLists();
+    const stored = seedMixedList(lists);
+    const router = renderAt(lists, `/lists/${stored.id}?supermarket=bonpreu`);
+    expect(await shownItemNames()).toEqual(['Aceite de oliva']);
+
+    stored.items = stored.items.filter((item) => item.id !== 'oil');
+    stored.version++;
+    await act(() => vi.advanceTimersByTimeAsync(LIST_REFRESH_INTERVAL_MS));
+
+    await waitFor(() => {
+      expect(locationOf(router)).toBe(`/lists/${stored.id}`);
+    });
+    expect(await shownItemNames()).toHaveLength(3);
+  });
+
+  it('saves a free-text item added while filtered and shows it under "Todos" (PD-87)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = seedMixedList(lists);
+    renderAt(lists, `/lists/${stored.id}?supermarket=mercadona`);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(copy.add.text), 'fruta');
+    await user.click(screen.getByRole('button', { name: copy.add.submit }));
+
+    expect(await screen.findByText(hiddenNotice(3))).toBeVisible();
+    expect(await shownItemNames()).toEqual(['Leche entera']);
+    expect(stored.items.map((item) => item.id)).toHaveLength(5);
+    await user.click(await chip(copy.filter.all));
+    expect(await shownItemNames()).toContain('fruta');
   });
 });

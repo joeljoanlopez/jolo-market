@@ -24,16 +24,16 @@ The backend does not change: the filter works on the items and totals of `GET /a
 
 ### Frontend (domain)
 
-- [ ] E13.1 Add pure functions in `features/shopping-list/domain` for the supermarket filter: the chips to offer from a `ShoppingList` ("Todos", then one per entry of `totals`, PD-84), whether a `supermarket` value is valid (it names a chip, PD-86), the items to show for a supermarket (product items whose `product.supermarketId` matches, available or not, keeping the order of the list, PD-85) and the number of hidden items without a supermarket (free-text items and products with a `null` supermarket, PD-85).
+- [x] E13.1 Add pure functions in `features/shopping-list/domain` for the supermarket filter: the chips to offer from a `ShoppingList` ("Todos", then one per entry of `totals`, PD-84), whether a `supermarket` value is valid (it names a chip, PD-86), the items to show for a supermarket (product items whose `product.supermarketId` matches, available or not, keeping the order of the list, PD-85) and the number of hidden items without a supermarket (free-text items and products with a `null` supermarket, PD-85).
 
 ### Frontend (presentational)
 
-- [ ] E13.2 Add the `SupermarketFilter` component in `features/shopping-list/ui/components`: an accessible group of toggle chips ("Todos" and one per supermarket with its `SupermarketBadge` colors and `formatPrice` total), the selected one marked with `aria-pressed`. It only gets props and emits `onSelect(supermarketId | null)`. Chips use theme tokens only, with a `cva` variant for the selected state if needed.
+- [x] E13.2 Add the `SupermarketFilter` component in `features/shopping-list/ui/components`: an accessible group of toggle chips ("Todos" and one per supermarket with its `SupermarketBadge` colors and `formatPrice` total), the selected one marked with `aria-pressed`. It only gets props and emits `onSelect(supermarketId | null)`. Chips use theme tokens only, with a `cva` variant for the selected state if needed.
 
 ### Frontend (container)
 
-- [ ] E13.3 Wire the filter into `ListPageContainer`: read `supermarket` from the URL, show `SupermarketFilter` above the items and render only the items of E13.1 for the chosen supermarket, with the hidden-items notice (PD-85). Choosing a chip writes the parameter, "Todos" removes it (PD-86). When the parameter names no chip, on load or after a polling update, replace the URL without it (PD-86). The add form keeps its current behavior (PD-87). Container tests with `FakeShoppingLists` cover choosing a chip, the notice, going back to "Todos", reload with the parameter, an unknown parameter, the chosen supermarket losing its last available product through polling, and adding a free-text item while filtered.
-- [ ] E13.4 Add the Spanish copy to `es.json`: the filter label, "Todos" and the hidden-items notice with plural forms ("{{count}} elemento sin supermercado no se muestra" / "{{count}} elementos sin supermercado no se muestran") (PD-8).
+- [x] E13.3 Wire the filter into `ListPageContainer`: read `supermarket` from the URL, show `SupermarketFilter` above the items and render only the items of E13.1 for the chosen supermarket, with the hidden-items notice (PD-85). Choosing a chip writes the parameter, "Todos" removes it (PD-86). When the parameter names no chip, on load or after a polling update, replace the URL without it (PD-86). The add form keeps its current behavior (PD-87). Container tests with `FakeShoppingLists` cover choosing a chip, the notice, going back to "Todos", reload with the parameter, an unknown parameter, the chosen supermarket losing its last available product through polling, and adding a free-text item while filtered.
+- [x] E13.4 Add the Spanish copy to `es.json`: the filter label, "Todos" and the hidden-items notice with plural forms ("{{count}} elemento sin supermercado no se muestra" / "{{count}} elementos sin supermercado no se muestran") (PD-8).
 
 ### End to end
 
