@@ -1,0 +1,54 @@
+name: Cambio de funcionamiento
+description: Cambia algo que ya existe y funciona como se diseñó.
+title: "[Cambio]: "
+labels: ["change"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Usa esta plantilla cuando algo funciona como se decidió, pero quieres que funcione de otra forma. Si no funciona como se decidió, abre un **Bug**.
+  - type: textarea
+    id: current
+    attributes:
+      label: Comportamiento actual
+      description: Cómo funciona hoy.
+    validations:
+      required: true
+  - type: textarea
+    id: desired
+    attributes:
+      label: Comportamiento deseado
+      description: Cómo quieres que funcione. Paso a paso, qué ves y qué haces.
+    validations:
+      required: true
+  - type: textarea
+    id: reason
+    attributes:
+      label: Motivo
+      description: Por qué el comportamiento actual no te sirve.
+    validations:
+      required: true
+  - type: input
+    id: decisions
+    attributes:
+      label: Decisiones afectadas
+      description: Las decisiones de `docs/architecture.md` que cambia, si las conoces.
+      placeholder: PD-45, PD-84
+  - type: textarea
+    id: existing-data
+    attributes:
+      label: Datos existentes y compatibilidad
+      description: ¿Lo que ya está guardado debe seguir funcionando igual, migrarse o desaparecer? ¿Debe seguir disponible el comportamiento actual?
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceptación
+      description: Qué tienes que poder hacer para darlo por terminado. Uno por línea.
+      placeholder: |
+        - Puedo …
+        - Si …, veo …
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto adicional
+      description: Capturas, bocetos o enlaces.

@@ -50,6 +50,7 @@ Rationale for each choice and exact pinned versions: [`docs/architecture.md`](do
 
 ```text
 jolo-market/
+├── .github/            # CI workflow and issue forms (feature, change, bug)
 ├── backend/            # Symfony API, hexagonal architecture
 ├── frontend/           # React + TypeScript SPA (Vite)
 ├── deploy/             # Backup script, optional auto-deploy (systemd timer) and their bats tests
@@ -487,6 +488,18 @@ On a new server, install as above with the same `.env` first, then restore.
 ### Switching from the development stack
 
 Both stacks share the project name and the `mysql-data` volume, so the database is kept. Move every value of `backend/.env.local` that production needs (see the reference above) to the root `.env`, add `COMPOSE_FILE=compose.prod.yaml`, and run `docker compose up -d --build --remove-orphans --wait` (`--remove-orphans` removes the Vite `frontend` container). Never run `docker compose down -v`: it deletes the database. Users log in once more after the switch: development kept sessions inside the container, production keeps them in the `php-sessions` volume.
+
+## Requesting features, changes and fixes
+
+Open an issue with one of the forms in [`.github/ISSUE_TEMPLATE/`](.github/ISSUE_TEMPLATE/) (PD-89). Their text is Spanish (PD-88).
+
+| Form | Use it when | Label |
+| --- | --- | --- |
+| Nueva funcionalidad | The app does not do something yet | `enhancement` |
+| Cambio de funcionamiento | Something works as decided but should work differently | `change` |
+| Bug | Something does not work as decided | `bug` |
+
+Blank issues are still allowed for quick notes. Feature and change requests become epics with `/new-epic` (see [`docs/epics/`](docs/epics/README.md)).
 
 ## Development principles
 
