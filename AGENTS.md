@@ -14,6 +14,7 @@ These rules apply to every AI assistant working on this repository (Claude Code,
 
 - **All code is in English**: identifiers, comments, docblocks, test names, commit messages, log messages, exception messages, technical docs.
 - **User-facing UI copy** is Spanish, and it lives **only** in translation files (`frontend/src/shared/i18n/locales/es.json`). It is never hard-coded in components.
+- **GitHub issue templates** (`.github/ISSUE_TEMPLATE/`) are the one exception: their visible text is Spanish because the product owner fills them in (PD-88). File names and field ids stay in English.
 - Comments explain *why*, not *what*. Prefer clear names over comments.
 
 ## 3. Test-Driven Development (mandatory)

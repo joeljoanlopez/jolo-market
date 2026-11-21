@@ -1,0 +1,85 @@
+name: Bug
+description: Algo no funciona como debería.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Si funciona como se decidió pero quieres que funcione distinto, abre un **Cambio de funcionamiento**.
+  - type: textarea
+    id: actual
+    attributes:
+      label: Qué pasa
+      description: Lo que ves, incluidos los mensajes de error.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Qué esperabas
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo
+      placeholder: |
+        1. Entro en …
+        2. Pulso …
+        3. Veo …
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Zona de la aplicación
+      options:
+        - Catálogo e importación de precios
+        - Búsqueda y comparación
+        - Listas de la compra
+        - Tickets y gasto
+        - Cuenta, acceso y usuarios
+        - Historial de precios
+        - Apariencia (tema, diseño)
+        - Despliegue, copias de seguridad o entorno de desarrollo
+        - Otra
+    validations:
+      required: true
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: ¿Con qué frecuencia pasa?
+      options:
+        - Siempre
+        - A veces
+        - Solo una vez
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Entorno
+      options:
+        - Producción
+        - Desarrollo (local)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versión
+      description: El commit desplegado (`git rev-parse --short HEAD`), si lo sabes.
+  - type: input
+    id: device
+    attributes:
+      label: Dispositivo y navegador
+      placeholder: Android, Chrome 131
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Salida de `make logs` o de la consola del navegador. Quita contraseñas, tokens y datos personales.
+      render: shell
+  - type: textarea
+    id: context
+    attributes:
+      label: Capturas y contexto adicional
