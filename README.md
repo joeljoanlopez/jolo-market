@@ -499,7 +499,7 @@ Open an issue with one of the forms in [`.github/ISSUE_TEMPLATE/`](.github/ISSUE
 | Cambio de funcionamiento | Something works as decided but should work differently | `change` |
 | Bug | Something does not work as decided | `bug` |
 
-Blank issues are still allowed for quick notes. Feature and change requests become epics with `/new-epic` (see [`docs/epics/`](docs/epics/README.md)).
+Blank issues are still allowed for quick notes. Feature and change requests become epics with `/new-epic` (see [`docs/epics/`](docs/epics/README.md)). An epic is implemented with `/implement-epic E<n>`, which asks the open questions first and opens one pull request for the whole epic (PD-106).
 
 ## Development principles
 
