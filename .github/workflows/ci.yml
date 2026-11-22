@@ -11,8 +11,36 @@ permissions:
   contents: read
 
 jobs:
+  # E12: on a branch, which jobs its changes since the merge-base with main need (PD-107 to PD-110). On main every job
+  # runs, so auto-deploy only deploys fully checked commits.
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.scope.outputs.backend }}
+      frontend: ${{ steps.scope.outputs.frontend }}
+      e2e: ${{ steps.scope.outputs.e2e }}
+      deploy: ${{ steps.scope.outputs.deploy }}
+    steps:
+      # The whole history, so origin/main and the merge-base are there.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: deploy/ci-scope.sh
+        id: scope
+        run: |
+          if [ "$GITHUB_REF" = refs/heads/main ]; then
+            printf 'backend=true\nfrontend=true\ne2e=true\ndeploy=true\n' | tee -a "$GITHUB_OUTPUT"
+          else
+            deploy/ci-scope.sh origin/main | tee -a "$GITHUB_OUTPUT"
+          fi
+
   backend:
     name: Backend check
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -50,6 +78,8 @@ jobs:
 
   frontend:
     name: Frontend check
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -71,6 +101,8 @@ jobs:
 
   deploy-scripts:
     name: Deploy scripts
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -99,7 +131,9 @@ jobs:
     name: End-to-end (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [backend, frontend]
+    needs: [changes, backend, frontend]
+    # A skipped check does not block it; a failed or cancelled one does.
+    if: ${{ !cancelled() && !failure() && needs.changes.outputs.e2e == 'true' }}
     steps:
       - uses: actions/checkout@v7
 
