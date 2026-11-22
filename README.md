@@ -279,6 +279,7 @@ curl -b jar -H "$H" -H 'Content-Type: application/json' -d '{"type":"text","text
 | `make test-unit` | `docker compose exec php composer test:unit` |
 | `make check-frontend` | `cd frontend && npm run check`, on your machine like CI (fails when Node is missing) |
 | `make test-deploy` | `deploy/test.sh` |
+| `make ci-scope` | `deploy/ci-scope.sh`: prints which CI jobs your branch runs, compared with `origin/main` (see [Continuous integration](#continuous-integration)); no Docker needed |
 
 ### Backend checks
 
@@ -352,11 +353,26 @@ GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on 
 
 | Job | What it runs |
 | --- | --- |
+| Changes | `deploy/ci-scope.sh`: which of the jobs below the branch needs |
 | Backend check | `composer check` inside the same php and mysql containers as development |
 | Frontend check | `npm run check` on the Node version of `frontend/.nvmrc` |
 | Deploy scripts | ShellCheck and the bats tests of `deploy/` and the root `Makefile` (`deploy/test.sh`) |
 | Production images | `docker compose -f compose.prod.yaml build`, on pushes to `main` only |
-| End-to-end | The Docker stack without the scheduler, migrated and loaded with the e2e catalog, plus `npm run test:e2e`, after both checks pass |
+| End-to-end | The Docker stack without the scheduler, migrated and loaded with the e2e catalog, plus `npm run test:e2e`, after both checks pass or are skipped |
+
+On `main` every job runs. On any other branch a job runs only when the branch changes, since its merge-base with `origin/main` (every commit of the pull request, not only the last push), a file that affects it; the others show as **skipped** and CI stays green:
+
+| Changed files | Jobs |
+| --- | --- |
+| Documentation: `docs/**`, any `*.md`, `.claude/**`, `LICENSE` | None |
+| `frontend/**` | Frontend check, End-to-end |
+| `backend/**`, `compose.yaml`, `.env.example`, `docker/php/**`, `docker/mysql/**` | Backend check, End-to-end |
+| `docker/php/entrypoint.sh` | Backend check, End-to-end, Deploy scripts |
+| `docker/nginx/**` | End-to-end |
+| `deploy/**`, `Makefile`, `docker/bats/**` | Deploy scripts |
+| `.github/workflows/**`, `deploy/ci-scope.sh`, or any file not listed above (for example `compose.prod.yaml`, `.gitignore`) | Every job |
+
+`make ci-scope` prints what your branch would run.
 
 ## Self-hosting (production)
 

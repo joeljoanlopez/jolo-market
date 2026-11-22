@@ -6,7 +6,7 @@ SHELL := /bin/sh
 
 COMPOSE := docker compose
 
-.PHONY: help dev-stack-only init start stop restart logs shell migrate check check-backend check-frontend test-unit test-deploy
+.PHONY: help dev-stack-only init start stop restart logs shell migrate check check-backend check-frontend test-unit test-deploy ci-scope
 
 help: ## List every target with its description
 	@awk 'BEGIN { FS = ":.*## " } /^[a-z-]+:.*## / { printf "  %-15s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -75,3 +75,7 @@ check-frontend: ## Run Prettier, ESLint, tsc and Vitest on the host
 
 test-deploy: dev-stack-only ## Run ShellCheck and the bats tests of deploy/ and the Makefile
 	deploy/test.sh
+
+# On the host, without Docker (PD-111).
+ci-scope: ## Print which CI jobs the current branch runs, compared with origin/main
+	deploy/ci-scope.sh
