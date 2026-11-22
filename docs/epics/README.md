@@ -19,6 +19,7 @@ Progress tracking for jolo-market. Each epic file lists its tasks as checkboxes.
 | [E12 — Path-filtered CI](E12-path-filtered-ci.md) | On branches, CI runs only the jobs the changed files affect; docs-only pull requests run no tests | E0, E7 | Not started |
 | [E12 — Product search in lists](E12-product-search-in-lists.md) | The add-item field of a list suggests catalog products while typing, so products are added without leaving the list | E2, E4 | Done |
 | [E13 — Filter a list by supermarket](E13-filter-list-by-supermarket.md) | Chips above a list's items show only the products of one supermarket with its estimated total, kept in the URL | E4, E12 | Done |
+| [E14 — Bilingual search with Typesense](E14-bilingual-search.md) | Search in Spanish or Catalan finds every supermarket's products through a Typesense index with a Spanish ↔ Catalan dictionary, and falls back to typo-tolerant matching | E2, E6 | Not started |
 
 E2 can be built before E3. Its endpoints are put behind login in task E3.21.
 
