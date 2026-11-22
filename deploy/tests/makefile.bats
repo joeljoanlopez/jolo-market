@@ -2,7 +2,7 @@
 # E9: the root Makefile of the development stack (PD-58 to PD-60).
 #
 # Each test runs the Makefile in a temporary copy of the repository with fake docker and npm on the PATH. They record
-# their calls in $CALLS_LOG. deploy/test.sh is replaced by a stub that records its call too.
+# their calls in $CALLS_LOG. deploy/test.sh and deploy/ci-scope.sh are replaced by stubs that record their calls too.
 
 setup() {
     REPO="$BATS_TEST_TMPDIR/repo"
@@ -16,7 +16,8 @@ setup() {
     cp /code/Makefile /code/.env.example "$REPO/"
     printf '#!/bin/sh\necho "deploy/test.sh $*" >>"$CALLS_LOG"\nexit "${FAKE_DEPLOY_TEST_STATUS:-0}"\n' \
         >"$REPO/deploy/test.sh"
-    chmod +x "$REPO/deploy/test.sh"
+    printf '#!/bin/sh\necho "deploy/ci-scope.sh $*" >>"$CALLS_LOG"\n' >"$REPO/deploy/ci-scope.sh"
+    chmod +x "$REPO/deploy/test.sh" "$REPO/deploy/ci-scope.sh"
 
     ln -s /code/deploy/tests/fakes/docker "$FAKES/docker"
     ln -s /code/deploy/tests/fakes/npm "$FAKES/npm"
@@ -42,7 +43,7 @@ production_env() {
     [ "$status" -eq 0 ]
     local target
     for target in help init start stop restart logs shell migrate check check-backend check-frontend test-unit \
-        test-deploy; do
+        test-deploy ci-scope; do
         [[ $output =~ (^|$'\n')\ *$target\ +[A-Z][^$'\n']+ ]] || { echo "missing: $target"; return 1; }
     done
     [ -z "$(calls)" ]
@@ -280,4 +281,20 @@ deploy/test.sh " ]
     run make check
 
     [ "$status" -ne 0 ]
+}
+
+@test "ci-scope prints the CI jobs of the current branch" {
+    run make ci-scope
+
+    [ "$status" -eq 0 ]
+    [ "$(calls)" = "deploy/ci-scope.sh " ]
+}
+
+@test "ci-scope runs even with the production stack, since it does not use Docker" {
+    production_env
+
+    run make ci-scope
+
+    [ "$status" -eq 0 ]
+    [ "$(calls)" = "deploy/ci-scope.sh " ]
 }

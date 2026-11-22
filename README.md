@@ -279,6 +279,7 @@ curl -b jar -H "$H" -H 'Content-Type: application/json' -d '{"type":"text","text
 | `make test-unit` | `docker compose exec php composer test:unit` |
 | `make check-frontend` | `cd frontend && npm run check`, on your machine like CI (fails when Node is missing) |
 | `make test-deploy` | `deploy/test.sh` |
+| `make ci-scope` | `deploy/ci-scope.sh`: prints which CI jobs your branch runs, compared with `origin/main` (see [Continuous integration](#continuous-integration)); no Docker needed |
 
 ### Backend checks
 
