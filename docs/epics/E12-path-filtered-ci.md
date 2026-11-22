@@ -28,8 +28,10 @@ Related decisions: PD-50, PD-51, PD-61, PD-107, PD-108, PD-109, PD-110, PD-111.
 
 ### Workflow
 
-- [ ] E12.2 In `.github/workflows/ci.yml`, add a `changes` job (checkout with enough history for the merge-base) that runs `deploy/ci-scope.sh` and exposes its values as outputs, forcing all of them to `true` on `refs/heads/main` (PD-107). Gate Backend check, Frontend check, Deploy scripts and End-to-end with `if:` on those outputs; End-to-end needs `changes`, `backend` and `frontend` and runs when `e2e` is true and neither check failed or was cancelled (a skipped check does not block it). Production images keeps its `main`-only condition. Verify on this epic's own pull request branch: a docs-only push skips every check, and a push touching one area runs only its jobs.
+- [x] E12.2 In `.github/workflows/ci.yml`, add a `changes` job (checkout with enough history for the merge-base) that runs `deploy/ci-scope.sh` and exposes its values as outputs, forcing all of them to `true` on `refs/heads/main` (PD-107). Gate Backend check, Frontend check, Deploy scripts and End-to-end with `if:` on those outputs; End-to-end needs `changes`, `backend` and `frontend` and runs when `e2e` is true and neither check failed or was cancelled (a skipped check does not block it). Production images keeps its `main`-only condition. Verify on this epic's own pull request branch: a docs-only push skips every check, and a push touching one area runs only its jobs.
+
+  - Note: this branch changes `.github/workflows/ci.yml`, so every push to it runs every job (PD-108, PD-109). The filtering was verified on 2026-11-22 with temporary branches, as the product owner chose: `tmp/e12-base` (this branch plus a `[skip ci]` commit that made `changes` compare with `origin/tmp/e12-base`), a docs-only branch on top of it (only Changes ran; every check skipped, CI green) and a frontend-only one (Changes, Frontend check and End-to-end ran; Backend check, Deploy scripts and Production images skipped; CI green). The temporary branches were deleted afterwards.
 
 ### Docs
 
-- [ ] E12.3 Update the README (Continuous integration: which files trigger which job, everything on `main`) and `docs/architecture.md` → Development environment (the `changes` job and `deploy/ci-scope.sh`, PD-107 to PD-111).
+- [x] E12.3 Update the README (Continuous integration: which files trigger which job, everything on `main`) and `docs/architecture.md` → Development environment (the `changes` job and `deploy/ci-scope.sh`, PD-107 to PD-111).
