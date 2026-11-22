@@ -66,6 +66,7 @@ Full description: [`docs/architecture.md`](docs/architecture.md#architecture-sty
 
 - Work is tracked in [`docs/epics/`](docs/epics/README.md). Before starting, read the epic and the task.
 - New epics are created with the procedure in [`.claude/skills/new-epic/SKILL.md`](.claude/skills/new-epic/SKILL.md) (Claude Code: `/new-epic <request>`; other assistants: follow that file). It interviews the product owner about every undefined decision before writing the epic.
+- Existing epics are implemented with the procedure in [`.claude/skills/implement-epic/SKILL.md`](.claude/skills/implement-epic/SKILL.md) (Claude Code: `/implement-epic E<n>`; other assistants: follow that file). It asks every open question and undefined case before coding, records the answers, implements the tasks with TDD and opens one pull request for the epic.
 - Tick a checkbox (`- [x]`) **only** when the task is implemented, tested, and all quality checks pass.
 - If a task turns out to be bigger, or needs a decision, add a note under it and ask. Do not silently change its scope.
 - Keep the epic index (`docs/epics/README.md`) status column up to date.
