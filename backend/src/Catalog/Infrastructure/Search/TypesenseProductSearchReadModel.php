@@ -18,12 +18,27 @@ use App\Catalog\Domain\ValueObject\SupermarketId;
  * is then also matched against the prefixes, so "pa" finds pan* and "lec" gets no equivalent (PD-101). No typos, no
  * dropped words.
  *
+ * Only when that finds nothing, the same query runs again with typos and its page is marked approximate (PD-103).
+ *
  * Order (PD-33): Typesense sorts on three fields at most. The first one ranks the unit groups of this query (more
  * results first, ties kg, l, unit, products without a unit price last), computed from a facet of the same query; then
  * unit price; then `order_key` (shelf price, then name and id).
  */
 final readonly class TypesenseProductSearchReadModel implements ProductSearchReadModel
 {
+    /**
+     * The fallback when nothing matches exactly (PD-103), within the same filter (PD-124): no typo under 4 letters,
+     * 1 from 4 to 6 letters, 2 from 7 (PD-125). Every candidate correction is tried, not only the first few, and no
+     * word is dropped.
+     */
+    private const array TYPOS = [
+        'num_typos' => 2,
+        'min_len_1typo' => 4,
+        'min_len_2typo' => 7,
+        'typo_tokens_threshold' => 1000,
+        'max_candidates' => 100,
+    ];
+
     /** The order of units with as many results (PD-33). */
     private const array UNITS = ['kg', 'l', 'unit'];
 
@@ -38,7 +53,7 @@ final readonly class TypesenseProductSearchReadModel implements ProductSearchRea
             return new ProductSearchPage([], 0, $page, $perPage, []);
         }
 
-        $query = [
+        $exact = [
             'q' => implode(' ', $words),
             'query_by' => 'words',
             'filter_by' => self::filter($supermarkets),
@@ -48,9 +63,21 @@ final readonly class TypesenseProductSearchReadModel implements ProductSearchRea
             'typo_tokens_threshold' => 0,
         ];
 
+        return $this->page($exact, $page, $perPage, approximate: false)
+            ?? $this->page([...$exact, ...self::TYPOS], $page, $perPage, approximate: true)
+            ?? new ProductSearchPage([], 0, $page, $perPage, []);
+    }
+
+    /**
+     * @param array<string, scalar> $query
+     *
+     * @return ProductSearchPage|null null when the query has no result at all
+     */
+    private function page(array $query, int $page, int $perPage, bool $approximate): ?ProductSearchPage
+    {
         [$total, $groupSizes, $cheapest] = $this->groups($query);
         if (0 === $total) {
-            return new ProductSearchPage([], 0, $page, $perPage, []);
+            return null;
         }
 
         $hits = $this->searchOne(
@@ -63,6 +90,7 @@ final readonly class TypesenseProductSearchReadModel implements ProductSearchRea
             $page,
             $perPage,
             $cheapest,
+            $approximate,
         );
     }
 

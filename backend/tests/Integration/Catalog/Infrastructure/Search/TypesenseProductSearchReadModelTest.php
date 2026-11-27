@@ -249,15 +249,84 @@ final class TypesenseProductSearchReadModelTest extends TypesenseTestCase
     }
 
     #[Test]
-    public function it_finds_nothing_without_an_exact_match(): void
+    public function without_an_exact_match_it_returns_the_results_with_typos_as_approximate(): void
     {
-        $this->seed(1, 'Leche entera');
+        $this->seed(1, 'Leche entera', unitPriceCents: 100);
+        $this->seed(2, 'Leche semi', unitPriceCents: 90);
+        $this->seed(3, 'Leche en polvo', unitPriceCents: 1200, unit: 'kg');
+        $this->seed(4, 'Agua mineral');
 
         $page = $this->search('lece');
 
+        self::assertTrue($page->approximate);
+        self::assertSame([self::id(2), self::id(1), self::id(3)], self::ids($page), 'same grouping and order as exact results');
+        self::assertSame(3, $page->total);
+        self::assertSame(['kg' => 1200, 'l' => 90], self::sorted($page->cheapestUnitPriceCentsByUnit));
+    }
+
+    #[Test]
+    public function with_an_exact_match_it_returns_no_approximate_result(): void
+    {
+        $this->seed(1, 'Leche entera');
+        $this->seed(2, 'Lechuga', unit: 'kg');
+
+        $page = $this->search('leche');
+
+        self::assertFalse($page->approximate);
+        self::assertSame([self::id(1)], self::ids($page), 'Lechuga is one typo away but exact and approximate are never mixed');
+    }
+
+    #[Test]
+    public function it_finds_nothing_when_nothing_matches_with_typos_either(): void
+    {
+        $this->seed(1, 'Leche entera');
+
+        $page = $this->search('zumo');
+
         self::assertSame([], $page->results);
         self::assertSame(0, $page->total);
+        self::assertSame([], $page->cheapestUnitPriceCentsByUnit);
         self::assertFalse($page->approximate);
+    }
+
+    #[Test]
+    public function the_fallback_keeps_the_supermarket_filter_and_the_availability(): void
+    {
+        $this->seed(1, 'Leche entera', supermarket: 'aldi');
+        $this->seed(2, 'Leche semi', supermarket: 'mercadona', available: false);
+
+        $page = $this->search('lece', ['mercadona']);
+
+        self::assertSame([], self::ids($page));
+        self::assertFalse($page->approximate);
+    }
+
+    #[Test]
+    public function with_a_supermarket_filter_the_fallback_runs_when_that_supermarket_has_no_exact_result(): void
+    {
+        $this->seed(1, 'Lece de tigre', supermarket: 'mercadona');
+        $this->seed(2, 'Leche entera', supermarket: 'aldi');
+
+        $all = $this->search('lece');
+        $aldi = $this->search('lece', ['aldi']);
+
+        self::assertFalse($all->approximate);
+        self::assertSame([self::id(1)], self::ids($all));
+        self::assertTrue($aldi->approximate);
+        self::assertSame([self::id(2)], self::ids($aldi));
+    }
+
+    #[Test]
+    public function the_typos_allowed_depend_on_the_length_of_the_word(): void
+    {
+        $this->seed(1, 'Pa de pagès', unit: 'kg');
+        $this->seed(2, 'Leche entera');
+        $this->seed(3, 'Plátano de Canarias', unit: 'kg');
+
+        self::assertSame([], self::ids($this->search('pz')), 'no typo under 4 letters');
+        self::assertSame([], self::ids($this->search('lxcxe')), 'one typo from 4 to 6 letters');
+        self::assertSame([self::id(2)], self::ids($this->search('lxche')));
+        self::assertSame([self::id(3)], self::ids($this->search('plstsno')), 'two typos from 7 letters');
     }
 
     /**
@@ -272,6 +341,18 @@ final class TypesenseProductSearchReadModelTest extends TypesenseTestCase
 
         return new TypesenseProductSearchReadModel($this->typesense, self::ALIAS)
             ->search($text, array_map(SupermarketId::fromString(...), $supermarkets), $page, $perPage);
+    }
+
+    /**
+     * @param array<string, int> $cheapest
+     *
+     * @return array<string, int>
+     */
+    private static function sorted(array $cheapest): array
+    {
+        ksort($cheapest);
+
+        return $cheapest;
     }
 
     /**
