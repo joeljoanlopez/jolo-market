@@ -6,6 +6,7 @@ import { routes as appRoutes } from '@/app/routes';
 
 import { FakeAuthGateway } from './FakeAuthGateway';
 import { FakeProductCatalog } from './FakeProductCatalog';
+import { FakeReceiptsApi } from './FakeReceiptsApi';
 import { FakeShoppingLists } from './FakeShoppingLists';
 import { FakeSystemColorScheme } from './FakeSystemColorScheme';
 import { FakeUserAdministration } from './FakeUserAdministration';
@@ -18,6 +19,7 @@ interface RenderAppOptions {
   catalog?: FakeProductCatalog;
   administration?: FakeUserAdministration;
   lists?: FakeShoppingLists;
+  receipts?: FakeReceiptsApi;
   themeStore?: InMemoryThemePreferenceStore;
   systemColorScheme?: FakeSystemColorScheme;
   routes?: RouteObject[];
@@ -31,6 +33,7 @@ export function renderApp(
     catalog = new FakeProductCatalog(),
     administration = new FakeUserAdministration(),
     lists = new FakeShoppingLists(),
+    receipts = new FakeReceiptsApi(),
     themeStore = new InMemoryThemePreferenceStore(),
     systemColorScheme = new FakeSystemColorScheme(),
     routes = appRoutes,
@@ -46,6 +49,7 @@ export function renderApp(
       authGateway={auth}
       userAdministration={administration}
       shoppingLists={lists}
+      receipts={receipts}
       themePreferenceStore={themeStore}
       systemColorScheme={systemColorScheme}
     />,

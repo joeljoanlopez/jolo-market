@@ -6,6 +6,8 @@ export interface HttpClient {
   put(path: string, body?: unknown, options?: RequestOptions): Promise<unknown>;
   patch(path: string, body?: unknown, options?: RequestOptions): Promise<unknown>;
   delete(path: string, options?: RequestOptions): Promise<unknown>;
+  /** A multipart POST (file uploads): the browser sets the Content-Type with its boundary. */
+  postForm(path: string, form: FormData, options?: RequestOptions): Promise<unknown>;
   /** A GET that sends `If-None-Match` and reports a `304` instead of rejecting with it. */
   getConditional(path: string, options?: ConditionalRequestOptions): Promise<ConditionalResponse>;
 }
@@ -46,7 +48,9 @@ export function createHttpClient({ baseUrl }: HttpClientConfig): HttpClient {
       headers.set('X-Requested-With', 'XMLHttpRequest');
     }
     const init: RequestInit = { method, headers, credentials: 'same-origin' };
-    if (body !== undefined) {
+    if (body instanceof FormData) {
+      init.body = body;
+    } else if (body !== undefined) {
       headers.set('Content-Type', 'application/json');
       init.body = JSON.stringify(body);
     }
@@ -105,6 +109,7 @@ export function createHttpClient({ baseUrl }: HttpClientConfig): HttpClient {
     put: (path, body, options) => request('PUT', path, body, options),
     patch: (path, body, options) => request('PATCH', path, body, options),
     delete: (path, options) => request('DELETE', path, undefined, options),
+    postForm: (path, form, options) => request('POST', path, form, options),
     getConditional,
   };
 }

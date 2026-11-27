@@ -19,6 +19,7 @@ use App\Tests\Support\SequentialIdGenerator;
 use App\Tests\Support\ShoppingList\InMemoryProductCatalog;
 use App\Tests\Support\ShoppingList\InMemoryShoppingListRepository;
 use App\Tests\Support\ShoppingList\InMemoryUserDirectory;
+use App\Tests\Support\ShoppingList\RecordingShoppingListEvents;
 use App\Tests\Support\ShoppingList\SequentialShareTokenGenerator;
 use PHPUnit\Framework\TestCase;
 
@@ -43,6 +44,7 @@ abstract class ShoppingListHandlersTestCase extends TestCase
     protected SequentialShareTokenGenerator $tokens;
     protected FixedClock $clock;
     protected ListUpdater $updater;
+    protected RecordingShoppingListEvents $events;
 
     protected function setUp(): void
     {
@@ -53,6 +55,7 @@ abstract class ShoppingListHandlersTestCase extends TestCase
         $this->tokens = new SequentialShareTokenGenerator();
         $this->clock = FixedClock::at('2026-11-11 10:00:00');
         $this->updater = new ListUpdater($this->lists);
+        $this->events = new RecordingShoppingListEvents();
     }
 
     protected function createList(string $owner = self::MARIA, string $name = 'Compra semanal'): string

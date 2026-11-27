@@ -69,6 +69,19 @@ deptrac:
         - type: classLike
           value: '^App\\ShoppingList\\Infrastructure\\.*'
 
+    - name: ReceiptsDomain
+      collectors:
+        - type: classLike
+          value: '^App\\Receipts\\Domain\\.*'
+    - name: ReceiptsApplication
+      collectors:
+        - type: classLike
+          value: '^App\\Receipts\\Application\\.*'
+    - name: ReceiptsInfrastructure
+      collectors:
+        - type: classLike
+          value: '^App\\Receipts\\Infrastructure\\.*'
+
   ruleset:
     # Domain: Shared\Domain only. No Application, Infrastructure or vendor.
     SharedDomain: ~
@@ -77,6 +90,8 @@ deptrac:
     IdentityDomain:
       - SharedDomain
     ShoppingListDomain:
+      - SharedDomain
+    ReceiptsDomain:
       - SharedDomain
 
     # Application: its own Domain plus the shared kernel. No Infrastructure or vendor.
@@ -92,6 +107,10 @@ deptrac:
       - SharedApplication
     ShoppingListApplication:
       - ShoppingListDomain
+      - SharedDomain
+      - SharedApplication
+    ReceiptsApplication:
+      - ReceiptsDomain
       - SharedDomain
       - SharedApplication
 
@@ -123,5 +142,15 @@ deptrac:
       - SharedApplication
       - SharedInfrastructure
       - Vendor
+      - CatalogApplication
+      - IdentityApplication
+    ReceiptsInfrastructure:
+      - ReceiptsDomain
+      - ReceiptsApplication
+      - SharedDomain
+      - SharedApplication
+      - SharedInfrastructure
+      - Vendor
+      - ShoppingListApplication
       - CatalogApplication
       - IdentityApplication

@@ -50,6 +50,7 @@ services:
     environment: *backend-environment
     volumes:
       - php-sessions:/var/www/backend/var/sessions
+      - receipts:/var/receipts
     healthcheck:
       # php-fpm accepts connections only after the entrypoint has migrated the database.
       test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1', 9000) ? 0 : 1);"]
@@ -69,6 +70,18 @@ services:
     command: ["php", "bin/console", "messenger:consume", "scheduler_default", "--time-limit=3600"]
     restart: unless-stopped
     environment: *backend-environment
+    depends_on:
+      php:
+        condition: service_healthy
+
+  # Reads uploaded receipts (PD-65) and removes the receipts of deleted lists (PD-63). The time limit restarts it regularly.
+  worker:
+    build: *backend-build
+    command: ["php", "bin/console", "messenger:consume", "receipts", "--time-limit=3600"]
+    restart: unless-stopped
+    environment: *backend-environment
+    volumes:
+      - receipts:/var/receipts
     depends_on:
       php:
         condition: service_healthy
@@ -115,3 +128,5 @@ volumes:
   typesense-data:
   # Login sessions, kept across deploys (PD-37).
   php-sessions:
+  # Receipt photos (PD-68), archived by deploy/backup.sh (PD-69).
+  receipts:

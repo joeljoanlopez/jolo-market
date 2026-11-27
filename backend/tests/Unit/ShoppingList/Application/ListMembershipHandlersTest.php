@@ -15,6 +15,7 @@ use App\ShoppingList\Application\ManageList\RemoveMemberCommand;
 use App\ShoppingList\Application\ManageList\RemoveMemberHandler;
 use App\ShoppingList\Application\ManageList\RenameListCommand;
 use App\ShoppingList\Application\ManageList\RenameListHandler;
+use App\ShoppingList\Application\ManageList\ShoppingListDeleted;
 use App\ShoppingList\Domain\Model\MemberNotFound;
 use App\ShoppingList\Domain\Model\OwnerCannotLeave;
 use App\ShoppingList\Domain\Model\ShoppingListNotFound;
@@ -218,6 +219,17 @@ final class ListMembershipHandlersTest extends ShoppingListHandlersTestCase
     }
 
     #[Test]
+    public function deleting_a_list_publishes_that_it_was_deleted_after_removing_it(): void
+    {
+        $listId = $this->sharedList();
+        $this->events->onPublish(fn () => self::assertNull($this->lists->findById(ShoppingListId::fromString($listId))));
+
+        ($this->delete())(new DeleteListCommand(self::MARIA, $listId));
+
+        self::assertEquals([new ShoppingListDeleted($listId)], $this->events->published());
+    }
+
+    #[Test]
     public function a_member_cannot_delete_the_list(): void
     {
         $listId = $this->sharedList();
@@ -227,6 +239,7 @@ final class ListMembershipHandlersTest extends ShoppingListHandlersTestCase
             self::fail('Expected a ShoppingListNotFound.');
         } catch (ShoppingListNotFound) {
             self::assertNotNull($this->lists->findById(ShoppingListId::fromString($listId)));
+            self::assertSame([], $this->events->published());
         }
     }
 
@@ -252,6 +265,6 @@ final class ListMembershipHandlersTest extends ShoppingListHandlersTestCase
 
     private function delete(): DeleteListHandler
     {
-        return new DeleteListHandler($this->updater, $this->lists);
+        return new DeleteListHandler($this->updater, $this->lists, $this->events);
     }
 }

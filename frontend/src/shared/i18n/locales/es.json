@@ -372,5 +372,109 @@
       "light": "Claro",
       "dark": "Oscuro"
     }
+  },
+  "receipts": {
+    "section": {
+      "title": "Tiques y gasto",
+      "loading": "Cargando tiques…",
+      "loadFailed": "No se han podido cargar los tiques.",
+      "retry": "Reintentar"
+    },
+    "upload": {
+      "title": "Subir un tique",
+      "supermarket": "Supermercado",
+      "chooseSupermarket": "Elige un supermercado",
+      "photo": "Foto del tique",
+      "photoHint": "JPEG, PNG o WebP de hasta 10 MB.",
+      "submit": "Subir tique",
+      "uploading": "Subiendo…",
+      "errors": {
+        "type": "La foto tiene que ser JPEG, PNG o WebP.",
+        "size": "La foto no puede pasar de 10 MB.",
+        "missing": "Elige un supermercado y una foto.",
+        "invalid": "El servidor no ha aceptado la foto o el supermercado.",
+        "failed": "No se ha podido subir el tique. Inténtalo de nuevo."
+      }
+    },
+    "pending": {
+      "title": "Por revisar",
+      "reading": "Leyendo…",
+      "draft": "Borrador",
+      "review": "Revisar el tique de {{supermarket}} subido por {{username}}"
+    },
+    "confirmed": {
+      "title": "Tiques confirmados",
+      "empty": "Todavía no hay tiques confirmados.",
+      "uploadedBy": "Subido por {{username}}",
+      "open": "Ver el tique de {{supermarket}} del {{date}}"
+    },
+    "spending": {
+      "title": "Gasto por mes",
+      "empty": "El gasto aparece al confirmar tiques.",
+      "month": "Gasto de {{month}}"
+    },
+    "quantity": {
+      "units": "ud",
+      "kg": "kg"
+    },
+    "review": {
+      "title": "Tique de {{supermarket}}",
+      "loading": "Cargando el tique…",
+      "loadFailed": "No se ha podido cargar el tique.",
+      "retry": "Reintentar",
+      "back": "Volver a la lista",
+      "reading": "Leyendo el tique… En unos segundos podrás revisarlo.",
+      "confirmedStatus": "Confirmado",
+      "draftStatus": "Borrador",
+      "uploadedBy": "Subido por {{username}}",
+      "photo": "Foto del tique",
+      "date": "Fecha",
+      "total": "Total pagado (€)",
+      "save": "Guardar",
+      "lines": "Líneas",
+      "noLines": "No hay líneas. Añade las del tique.",
+      "difference": "Los productos menos los descuentos no coinciden con el total: hay {{amount}} de diferencia.",
+      "confirm": "Confirmar",
+      "confirmAgain": "Confirmar de nuevo",
+      "errors": {
+        "invalid": "Revisa los datos: la fecha no puede ser futura, los importes tienen que ser mayores que 0 y para confirmar hacen falta la fecha y el total.",
+        "failed": "No se ha podido guardar el cambio. Inténtalo de nuevo.",
+        "amount": "Escribe un importe mayor que 0, con hasta dos decimales.",
+        "quantity": "Escribe de 1 a 999 unidades, o de 0,001 a 99,999 kg."
+      },
+      "delete": "Borrar tique",
+      "confirmDelete": "¿Borrar este tique y su foto? No se puede deshacer.",
+      "confirmDeleteAction": "Borrar",
+      "cancel": "Cancelar"
+    },
+    "line": {
+      "product": "Producto",
+      "discount": "Descuento",
+      "kind": "Tipo de línea",
+      "text": "Texto",
+      "quantity": "Cantidad",
+      "unit": "Unidad",
+      "amount": "Importe (€)",
+      "add": "Añadir línea",
+      "save": "Guardar línea",
+      "remove": "Quitar línea",
+      "edit": "Editar línea",
+      "cancel": "Cancelar",
+      "linked": "Enlazado con",
+      "suggested": "Sugerencia",
+      "unlinked": "Sin enlazar",
+      "unknownProduct": "Producto que ya no está en el catálogo",
+      "unavailable": "No disponible",
+      "accept": "Aceptar",
+      "change": "Cambiar",
+      "leaveUnlinked": "Sin enlazar",
+      "search": "Buscar en {{supermarket}}",
+      "searching": "Buscando…",
+      "noResults": "No hay productos de {{supermarket}} con ese texto.",
+      "searchFailed": "No se ha podido buscar.",
+      "pick": "Enlazar {{name}}",
+      "closeSearch": "Cerrar la búsqueda",
+      "discountAmount": "−{{amount}}"
+    }
   }
 }

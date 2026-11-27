@@ -10,6 +10,9 @@ import type { AuthGateway } from '@/features/auth/application/AuthGateway';
 import { AuthGatewayContext } from '@/features/auth/application/authGatewayContext';
 import type { ProductCatalog } from '@/features/catalog/application/ProductCatalog';
 import { ProductCatalogContext } from '@/features/catalog/application/productCatalogContext';
+import type { ReceiptsApi } from '@/features/receipts/application/ReceiptsApi';
+import { ReceiptsApiContext } from '@/features/receipts/application/receiptsApiContext';
+import { createReceiptsApi } from '@/features/receipts/infrastructure/receiptsApi';
 import type { ShoppingLists } from '@/features/shopping-list/application/ShoppingLists';
 import { ShoppingListsContext } from '@/features/shopping-list/application/shoppingListsContext';
 import { createShoppingListApi } from '@/features/shopping-list/infrastructure/shoppingListApi';
@@ -29,6 +32,8 @@ interface AppProps {
   userAdministration: UserAdministration;
   /** Defaults to the API client on this origin; tests pass a fake. */
   shoppingLists?: ShoppingLists;
+  /** Defaults to the API client on this origin; tests pass a fake. */
+  receipts?: ReceiptsApi;
   /** Defaults to this browser's localStorage; tests pass an in-memory store. */
   themePreferenceStore?: ThemePreferenceStore;
   /** Defaults to the browser's prefers-color-scheme; tests pass a fake. */
@@ -44,12 +49,16 @@ export function App({
   authGateway,
   userAdministration,
   shoppingLists,
+  receipts,
   themePreferenceStore,
   systemColorScheme,
 }: AppProps) {
   const [lists] = useState(
     () =>
       shoppingLists ?? createShoppingListApi(createHttpClient({ baseUrl: window.location.origin })),
+  );
+  const [receiptsApi] = useState(
+    () => receipts ?? createReceiptsApi(createHttpClient({ baseUrl: window.location.origin })),
   );
   const [themeStore] = useState(
     () => themePreferenceStore ?? createLocalStorageThemePreferenceStore(),
@@ -63,9 +72,11 @@ export function App({
           <UserAdministrationContext value={userAdministration}>
             <ProductCatalogContext value={productCatalog}>
               <ShoppingListsContext value={lists}>
-                <ThemePreferenceProvider store={themeStore} systemColorScheme={systemScheme}>
-                  <RouterProvider router={router} />
-                </ThemePreferenceProvider>
+                <ReceiptsApiContext value={receiptsApi}>
+                  <ThemePreferenceProvider store={themeStore} systemColorScheme={systemScheme}>
+                    <RouterProvider router={router} />
+                  </ThemePreferenceProvider>
+                </ReceiptsApiContext>
               </ShoppingListsContext>
             </ProductCatalogContext>
           </UserAdministrationContext>
