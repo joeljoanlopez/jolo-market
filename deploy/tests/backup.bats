@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# E6.6: deploy/backup.sh, a compressed mysqldump of the instance database.
+# E6.6, E10.30: deploy/backup.sh, a compressed mysqldump of the instance database and an archive of the receipt photos.
 
 load test_helper
 
@@ -12,12 +12,16 @@ backup_files() {
     find "$1" -type f | sort
 }
 
+dump_file() {
+    find "$1" -type f -name '*.sql.gz'
+}
+
 @test "it writes a compressed dump of the database to backups/ and prints its path" {
     run "$SERVER/deploy/backup.sh"
 
     [ "$status" -eq 0 ]
     local file
-    file=$(backup_files "$SERVER/backups")
+    file=$(dump_file "$SERVER/backups")
     [[ $(basename "$file") =~ ^jolo-market-[0-9]{8}T[0-9]{6}Z\.sql\.gz$ ]]
     [ "$(gzip -dc "$file")" = "-- MySQL dump of market" ]
     [[ $output == *"$file"* ]]
@@ -54,3 +58,32 @@ backup_files() {
     [ "$(sort -u "$CALLS_LOG.cwd")" = "$SERVER" ]
     [ -n "$(backup_files "$SERVER/backups")" ]
 }
+
+@test "it archives the receipt photos next to the dump, with the same timestamp" {
+    run "$SERVER/deploy/backup.sh"
+
+    [ "$status" -eq 0 ]
+    local dump archive
+    dump=$(dump_file "$SERVER/backups")
+    archive=$(find "$SERVER/backups" -type f -name '*-receipts.tar.gz')
+    [[ $(basename "$archive") =~ ^jolo-market-[0-9]{8}T[0-9]{6}Z-receipts\.tar\.gz$ ]]
+    [ "${archive%-receipts.tar.gz}" = "${dump%.sql.gz}" ]
+    [[ $output == *"$archive"* ]]
+}
+
+@test "it archives the receipts volume through the php container" {
+    run "$SERVER/deploy/backup.sh"
+
+    [[ $(docker_calls) == *"docker compose exec -T php tar -czf - -C /var/receipts ."* ]]
+}
+
+@test "a failed photo archive fails and leaves no backup file behind" {
+    export FAKE_DOCKER_FAIL_ON=tar
+
+    run "$SERVER/deploy/backup.sh"
+
+    [ "$status" -eq 1 ]
+    [ -z "$(backup_files "$SERVER/backups")" ]
+    [[ $output == *"receipt photos"* ]]
+}
+

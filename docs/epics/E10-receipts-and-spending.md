@@ -119,7 +119,7 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 
 ### Platform
 
-- [ ] E10.30 Make `deploy/backup.sh` also archive the photo volume as `jolo-market-<UTC timestamp>-receipts.tar.gz` next to the dump. bats tests cover the new file and a failure of either part (PD-51, PD-69).
+- [x] E10.30 Make `deploy/backup.sh` also archive the photo volume as `jolo-market-<UTC timestamp>-receipts.tar.gz` next to the dump. bats tests cover the new file and a failure of either part (PD-51, PD-69).
 
 ### Frontend
 
