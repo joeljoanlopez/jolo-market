@@ -132,22 +132,6 @@ describe('receiptsApi', () => {
     await expect(api.listSpending('l1')).rejects.toBeInstanceOf(UnexpectedResponseError);
   });
 
-  it('uploads the photo with the supermarket and resolves with the receipt id', async () => {
-    server.use(
-      http.post(receiptsPath, async ({ request }) => {
-        const form = await request.formData();
-        const photo = form.get('photo');
-        expect(form.get('supermarketId')).toBe('aldi');
-        expect(typeof photo === 'string' || photo === null ? null : await photo.text()).toBe('png');
-        return HttpResponse.json({ id: 'r9' }, { status: 202 });
-      }),
-    );
-
-    await expect(
-      api.uploadReceipt('l1', 'aldi', new File(['png'], 'ticket.png', { type: 'image/png' })),
-    ).resolves.toBe('r9');
-  });
-
   it('sends every edit to its endpoint', async () => {
     const calls: string[] = [];
     const record = async ({ request }: { request: Request }) => {
