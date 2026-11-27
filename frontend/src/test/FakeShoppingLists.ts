@@ -339,8 +339,11 @@ function totalsOf(items: ListItem[]): ShoppingList['totals'] {
       totalCents: 0,
       itemCount: 0,
     };
-    total.totalCents += priceCents * item.quantity;
-    total.itemCount++;
+    // A fully bought supermarket stays at zero instead of disappearing (PD-120, PD-121).
+    if (!item.checked) {
+      total.totalCents += priceCents * item.quantity;
+      total.itemCount++;
+    }
     totals.set(supermarketId, total);
   }
   return [...totals.values()].sort((a, b) => a.supermarketName.localeCompare(b.supermarketName));
