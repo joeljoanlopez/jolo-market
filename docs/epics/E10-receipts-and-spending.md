@@ -109,7 +109,7 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 ### API
 
 - [x] E10.26 Add `POST /api/lists/{id}/receipts` (multipart: `supermarketId`, `photo`) → `202 {id}`. Raise the nginx body limit to fit 10 MB. Functional tests: non-member `404`, wrong type, size or supermarket `422`, missing CSRF header `403`.
-- [ ] E10.27 Add `GET /api/lists/{id}/receipts` (`{pending, confirmed}`), `GET /api/lists/{id}/spending` and `GET /api/lists/{id}/receipts/{receiptId}`, with functional tests.
+- [x] E10.27 Add `GET /api/lists/{id}/receipts` (`{pending, confirmed}`), `GET /api/lists/{id}/spending` and `GET /api/lists/{id}/receipts/{receiptId}`, with functional tests.
 - [ ] E10.28 Add `GET /api/lists/{id}/receipts/{receiptId}/photo`, which streams the stored image with its type and `Cache-Control: private`, members only (`404` otherwise). Functional tests.
 - [ ] E10.29 Add the editing endpoints, with functional tests (`404` for others, `409` while reading, `422` on invalid data):
   - `PATCH /api/lists/{id}/receipts/{receiptId}` (`{date, totalCents}`).
