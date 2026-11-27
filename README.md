@@ -16,6 +16,7 @@ Self-hosted supermarket price comparator and shared shopping list, inspired by [
 - **Lists grouped by section**: a list shows its pending items under store sections (Fruta y verdura, Panadería, Lácteos y huevos… and "Otros" last), always in the same order, so you can shop section by section; checked items go to one block at the end. A product's section comes from its catalog category, and any member can move any pending item to another section with the small selector on its row ("Automática" sends a product back to its catalog section).
 - **Filter a list by supermarket**: chips above the items show only the products of one chain, with its estimated total, so you know what to buy in each store. The filter is your own view (it never changes the list) and lives in the URL (`?supermarket=`), so it survives a reload.
 - **Price history**: every catalog refresh stores a dated price snapshot. Each product has a page (`/product/:id`, linked from search results and lists) with a chart of its price over the last 30 days, 6 months, year or all of it, and its minimum, maximum and current price.
+- **Receipts and spending**: the members of a list upload the photo of a Mercadona, Bonpreu i Esclat or Aldi receipt (JPEG, PNG or WebP up to 10 MB) and pick its supermarket. They review it (date, total, product and discount lines), link each line to a product of that supermarket (accepting the suggestion, searching another one or leaving it unlinked) and confirm it. The list then shows its confirmed receipts and the total spent each month per supermarket, and a printed text linked once is linked by itself on the next receipts. Reading the photo automatically (local AI with an OCR fallback) is not built yet: every receipt starts as an empty draft to fill in by hand.
 - **Dark mode**: the app follows the light or dark theme of your device, and the "Tema" dropdown in the header forces Claro or Oscuro. The choice is remembered in your browser.
 
 ### MVP scope
@@ -33,6 +34,7 @@ Self-hosted supermarket price comparator and shared shopping list, inspired by [
 | Price history | Stored on every refresh |
 | UI language | Spanish, with i18n ready for more languages |
 | Theme | Light and dark; follows the system by default, with a per-browser choice in the header |
+| Receipts | One photo per receipt, uploaded to a list, reviewed and confirmed by its members; monthly spending per supermarket of the confirmed ones |
 
 The full list of product decisions lives in [`docs/architecture.md`](docs/architecture.md#product-decisions).
 
@@ -57,13 +59,13 @@ jolo-market/
 ├── .github/            # CI workflow and issue forms (feature, change, bug)
 ├── backend/            # Symfony API, hexagonal architecture
 ├── frontend/           # React + TypeScript SPA (Vite)
-├── deploy/             # Backup script, optional auto-deploy (systemd timer) and their bats tests
+├── deploy/             # Backup script (database and receipt photos), optional auto-deploy (systemd timer) and their bats tests
 ├── docker/             # Dockerfiles, nginx config and the bats test image
 ├── docs/
 │   ├── architecture.md # Stack, architecture, domain model, decisions
 │   └── epics/          # Epics with task checklists (progress tracking)
-├── compose.yaml        # Development stack: nginx, php-fpm, scheduler, mysql, Vite dev server
-├── compose.prod.yaml   # Production stack: nginx with the built SPA, php-fpm, scheduler, mysql
+├── compose.yaml        # Development stack: nginx, php-fpm, scheduler, worker, mysql, typesense, Vite dev server
+├── compose.prod.yaml   # Production stack: nginx with the built SPA, php-fpm, scheduler, worker, mysql, typesense
 ├── .env.example        # Documented Compose variables (copy to .env)
 ├── Makefile            # `make` targets for the development stack and its checks (`make` lists them)
 └── AGENTS.md           # Rules for AI assistants (TDD, hexagonal, English code)
@@ -290,6 +292,25 @@ curl -b jar -H "$H" -H 'Content-Type: application/json' -X PATCH -d '{"section":
 
 Each item of `GET /api/lists/<id>` carries `section` (where it is shown) and `sectionOverride` (the section chosen by hand, or `null`), and a product item's `product.section` is its catalog section.
 
+### Receipts API
+
+Receipts of a list, for its owner and members (anyone else gets `404`). The upload is multipart; every write needs `X-Requested-With: XMLHttpRequest`. Full table in [`docs/architecture.md`](docs/architecture.md#http-api-draft):
+
+```sh
+H='X-Requested-With: XMLHttpRequest'
+curl -b jar -H "$H" -F supermarketId=mercadona -F photo=@ticket.jpg http://localhost:8080/api/lists/<id>/receipts   # 202 {id}, being read
+curl -b jar 'http://localhost:8080/api/lists/<id>/receipts'                     # {pending, confirmed}
+curl -b jar 'http://localhost:8080/api/lists/<id>/spending'                     # {months: [{month, totalCents, supermarkets}]}
+curl -b jar 'http://localhost:8080/api/lists/<id>/receipts/<receiptId>'         # receipt with lines and differenceCents
+curl -b jar -o ticket.jpg 'http://localhost:8080/api/lists/<id>/receipts/<receiptId>/photo'
+curl -b jar -H "$H" -H 'Content-Type: application/json' -X PATCH -d '{"date":"2026-11-14","totalCents":2599}' http://localhost:8080/api/lists/<id>/receipts/<receiptId>   # 204
+curl -b jar -H "$H" -H 'Content-Type: application/json' -d '{"kind":"product","text":"LECHE ENT.","unit":"units","quantity":6,"amountCents":534}' http://localhost:8080/api/lists/<id>/receipts/<receiptId>/lines   # 201 {id}
+curl -b jar -H "$H" -H 'Content-Type: application/json' -X PUT -d '{"productId":"<productId>"}' http://localhost:8080/api/lists/<id>/receipts/<receiptId>/lines/<lineId>/product   # 204
+curl -b jar -H "$H" -X POST http://localhost:8080/api/lists/<id>/receipts/<receiptId>/confirm   # 204; 422 without date or total
+```
+
+A receipt is `reading` until the `worker` service reads it (`docker compose logs worker`), then `draft`, then `confirmed`. Edits of a receipt still being read answer `409`. Until the AI and OCR readers are built, the worker turns every upload into an empty draft.
+
 ### Make targets
 
 `make` with no target lists them. They are for the **development stack only**: every target that runs Docker refuses to run when `COMPOSE_FILE` in the root `.env` lists `compose.prod.yaml`. Each one runs the command next to it, so you can also run it by hand:
@@ -449,6 +470,7 @@ In production every setting lives in the root `.env`: the code is inside the ima
 | `PRICE_HISTORY_RETENTION_MONTHS` | no | Months of price history kept (default `24`). |
 | `CATALOG_HTTP_USER_AGENT` | no | User-Agent sent to the supermarkets. |
 | `TYPESENSE_URL` | no | Address of the search service (default `http://typesense:8108`, the `typesense` service). |
+| `RECEIPT_STORAGE_DIR` | no | Folder of the receipt photos inside the containers (default `/var/receipts`, where the `receipts` volume is mounted in `php` and `worker`). Leave it as is unless you mount the volume elsewhere. |
 | `SYMFONY_TRUSTED_PROXIES` | behind a proxy | `private_ranges` when a reverse proxy on the same host forwards to nginx (see below). |
 | `AUTO_DEPLOY` | no | `true` turns on [auto-deploy](#auto-deploy-optional). |
 
@@ -518,24 +540,30 @@ docker image prune -f     # remove the old images
 
 The php container applies new migrations when it starts. [Auto-deploy](#auto-deploy-optional) does the same after every merge to `main` with a green CI.
 
+**Upgrading to receipts (E10):** the stack gains a `worker` service, which reads uploaded receipts and removes the receipts of deleted lists, and a `receipts` volume with the photos. Nothing needs to be set: `docker compose up -d --build --wait` creates both. Back up the photos with the database from then on (below).
+
 **Upgrading to the Typesense search (E16):** the stack gains a `typesense` service that needs `TYPESENSE_API_KEY` in the root `.env`. Add it before pulling (`echo "TYPESENSE_API_KEY=$(openssl rand -hex 32)" >> .env`): without it Compose refuses to start, and so does auto-deploy. The php container builds the search index on its first start.
 
 ### Backup and restore
 
-`deploy/backup.sh` dumps the database (`mysqldump --single-transaction`, without stopping the app) to `backups/jolo-market-<UTC timestamp>.sql.gz`, or to the folder you pass. Keep the backups, and your `.env` (`TOTP_ENCRYPTION_KEY` above all), away from the server. For daily backups, a crontab line such as:
+`deploy/backup.sh` dumps the database (`mysqldump --single-transaction`, without stopping the app) to `backups/jolo-market-<UTC timestamp>.sql.gz` and archives the receipt photos of the `receipts` volume to `backups/jolo-market-<same timestamp>-receipts.tar.gz`, or writes both to the folder you pass. When either part fails it writes neither and exits with `1`. Keep the backups, and your `.env` (`TOTP_ENCRYPTION_KEY` above all), away from the server. For daily backups, a crontab line such as:
 
 ```sh
 0 3 * * * /path/to/jolo-market/deploy/backup.sh >> "$HOME/jolo-market-backup.log" 2>&1
 ```
 
-To restore, stop the services that write, load the dump (it replaces every table) and start them again:
+To restore, stop the services that write, load the dump (it replaces every table), unpack the photos of the same backup into the `receipts` volume and start them again:
 
 ```sh
-docker compose stop php scheduler
+docker compose stop php scheduler worker
 gunzip -c backups/jolo-market-20261113T030000Z.sql.gz \
   | docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE"'
+docker compose run --rm --no-deps -T --entrypoint tar php -xzf - -C /var/receipts \
+  < backups/jolo-market-20261113T030000Z-receipts.tar.gz
 docker compose up -d --wait
 ```
+
+Restore the dump and the photos of the same timestamp together: a receipt whose photo is missing still opens, without its photo.
 
 On a new server, install as above with the same `.env` first, then restore.
 

@@ -168,3 +168,4 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
   - `RECEIPT_AI_BASE_URL`, `RECEIPT_AI_MODEL`, `RECEIPT_AI_API_KEY` and `RECEIPT_AI_TIMEOUT_SECONDS`, how to point them at Ollama or another OpenAI-compatible server, and the warning that an AI not run by the operator sends the receipt photos out of the server (PD-113).
   - The `worker` service.
   - Backup and restore of the photos (PD-69).
+  - Note: done except the `RECEIPT_AI_*` part (variables, pointing them at Ollama or another OpenAI-compatible server, and the warning of PD-113): those variables do not exist until E10.41 and E10.21, so they are documented with them (PD-127). ❓ Waits for E10.41.
