@@ -51,6 +51,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      typesense:
+        condition: service_healthy
 
   # Runs scheduled jobs (catalog ingestion, INGESTION_SCHEDULE; price history prune, PRICE_HISTORY_PRUNE_SCHEDULE). Same image and code as php.
   # The time limit makes it restart regularly, so it picks up code and config changes.
@@ -73,6 +75,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      typesense:
+        condition: service_healthy
 
   mysql:
     image: mysql:9.7.4
@@ -94,6 +98,22 @@ services:
       retries: 20
       start_period: 20s
 
+  # Product search index (PD-100), rebuilt from MySQL. Only reachable inside the Compose network.
+  # The key is the public development one of backend/.env.dev.
+  typesense:
+    image: typesense/typesense:30.2
+    command: ["--data-dir", "/data", "--api-key", "dev-only-public-typesense-key"]
+    volumes:
+      - typesense-data:/data
+    healthcheck:
+      # The image has no curl or wget.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8108 && printf 'GET /health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q '\"ok\":true' <&3"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
 volumes:
   mysql-data:
   frontend-node-modules:
+  typesense-data:

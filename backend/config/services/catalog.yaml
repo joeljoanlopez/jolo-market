@@ -50,6 +50,11 @@ services:
             $enabledSupermarkets: '%env(default::ENABLED_SUPERMARKETS)%'
             $sources: !tagged_iterator catalog.supermarket_source
 
+    App\Catalog\Infrastructure\Configuration\SearchConfigurationCheck:
+        arguments:
+            $url: '%env(default::TYPESENSE_URL)%'
+            $apiKey: '%env(default::TYPESENSE_API_KEY)%'
+
 when@test:
     services:
         test.catalog.search_products_handler:

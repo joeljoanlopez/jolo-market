@@ -28,7 +28,7 @@ Typesense is reached through Symfony HttpClient from Catalog Infrastructure only
 
 ### Infrastructure (stack)
 
-- [ ] E16.1 Add a `typesense` service to `compose.yaml`, `compose.prod.yaml` and the e2e stack: Typesense pinned to its latest stable version (Pinned versions table), not exposed outside the Compose network, with a health check, `restart: unless-stopped` in production and a named volume so restarts are fast. php and scheduler wait for it to be healthy. Add `TYPESENSE_URL` and `TYPESENSE_API_KEY` to `.env.example`, `backend/.env`, `.env.dev`/`.env.test` (public placeholders) and the production compose. Extend `app:config:check` so a missing `TYPESENSE_API_KEY` or a malformed `TYPESENSE_URL` stops the container with a message (test first). CI starts the service for the backend and e2e jobs (PD-100).
+- [x] E16.1 Add a `typesense` service to `compose.yaml`, `compose.prod.yaml` and the e2e stack: Typesense pinned to its latest stable version (Pinned versions table), not exposed outside the Compose network, with a health check, `restart: unless-stopped` in production and a named volume so restarts are fast. php and scheduler wait for it to be healthy. Add `TYPESENSE_URL` and `TYPESENSE_API_KEY` to `.env.example`, `backend/.env`, `.env.dev`/`.env.test` (public placeholders) and the production compose. Extend `app:config:check` so a missing `TYPESENSE_API_KEY` or a malformed `TYPESENSE_URL` stops the container with a message (test first). CI starts the service for the backend and e2e jobs (PD-100).
 
 ### Dictionary (Catalog)
 
