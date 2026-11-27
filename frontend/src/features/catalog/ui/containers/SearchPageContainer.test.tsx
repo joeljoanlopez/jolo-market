@@ -119,6 +119,26 @@ describe('SearchPageContainer', () => {
     ).toEqual([true, false]);
   });
 
+  it('announces approximate results above them (PD-104)', async () => {
+    catalog.respond = () => Promise.resolve(resultsPage(1, { approximate: true }));
+    renderAt('/search?q=lece');
+
+    const notice = await screen.findByText(
+      'No hay resultados para «lece». Mostrando resultados parecidos.',
+    );
+    expect(await results()).toEqual(['Leche 1A', 'Leche 1B']);
+    expect(
+      notice.compareDocumentPosition(screen.getByRole('list', { name: es.catalog.search.results })),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('shows no notice with exact results', async () => {
+    renderAt('/search?q=leche');
+
+    await results();
+    expect(screen.queryByText(/Mostrando resultados parecidos/)).not.toBeInTheDocument();
+  });
+
   it('says when nothing matches', async () => {
     catalog.respond = () => Promise.resolve(resultsPage(1, { items: [], total: 0 }));
     renderAt('/search?q=xyz');

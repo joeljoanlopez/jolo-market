@@ -551,6 +551,20 @@ describe('ListPageContainer: product suggestions (E12)', () => {
     expect(await within(await itemList()).findByRole('checkbox', { name: 'leche' })).toBeVisible();
   });
 
+  it('suggests approximate results without a notice (PD-104)', async () => {
+    const { catalog, lists } = withProducts([milk]);
+    const working = catalog.respond;
+    catalog.respond = async (params) => ({ ...(await working(params)), approximate: true });
+    const stored = lists.seed();
+    renderList(lists, stored.id, catalog);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(copy.add.text), 'lece');
+
+    expect(await suggestion('Leche entera')).toBeVisible();
+    expect(screen.queryByText(/Mostrando resultados parecidos/)).not.toBeInTheDocument();
+  });
+
   it('shows the same suggestion error with a retry when search is unavailable (503, PD-105)', async () => {
     const { catalog, lists } = withProducts([milk]);
     const working = catalog.respond;

@@ -61,7 +61,7 @@ Typesense is reached through Symfony HttpClient from Catalog Infrastructure only
 ### Frontend
 
 - [x] E16.11 Map `approximate` in `features/catalog/infrastructure/catalogApi.ts` onto the domain `ProductSearchPage` (`catalogApi.test.ts`). A `503` follows the existing error path of `useProductSearch`. Test that `/search` and the list suggestions show their current error and retry on a `503` (PD-105).
-- [ ] E16.12 Show the approximate-results notice in `SearchPageContainer` above the results when `approximate` is true, and never in the list suggestions. Add `search.approximate` to `es.json`: "No hay resultados para «{{query}}». Mostrando resultados parecidos.". Container tests cover the notice with approximate results and its absence with exact ones (PD-104).
+- [x] E16.12 Show the approximate-results notice in `SearchPageContainer` above the results when `approximate` is true, and never in the list suggestions. Add `search.approximate` to `es.json`: "No hay resultados para «{{query}}». Mostrando resultados parecidos.". Container tests cover the notice with approximate results and its absence with exact ones (PD-104).
 
 ### End to end
 
