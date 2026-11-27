@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Catalog\Infrastructure\Persistence\Dbal;
 
 use App\Catalog\Application\GetProduct\ProductView;
+use App\Catalog\Domain\Service\SectionMapping;
 use App\Catalog\Domain\ValueObject\ProductId;
 use App\Catalog\Infrastructure\Persistence\Dbal\DbalProductViewReadModel;
 use App\Shared\Infrastructure\Persistence\Dbal\BinaryUuid;
@@ -21,10 +22,11 @@ final class DbalProductViewReadModelTest extends DbalTestCase
         $this->insert([
             'supermarket_id' => 'bonpreu', 'name' => 'Leche entera', 'brand' => 'Hacendado', 'image_url' => 'https://example.com/leche.jpg',
             'package_quantity' => 1500, 'package_unit' => 'l', 'price_cents' => 125, 'unit_price_cents' => 83, 'unit_price_unit' => 'l', 'available' => true,
+            'category' => 'Lácteos y huevos > Leche',
         ]);
 
         self::assertEquals(
-            new ProductView(self::ID, 'Leche entera', 'Hacendado', 'bonpreu', 'Bonpreu i Esclat', 1500, 'l', 125, 83, 'l', 'https://example.com/leche.jpg', true),
+            new ProductView(self::ID, 'Leche entera', 'Hacendado', 'bonpreu', 'Bonpreu i Esclat', 1500, 'l', 125, 83, 'l', 'https://example.com/leche.jpg', true, 'dairy-and-eggs'),
             $this->readModel()->find(ProductId::fromString(self::ID)),
         );
     }
@@ -35,9 +37,20 @@ final class DbalProductViewReadModelTest extends DbalTestCase
         $this->insert(['supermarket_id' => 'mercadona', 'name' => 'Leche', 'price_cents' => 100, 'available' => false]);
 
         self::assertEquals(
-            new ProductView(self::ID, 'Leche', null, 'mercadona', 'Mercadona', null, null, 100, null, null, null, false),
+            new ProductView(self::ID, 'Leche', null, 'mercadona', 'Mercadona', null, null, 100, null, null, null, false, 'other'),
             $this->readModel()->find(ProductId::fromString(self::ID)),
         );
+    }
+
+    /**
+     * PD-91: the section is worked out when the product is read, so a new mapping applies at once.
+     */
+    #[Test]
+    public function it_puts_a_product_with_an_unmapped_category_in_other(): void
+    {
+        $this->insert(['supermarket_id' => 'aldi', 'name' => 'Puzle', 'price_cents' => 999, 'available' => true, 'category' => 'Juguetes > Puzles']);
+
+        self::assertSame('other', $this->readModel()->find(ProductId::fromString(self::ID))?->section);
     }
 
     #[Test]
@@ -60,6 +73,6 @@ final class DbalProductViewReadModelTest extends DbalTestCase
 
     private function readModel(): DbalProductViewReadModel
     {
-        return new DbalProductViewReadModel($this->connection);
+        return new DbalProductViewReadModel($this->connection, new SectionMapping());
     }
 }

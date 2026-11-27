@@ -28,7 +28,7 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 
 ### Application (Catalog → ShoppingList)
 
-- [ ] E14.2 Expose the section of each product through the Catalog query API that `ShoppingList\Application\ProductCatalog` wraps, and add `section` to `ShoppingList\Application\CatalogProduct`. The section is worked out when the product is read, not stored (PD-91). The ShoppingList side keeps its own section id type and does not import Catalog's `Section` (cross-context rule); Deptrac must pass.
+- [x] E14.2 Expose the section of each product through the Catalog query API that `ShoppingList\Application\ProductCatalog` wraps, and add `section` to `ShoppingList\Application\CatalogProduct`. The section is worked out when the product is read, not stored (PD-91). The ShoppingList side keeps its own section id type and does not import Catalog's `Section` (cross-context rule); Deptrac must pass.
 
 ### Domain and persistence (ShoppingList)
 

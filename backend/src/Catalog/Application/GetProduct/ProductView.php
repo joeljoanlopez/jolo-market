@@ -6,6 +6,7 @@ namespace App\Catalog\Application\GetProduct;
 
 /**
  * One product flattened for display, available or not (PD-22). Units are "kg", "l" or "unit".
+ * The section is the id of the store section its category maps to (PD-90, PD-91).
  */
 final readonly class ProductView
 {
@@ -22,6 +23,7 @@ final readonly class ProductView
         public ?string $unitPriceUnit,
         public ?string $imageUrl,
         public bool $available,
+        public string $section,
     ) {
     }
 }

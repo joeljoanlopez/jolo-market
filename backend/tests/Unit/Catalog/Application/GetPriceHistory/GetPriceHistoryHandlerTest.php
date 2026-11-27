@@ -182,7 +182,7 @@ final class GetPriceHistoryHandlerTest extends TestCase
 
     private static function product(string $id): ProductView
     {
-        return new ProductView($id, 'Leche entera', null, 'mercadona', 'Mercadona', 1000, 'l', 125, 125, 'l', null, true);
+        return new ProductView($id, 'Leche entera', null, 'mercadona', 'Mercadona', 1000, 'l', 125, 125, 'l', null, true, 'dairy-and-eggs');
     }
 
     private static function point(string $capturedAt, int $priceCents): PriceHistoryPoint

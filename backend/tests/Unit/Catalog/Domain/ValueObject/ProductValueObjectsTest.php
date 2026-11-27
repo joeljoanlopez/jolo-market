@@ -48,6 +48,12 @@ final class ProductValueObjectsTest extends TestCase
     }
 
     #[Test]
+    public function a_category_path_is_read_back_from_its_string(): void
+    {
+        self::assertSame(['Lácteos', 'Leche'], CategoryPath::fromString('Lácteos > Leche')->segments());
+    }
+
+    #[Test]
     public function a_url_accepts_http_and_https(): void
     {
         self::assertSame('https://example.com/a.jpg', Url::fromString('https://example.com/a.jpg')->value());

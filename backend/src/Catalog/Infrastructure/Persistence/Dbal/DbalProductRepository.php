@@ -24,8 +24,6 @@ use Doctrine\DBAL\ParameterType;
 
 final readonly class DbalProductRepository implements ProductRepository
 {
-    private const string CATEGORY_SEPARATOR = ' > ';
-
     private const string COLUMNS = 'id, supermarket_id, external_id, name, brand, category, image_url,
         package_quantity, package_unit, price_cents, unit_price_cents, unit_price_unit, available, last_seen_at';
 
@@ -111,7 +109,7 @@ final readonly class DbalProductRepository implements ProductRepository
             ProductDetails::of(
                 ProductName::fromString(self::string($row['name'])),
                 self::nullableString($row['brand']),
-                null === $category ? null : CategoryPath::fromSegments(explode(self::CATEGORY_SEPARATOR, $category)),
+                null === $category ? null : CategoryPath::fromString($category),
                 null === $imageUrl ? null : Url::fromString($imageUrl),
             ),
             Money::eur(self::int($row['price_cents'])),

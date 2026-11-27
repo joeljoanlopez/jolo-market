@@ -73,6 +73,6 @@ final class GetProductHandlerTest extends TestCase
 
     private static function product(bool $available): ProductView
     {
-        return new ProductView(self::ID, 'Leche entera', null, 'mercadona', 'Mercadona', 1000, 'l', 99, 99, 'l', null, $available);
+        return new ProductView(self::ID, 'Leche entera', null, 'mercadona', 'Mercadona', 1000, 'l', 99, 99, 'l', null, $available, 'dairy-and-eggs');
     }
 }
