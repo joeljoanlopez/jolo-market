@@ -16,6 +16,7 @@ use App\ShoppingList\Domain\Model\ProductItem;
 use App\ShoppingList\Domain\Model\ShoppingList;
 use App\ShoppingList\Domain\Model\ShoppingListNotFound;
 use App\ShoppingList\Domain\ValueObject\InvalidQuantity;
+use App\ShoppingList\Domain\ValueObject\ItemSection;
 use App\ShoppingList\Domain\ValueObject\ItemText;
 use App\ShoppingList\Domain\ValueObject\ListItemId;
 use App\ShoppingList\Domain\ValueObject\ListName;
@@ -374,6 +375,98 @@ final class ShoppingListTest extends TestCase
     }
 
     #[Test]
+    public function a_new_item_has_no_section_chosen(): void
+    {
+        $list = $this->storedList();
+        $this->addText($list, self::MARIA, 'pan');
+
+        self::assertNull($list->items()[0]->section());
+    }
+
+    #[Test]
+    public function a_member_chooses_the_section_of_an_item(): void
+    {
+        $list = $this->listWithJoan();
+        $bread = $this->addText($list, self::MARIA, 'pan');
+
+        $list->changeItemSection(self::user(self::JOAN), $bread, ItemSection::BAKERY, self::at('14:00'));
+
+        self::assertSame(ItemSection::BAKERY, $list->items()[0]->section());
+        self::assertSame(4, $list->version());
+        self::assertEquals(self::at('14:00'), $list->updatedAt());
+    }
+
+    #[Test]
+    public function removing_the_chosen_section_leaves_the_item_without_one(): void
+    {
+        $list = $this->storedList();
+        $milk = $this->addProduct($list, self::MILK, 1);
+        $list->changeItemSection(self::user(self::MARIA), $milk, ItemSection::OTHER, self::at('14:00'));
+
+        $list->changeItemSection(self::user(self::MARIA), $milk, null, self::at('15:00'));
+
+        self::assertNull($list->items()[0]->section());
+        self::assertSame(4, $list->version());
+    }
+
+    #[Test]
+    public function choosing_the_same_section_again_changes_nothing(): void
+    {
+        $list = $this->storedList();
+        $bread = $this->addText($list, self::MARIA, 'pan');
+        $list->changeItemSection(self::user(self::MARIA), $bread, ItemSection::BAKERY, self::at('14:00'));
+
+        $list->changeItemSection(self::user(self::MARIA), $bread, ItemSection::BAKERY, self::at('15:00'));
+
+        self::assertSame(3, $list->version());
+        self::assertEquals(self::at('14:00'), $list->updatedAt());
+    }
+
+    #[Test]
+    public function a_checked_item_can_change_section(): void
+    {
+        $list = $this->storedList();
+        $bread = $this->addText($list, self::MARIA, 'pan');
+        $list->check(self::user(self::MARIA), $bread, self::at('14:00'));
+
+        $list->changeItemSection(self::user(self::MARIA), $bread, ItemSection::BAKERY, self::at('15:00'));
+
+        self::assertSame(ItemSection::BAKERY, $list->items()[0]->section());
+    }
+
+    #[Test]
+    public function changing_the_section_of_an_unknown_item_is_not_found(): void
+    {
+        $this->expectException(ListItemNotFound::class);
+
+        $this->storedList()->changeItemSection(self::user(self::MARIA), ListItemId::fromString(self::MILK), ItemSection::BAKERY, self::at('14:00'));
+    }
+
+    #[Test]
+    public function an_outsider_cannot_change_the_section_of_an_item(): void
+    {
+        $list = $this->storedList();
+        $bread = $this->addText($list, self::MARIA, 'pan');
+
+        $this->expectException(ShoppingListNotFound::class);
+
+        $list->changeItemSection(self::user(self::PEDRO), $bread, ItemSection::BAKERY, self::at('14:00'));
+    }
+
+    #[Test]
+    public function adding_a_product_already_in_the_list_keeps_its_chosen_section(): void
+    {
+        $list = $this->storedList();
+        $milk = $this->addProduct($list, self::MILK, 1);
+        $list->changeItemSection(self::user(self::MARIA), $milk, ItemSection::DRINKS, self::at('14:00'));
+
+        $this->addProduct($list, self::MILK, 2);
+
+        self::assertCount(1, $list->items());
+        self::assertSame(ItemSection::DRINKS, $list->items()[0]->section());
+    }
+
+    #[Test]
     public function removing_an_item(): void
     {
         $list = $this->storedList();
@@ -479,7 +572,7 @@ final class ShoppingListTest extends TestCase
     #[Test]
     public function a_reconstituted_list_keeps_its_state(): void
     {
-        $item = ListItem::reconstitute(ListItemId::fromString(self::MILK), new ProductItem(self::product(self::BREAD)), Quantity::of(3), true);
+        $item = ListItem::reconstitute(ListItemId::fromString(self::MILK), new ProductItem(self::product(self::BREAD)), Quantity::of(3), true, ItemSection::BAKERY);
         $list = ShoppingList::reconstitute(
             ShoppingListId::fromString(self::LIST),
             self::user(self::MARIA),

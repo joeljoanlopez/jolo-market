@@ -14,6 +14,7 @@ use App\ShoppingList\Domain\Model\ProductItem;
 use App\ShoppingList\Domain\Model\ShoppingList;
 use App\ShoppingList\Domain\Port\ShoppingListChangedConcurrently;
 use App\ShoppingList\Domain\Port\ShoppingListRepository;
+use App\ShoppingList\Domain\ValueObject\ItemSection;
 use App\ShoppingList\Domain\ValueObject\ItemText;
 use App\ShoppingList\Domain\ValueObject\ListItemId;
 use App\ShoppingList\Domain\ValueObject\ListName;
@@ -132,6 +133,7 @@ final readonly class DbalShoppingListRepository implements ShoppingListRepositor
                 'product_id' => $content instanceof ProductItem ? BinaryUuid::toDatabase($content->productId->value()) : null,
                 'quantity' => $item->quantity()->value(),
                 'checked' => $item->isChecked(),
+                'section' => $item->section()?->value,
                 'position' => $position,
             ],
             [
@@ -197,7 +199,7 @@ final readonly class DbalShoppingListRepository implements ShoppingListRepositor
     private function itemsOf(string $listId): array
     {
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT id, type, text, product_id, quantity, checked FROM list_item WHERE list_id = ? ORDER BY position',
+            'SELECT id, type, text, product_id, quantity, checked, section FROM list_item WHERE list_id = ? ORDER BY position',
             [$listId],
             [ParameterType::BINARY],
         );
@@ -210,6 +212,7 @@ final readonly class DbalShoppingListRepository implements ShoppingListRepositor
                     : new FreeTextItem(ItemText::fromString(DbalRow::string($row['text']))),
                 Quantity::of(DbalRow::int($row['quantity'])),
                 1 === DbalRow::int($row['checked']),
+                null === $row['section'] ? null : ItemSection::from(DbalRow::string($row['section'])),
             ),
             $rows,
         );

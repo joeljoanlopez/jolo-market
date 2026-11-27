@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\ShoppingList\Domain\Model;
 
 use App\Shared\Domain\ValueObject\UserId;
+use App\ShoppingList\Domain\ValueObject\ItemSection;
 use App\ShoppingList\Domain\ValueObject\ItemText;
 use App\ShoppingList\Domain\ValueObject\ListItemId;
 use App\ShoppingList\Domain\ValueObject\ListName;
@@ -260,6 +261,19 @@ final class ShoppingList
     public function uncheck(UserId $actor, ListItemId $itemId, \DateTimeImmutable $now): void
     {
         $this->setChecked($actor, $itemId, false, $now);
+    }
+
+    /**
+     * Any member chooses the item's section, or removes the choice with null (PD-92). A checked
+     * item accepts it too (PD-117).
+     */
+    public function changeItemSection(UserId $actor, ListItemId $itemId, ?ItemSection $section, \DateTimeImmutable $now): void
+    {
+        $this->assertCanAccess($actor);
+
+        if ($this->item($itemId)->changeSection($section)) {
+            $this->changed($now);
+        }
     }
 
     /**

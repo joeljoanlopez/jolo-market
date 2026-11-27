@@ -32,7 +32,7 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 
 ### Domain and persistence (ShoppingList)
 
-- [ ] E14.3 Add an optional section choice to list items (`FreeTextItem` and `ProductItem`): `ShoppingList::changeItemSection(itemId, ?section)` sets or removes it (removing it on a free-text item leaves it in "Otros"), an unknown item is `ListItemNotFound`, and adding an already listed product keeps the choice (PD-92, PD-94). Add a nullable `section` column to `list_item` with a migration (existing rows stay `NULL`, PD-94), and map it in the DBAL repository.
+- [x] E14.3 Add an optional section choice to list items (`FreeTextItem` and `ProductItem`): `ShoppingList::changeItemSection(itemId, ?section)` sets or removes it (removing it on a free-text item leaves it in "Otros"), an unknown item is `ListItemNotFound`, and adding an already listed product keeps the choice (PD-92, PD-94). Add a nullable `section` column to `list_item` with a migration (existing rows stay `NULL`, PD-94), and map it in the DBAL repository.
 - [ ] E14.4 Accept `section` in `UpdateItemCommand`/`UpdateItemHandler`, validated against the section ids (unknown → a validation exception mapped to `422`), saved with the retry of PD-43. A checked item accepts it too (PD-117).
 
 ### API
