@@ -45,7 +45,7 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 
 ### Catalog
 
-- [ ] E10.7 Add a Catalog query API `SuggestProductsHandler`: a receipt text and a supermarket give its most similar products, available or not. Similarity is the number of query words that match the start of a word in the name or brand (`ENT.` → "Entera", `HACEND` → "Hacendado"), and ties are broken by name. Unit tests cover abbreviated words, punctuation, accents and an empty result (PD-67).
+- [x] E10.7 Add a Catalog query API `SuggestProductsHandler`: a receipt text and a supermarket give its most similar products, available or not. Similarity is the number of query words that match the start of a word in the name or brand (`ENT.` → "Entera", `HACEND` → "Hacendado"), and ties are broken by name. Unit tests cover abbreviated words, punctuation, accents and an empty result (PD-67).
 
 ### ShoppingList
 
