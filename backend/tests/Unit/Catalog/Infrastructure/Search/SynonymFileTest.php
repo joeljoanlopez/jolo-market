@@ -38,6 +38,8 @@ final class SynonymFileTest extends TestCase
         yield 'group of one word' => ['one-word.yaml', 'group 1 has only one word ("leche")'];
         yield 'word with spaces' => ['word-with-spaces.yaml', '"aceite de oliva" in group 1 has spaces'];
         yield 'word in two groups' => ['word-in-two-groups.yaml', '"llet" is in groups 1 and 2'];
+        yield 'not a single search word' => ['not-a-single-word.yaml', '"semi-desnatada" in group 1 is not a single word'];
+        yield 'same word but for its accents' => ['same-word-with-accents.yaml', '"platano" is in groups 1 and 2'];
         yield 'not a list' => ['not-a-list.yaml', 'it must be a list of groups'];
         yield 'not a word' => ['not-a-word.yaml', 'group 1 must be a list of words'];
         yield 'malformed YAML' => ['malformed.yaml', 'it is not valid YAML'];

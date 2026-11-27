@@ -18,7 +18,8 @@ final readonly class SynonymFile
     }
 
     /**
-     * @return list<non-empty-list<string>> each group has two or more lowercase words, and no word is in two groups
+     * @return list<non-empty-list<string>> each group has two or more lowercase words, each one a single search word
+     *                                      (SearchWords), and no word is in two groups
      *
      * @throws InvalidSynonymFile
      */
@@ -30,6 +31,8 @@ final readonly class SynonymFile
             $number = $index + 1;
             $group = $this->group($rawGroup, $number);
             foreach ($group as $word) {
+                // Search ignores accents, so "plátano" and "platano" are the same word.
+                $word = SearchWords::of($word)[0];
                 if (isset($groupOfWord[$word])) {
                     throw InvalidSynonymFile::because($this->path, \sprintf('"%s" is in groups %d and %d', $word, $groupOfWord[$word], $number));
                 }
@@ -81,6 +84,9 @@ final readonly class SynonymFile
             $word = mb_strtolower(trim($word));
             if (1 === preg_match('/\s/u', $word)) {
                 throw InvalidSynonymFile::because($this->path, \sprintf('"%s" in group %d has spaces', $word, $number));
+            }
+            if ('' !== $word && 1 !== \count(SearchWords::of($word))) {
+                throw InvalidSynonymFile::because($this->path, \sprintf('"%s" in group %d is not a single word', $word, $number));
             }
             if ('' !== $word && !\in_array($word, $words, true)) {
                 $words[] = $word;

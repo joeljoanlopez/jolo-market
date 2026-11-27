@@ -1,3 +1,7 @@
+parameters:
+    # Typesense alias that search reads; each rebuild points it to a new collection.
+    catalog.search_alias: 'products'
+
 services:
     _defaults:
         autowire: true
@@ -55,8 +59,26 @@ services:
             $url: '%env(default::TYPESENSE_URL)%'
             $apiKey: '%env(default::TYPESENSE_API_KEY)%'
 
+    # Product search on Typesense (PD-100, PD-101).
+    App\Catalog\Infrastructure\Search\TypesenseClient:
+        arguments:
+            $url: '%env(string:TYPESENSE_URL)%'
+            $apiKey: '%env(string:TYPESENSE_API_KEY)%'
+
+    App\Catalog\Infrastructure\Search\TypesenseProductSearchIndex:
+        arguments:
+            $synonymFile: '%kernel.project_dir%/config/search/synonyms.yaml'
+            $alias: '%catalog.search_alias%'
+
 when@test:
+    parameters:
+        # The functional tests index into their own collections, never the development index.
+        catalog.search_alias: 'products_test'
+
     services:
+        test.catalog.typesense_client:
+            alias: App\Catalog\Infrastructure\Search\TypesenseClient
+            public: true
         test.catalog.search_products_handler:
             alias: App\Catalog\Application\SearchProducts\SearchProductsHandler
             public: true
