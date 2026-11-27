@@ -37,3 +37,9 @@ when@test:
         test.receipts.reading_queue:
             alias: App\Receipts\Application\ReceiptReadingQueue
             public: true
+        test.receipts.repository:
+            alias: App\Receipts\Domain\Port\ReceiptRepository
+            public: true
+        test.receipts.photo_storage:
+            alias: App\Receipts\Domain\Port\ReceiptPhotoStorage
+            public: true

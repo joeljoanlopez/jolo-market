@@ -1,5 +1,5 @@
 # The "scheduler" container consumes scheduler_default (scheduled jobs). The "worker" container consumes
-# receipts: reading uploaded receipts (PD-65).
+# receipts: reading uploaded receipts (PD-65) and removing the receipts of a deleted list (PD-63).
 framework:
     messenger:
         failure_transport: failed
@@ -17,6 +17,7 @@ framework:
 
         routing:
             App\Receipts\Application\ReadReceipt\ReadReceiptCommand: receipts
+            App\ShoppingList\Application\ManageList\ShoppingListDeleted: receipts
 
 when@test:
     framework:

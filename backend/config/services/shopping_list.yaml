@@ -13,11 +13,15 @@ services:
     App\ShoppingList\Domain\Port\ShareTokenGenerator: '@App\ShoppingList\Infrastructure\Security\RandomShareTokenGenerator'
     App\ShoppingList\Application\ProductCatalog: '@App\ShoppingList\Infrastructure\Catalog\CatalogProductCatalog'
     App\ShoppingList\Application\UserDirectory: '@App\ShoppingList\Infrastructure\Identity\IdentityUserDirectory'
+    App\ShoppingList\Application\ShoppingListEvents: '@App\ShoppingList\Infrastructure\Messenger\MessengerShoppingListEvents'
 
 when@test:
     services:
         test.shopping_list.repository:
             alias: App\ShoppingList\Domain\Port\ShoppingListRepository
+            public: true
+        test.shopping_list.events:
+            alias: App\ShoppingList\Application\ShoppingListEvents
             public: true
 
 # Development environment (PD-57).
