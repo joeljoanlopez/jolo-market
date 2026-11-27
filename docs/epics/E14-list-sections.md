@@ -24,7 +24,7 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 
 ### Domain (Catalog)
 
-- [ ] E14.1 Add the `Section` enum in `Catalog\Domain` with the thirteen sections of PD-90, their English ids and their display order, and a `SectionMapping` domain service that turns a supermarket id and a `CategoryPath` into a `Section` by the longest matching prefix, `other` for a missing or unknown path (PD-91). Start with the mapping of the dummy catalog categories (`DummyCatalog`), so every dummy product gets a section other than `other` ("Lácteos y huevos > Quesos" and "Carne y pescado > Embutidos" go to `deli-and-cheese`, PD-115); unit tests cover the longest-prefix rule, a missing path and an unknown path.
+- [x] E14.1 Add the `Section` enum in `Catalog\Domain` with the thirteen sections of PD-90, their English ids and their display order, and a `SectionMapping` domain service that turns a supermarket id and a `CategoryPath` into a `Section` by the longest matching prefix, `other` for a missing or unknown path (PD-91). Start with the mapping of the dummy catalog categories (`DummyCatalog`), so every dummy product gets a section other than `other` ("Lácteos y huevos > Quesos" and "Carne y pescado > Embutidos" go to `deli-and-cheese`, PD-115); unit tests cover the longest-prefix rule, a missing path and an unknown path.
 
 ### Application (Catalog → ShoppingList)
 
