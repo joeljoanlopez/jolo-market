@@ -7,9 +7,9 @@ namespace App\Tests\Integration\Receipts\Infrastructure\Messenger;
 use App\Receipts\Application\ReadReceipt\ReadReceiptCommand;
 use App\Receipts\Application\ReceiptReadingQueue;
 use App\Receipts\Domain\ValueObject\ReceiptId;
+use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
-use PHPUnit\Framework\Attributes\Test;
 
 final class MessengerReceiptReadingQueueTest extends KernelTestCase
 {

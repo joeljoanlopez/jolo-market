@@ -12,7 +12,7 @@ use App\Receipts\Domain\ValueObject\ReadBy;
 final readonly class ReadReceiptData
 {
     /**
-     * @param string|null       $date  "YYYY-MM-DD"
+     * @param string|null        $date  "YYYY-MM-DD"
      * @param list<ReadLineData> $lines
      */
     public function __construct(

@@ -16,7 +16,7 @@ final class ReceiptViews
     public const string DATE_TIME_FORMAT = \DATE_ATOM;
 
     /**
-     * @param array<string, string> $usernames by user id
+     * @param array<string, string> $usernames        by user id
      * @param array<string, string> $supermarketNames by supermarket id
      */
     public static function summary(Receipt $receipt, array $usernames, array $supermarketNames): ReceiptSummary
