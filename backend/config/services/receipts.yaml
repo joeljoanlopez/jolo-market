@@ -10,3 +10,24 @@ services:
     App\Receipts\Infrastructure\Storage\FilesystemReceiptPhotoStorage:
         arguments:
             $directory: '%env(string:RECEIPT_STORAGE_DIR)%'
+
+    App\Receipts\Application\ListAccess: '@App\Receipts\Infrastructure\ShoppingList\ShoppingListListAccess'
+    App\Receipts\Application\ReceiptProductCatalog: '@App\Receipts\Infrastructure\Catalog\CatalogReceiptProductCatalog'
+    App\Receipts\Application\ReceiptSupermarkets: '@App\Receipts\Infrastructure\Catalog\CatalogReceiptSupermarkets'
+    App\Receipts\Application\ReceiptUserDirectory: '@App\Receipts\Infrastructure\Identity\IdentityReceiptUserDirectory'
+
+when@test:
+    services:
+        # The cross-context adapters, checked by the integration tests even before a controller uses them.
+        test.receipts.list_access:
+            alias: App\Receipts\Application\ListAccess
+            public: true
+        test.receipts.product_catalog:
+            alias: App\Receipts\Application\ReceiptProductCatalog
+            public: true
+        test.receipts.supermarkets:
+            alias: App\Receipts\Application\ReceiptSupermarkets
+            public: true
+        test.receipts.user_directory:
+            alias: App\Receipts\Application\ReceiptUserDirectory
+            public: true

@@ -101,7 +101,8 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
   - Tables `receipt` (with `read_by`), `receipt_line` and `receipt_product_link` (PK `supermarket_id`, `normalized_text`).
   - `DbalReceiptRepository`, `DbalProductLinkMemory` and the spending read model.
   - Integration tests.
-- [ ] E10.25 Add the adapters of the cross-context ports (`ShoppingListListAccess`, `CatalogReceiptProductCatalog`, `IdentityReceiptUserDirectory`). Add the Receipts layers and the allowed paths to `deptrac.yaml`: Receipts Infrastructure → ShoppingList Application (`CheckListAccessHandler`, `ShoppingListDeleted`), Catalog Application and Identity Application. No exceptions.
+- [x] E10.25 Add the adapters of the cross-context ports (`ShoppingListListAccess`, `CatalogReceiptProductCatalog`, `IdentityReceiptUserDirectory`). Add the Receipts layers and the allowed paths to `deptrac.yaml`: Receipts Infrastructure → ShoppingList Application (`CheckListAccessHandler`, `ShoppingListDeleted`), Catalog Application and Identity Application. No exceptions.
+  - Note: `CatalogReceiptSupermarkets` (the port of E10.10) reads the enabled supermarkets through `ListSupermarketsHandler`; a supermarket disabled later shows its id instead of its name.
 
 ### API
 

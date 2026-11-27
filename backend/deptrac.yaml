@@ -151,3 +151,6 @@ deptrac:
       - SharedApplication
       - SharedInfrastructure
       - Vendor
+      - ShoppingListApplication
+      - CatalogApplication
+      - IdentityApplication
