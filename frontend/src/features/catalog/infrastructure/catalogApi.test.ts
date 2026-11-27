@@ -1,7 +1,12 @@
 import { http, HttpResponse } from 'msw/http';
 import { describe, expect, it } from 'vitest';
 
-import { NotFoundError, UnexpectedResponseError, ValidationError } from '@/shared/http/errors';
+import {
+  NotFoundError,
+  ServerError,
+  UnexpectedResponseError,
+  ValidationError,
+} from '@/shared/http/errors';
 import { createHttpClient } from '@/shared/http/httpClient';
 import { server } from '@/test/server';
 
@@ -37,6 +42,7 @@ function searchBody(overrides: Record<string, unknown> = {}) {
     perPage: 20,
     total: 2,
     cheapestUnitPriceCents: { l: 83 },
+    approximate: false,
     ...overrides,
   };
 }
@@ -58,7 +64,24 @@ describe('catalogApi.searchProducts', () => {
       perPage: 20,
       total: 2,
       cheapestUnitPriceCents: { l: 83 },
+      approximate: false,
     });
+  });
+
+  it('says when the results are approximate', async () => {
+    server.use(
+      http.get(`${baseUrl}/api/products`, () =>
+        HttpResponse.json(searchBody({ approximate: true })),
+      ),
+    );
+
+    await expect(api.searchProducts({ q: 'lece' })).resolves.toMatchObject({ approximate: true });
+  });
+
+  it('lets a 503 reach the caller as a ServerError', async () => {
+    server.use(http.get(`${baseUrl}/api/products`, () => problem(503, 'Service Unavailable')));
+
+    await expect(api.searchProducts({ q: 'leche' })).rejects.toBeInstanceOf(ServerError);
   });
 
   it('sends only the text when there is no filter and no page', async () => {
@@ -110,6 +133,7 @@ describe('catalogApi.searchProducts', () => {
     ['a price that is not an integer', searchBody({ items: [{ ...milkJson, priceCents: 1.5 }] })],
     ['a cheapest price of an unknown unit', searchBody({ cheapestUnitPriceCents: { g: 1 } })],
     ['a missing total', { ...searchBody(), total: undefined }],
+    ['a missing approximate flag', { ...searchBody(), approximate: undefined }],
   ])('rejects %s with an UnexpectedResponseError', async (_case, body) => {
     server.use(http.get(`${baseUrl}/api/products`, () => HttpResponse.json(body)));
 

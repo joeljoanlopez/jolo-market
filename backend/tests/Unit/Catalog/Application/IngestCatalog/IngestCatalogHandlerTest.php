@@ -23,6 +23,7 @@ use App\Tests\Support\Catalog\InMemoryIngestionLogger;
 use App\Tests\Support\Catalog\InMemoryIngestionRunRepository;
 use App\Tests\Support\Catalog\InMemoryPriceSnapshotRepository;
 use App\Tests\Support\Catalog\InMemoryProductRepository;
+use App\Tests\Support\Catalog\InMemoryProductSearchIndex;
 use App\Tests\Support\FixedClock;
 use App\Tests\Support\SequentialIdGenerator;
 use PHPUnit\Framework\Attributes\Test;
@@ -36,6 +37,7 @@ final class IngestCatalogHandlerTest extends TestCase
     private FixedClock $clock;
     private SequentialIdGenerator $ids;
     private InMemoryIngestionLogger $logger;
+    private InMemoryProductSearchIndex $searchIndex;
 
     protected function setUp(): void
     {
@@ -45,6 +47,50 @@ final class IngestCatalogHandlerTest extends TestCase
         $this->clock = FixedClock::at('2026-11-08 06:00:00');
         $this->ids = new SequentialIdGenerator();
         $this->logger = new InMemoryIngestionLogger();
+        $this->searchIndex = new InMemoryProductSearchIndex(products: 1);
+    }
+
+    #[Test]
+    public function it_rebuilds_the_search_index_after_the_runs(): void
+    {
+        $result = $this->ingest([new FakeCatalogSource('mercadona', [new SourceProduct('1', 'Leche', 99, '1 L')])]);
+
+        self::assertSame(1, $this->searchIndex->rebuilds);
+        self::assertNull($result->searchIndexError);
+        self::assertTrue($result->succeeded());
+    }
+
+    #[Test]
+    public function it_rebuilds_the_search_index_also_when_a_run_failed(): void
+    {
+        $this->ingest([
+            FakeCatalogSource::failing('mercadona', new \RuntimeException('Boom.')),
+            new FakeCatalogSource('aldi', [new SourceProduct('1', 'Pan', 50, '1 ud')]),
+        ]);
+
+        self::assertSame(1, $this->searchIndex->rebuilds, 'products marked unavailable must leave the results');
+    }
+
+    #[Test]
+    public function a_failing_rebuild_is_logged_and_reported_and_keeps_the_ingested_catalog(): void
+    {
+        $this->searchIndex->failing();
+
+        $result = $this->ingest([new FakeCatalogSource('mercadona', [new SourceProduct('1', 'Leche', 99, '1 L')])]);
+
+        self::assertTrue($result->allSucceeded(), 'the runs themselves succeeded');
+        self::assertFalse($result->succeeded());
+        self::assertSame('Product search is unavailable: the fake index is failing.', $result->searchIndexError);
+        self::assertSame(['Product search is unavailable: the fake index is failing.'], $this->logger->searchIndexFailures);
+        self::assertCount(1, $this->products->all());
+    }
+
+    #[Test]
+    public function it_leaves_the_search_index_alone_when_asked_to(): void
+    {
+        $this->ingest([new FakeCatalogSource('mercadona', [new SourceProduct('1', 'Leche', 99, '1 L')])], rebuildSearchIndex: false);
+
+        self::assertSame(0, $this->searchIndex->rebuilds);
     }
 
     #[Test]
@@ -466,7 +512,7 @@ final class IngestCatalogHandlerTest extends TestCase
      * @param list<SupermarketCatalogSource> $sources
      * @param list<string>|null              $enabled defaults to every source given
      */
-    private function ingest(array $sources, ?array $enabled = null, ?string $only = null, string $postalCode = '46001'): IngestCatalogResult
+    private function ingest(array $sources, ?array $enabled = null, ?string $only = null, string $postalCode = '46001', bool $rebuildSearchIndex = true): IngestCatalogResult
     {
         $enabled ??= array_map(static fn (SupermarketCatalogSource $source): string => $source->supermarketId()->value(), $sources);
 
@@ -479,8 +525,9 @@ final class IngestCatalogHandlerTest extends TestCase
             $this->clock,
             $this->ids,
             $this->logger,
+            $this->searchIndex,
         );
 
-        return $handler(new IngestCatalogCommand($only));
+        return $handler(new IngestCatalogCommand($only, $rebuildSearchIndex));
     }
 }

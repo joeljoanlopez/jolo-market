@@ -24,7 +24,8 @@ final readonly class IngestCatalogConsoleCommand
     }
 
     /**
-     * Exit code: 0 when every run succeeded, 1 when any run failed, 2 for invalid input or configuration.
+     * Exit code: 0 when every run succeeded and the search index was rebuilt, 1 when any run or the rebuild failed,
+     * 2 for invalid input or configuration.
      */
     public function __invoke(
         SymfonyStyle $io,
@@ -44,7 +45,11 @@ final readonly class IngestCatalogConsoleCommand
             array_map(self::row(...), $result->runs),
         );
 
-        return $result->allSucceeded() ? Command::SUCCESS : Command::FAILURE;
+        if (null !== $result->searchIndexError) {
+            $io->error('The search index could not be rebuilt; the catalog is ingested. Run app:catalog:reindex-search once Typesense answers. '.$result->searchIndexError);
+        }
+
+        return $result->succeeded() ? Command::SUCCESS : Command::FAILURE;
     }
 
     /**

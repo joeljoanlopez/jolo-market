@@ -100,6 +100,10 @@ export function SearchPageContainer({
       )}
       {search.status === 'success' && search.data.total > 0 && (
         <div aria-busy={search.isFetching} className="flex flex-col gap-4">
+          {search.data.approximate && (
+            // Only here: the list suggestions show the same results without a notice (PD-104).
+            <Text>{t('catalog.search.approximate', { query: text.value.trim() })}</Text>
+          )}
           <Text tone="muted">{t('catalog.search.total', { count: search.data.total })}</Text>
           <ProductResultList
             products={search.data.items}

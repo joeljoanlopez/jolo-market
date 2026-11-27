@@ -2,30 +2,33 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Integration\Catalog\Infrastructure\Persistence\Dbal;
+namespace App\Tests\Integration\Catalog\Infrastructure\Search;
 
 use App\Catalog\Application\SearchProducts\ProductSearchPage;
 use App\Catalog\Application\SearchProducts\ProductSearchResult;
 use App\Catalog\Domain\ValueObject\SupermarketId;
-use App\Catalog\Infrastructure\Persistence\Dbal\DbalProductSearchReadModel;
-use App\Shared\Infrastructure\Persistence\Dbal\BinaryUuid;
-use Doctrine\DBAL\ParameterType;
+use App\Catalog\Infrastructure\Search\TypesenseProductSearchReadModel;
 use PHPUnit\Framework\Attributes\Test;
 
-final class DbalProductSearchReadModelTest extends DbalTestCase
+/**
+ * The test environment enables mercadona and aldi only, so Bonpreu's products are never indexed; the bilingual cases
+ * put the Catalan names in Aldi.
+ */
+final class TypesenseProductSearchReadModelTest extends TypesenseTestCase
 {
-    private const array ALL_SUPERMARKETS = ['mercadona', 'aldi', 'bonpreu'];
+    private const array ALL_SUPERMARKETS = ['mercadona', 'aldi'];
 
-    private int $nextExternalId = 1;
+    /** The products are indexed at the first search of each test, once they are all seeded. */
+    private bool $indexed = false;
 
     #[Test]
     public function it_maps_every_field_of_a_result(): void
     {
-        $this->seed(1, 'Leche entera', brand: 'Hacendado', supermarket: 'bonpreu', priceCents: 125, unitPriceCents: 83, unit: 'l', packageQuantity: 1500, packageUnit: 'l', imageUrl: 'https://example.com/leche.jpg');
+        $this->seed(1, 'Leche entera', brand: 'Hacendado', supermarket: 'aldi', priceCents: 125, unitPriceCents: 83, unit: 'l', packageQuantity: 1500, packageUnit: 'l', imageUrl: 'https://example.com/leche.jpg');
 
         $page = $this->search('leche');
 
-        self::assertEquals([new ProductSearchResult(self::id(1), 'Leche entera', 'Hacendado', 'bonpreu', 'Bonpreu i Esclat', 1500, 'l', 125, 83, 'l', 'https://example.com/leche.jpg')], $page->results);
+        self::assertEquals([new ProductSearchResult(self::id(1), 'Leche entera', 'Hacendado', 'aldi', 'Aldi', 1500, 'l', 125, 83, 'l', 'https://example.com/leche.jpg')], $page->results);
     }
 
     #[Test]
@@ -71,7 +74,7 @@ final class DbalProductSearchReadModelTest extends DbalTestCase
     }
 
     #[Test]
-    public function it_matches_words_too_short_for_the_full_text_index_and_stopwords(): void
+    public function it_matches_short_words_and_stopwords(): void
     {
         $this->seed(1, 'Camiseta (XL)');
         $this->seed(2, 'Camiseta M');
@@ -84,7 +87,7 @@ final class DbalProductSearchReadModelTest extends DbalTestCase
     }
 
     #[Test]
-    public function it_treats_full_text_operators_typed_by_the_user_as_separators(): void
+    public function it_treats_search_operators_typed_by_the_user_as_separators(): void
     {
         $this->seed(1, 'Leche entera');
         $this->seed(2, 'Leche desnatada');
@@ -161,9 +164,9 @@ final class DbalProductSearchReadModelTest extends DbalTestCase
     {
         $this->seed(1, 'Leche entera', supermarket: 'mercadona');
         $this->seed(2, 'Leche entera', supermarket: 'aldi', unitPriceCents: 200);
-        $this->seed(3, 'Leche entera', supermarket: 'bonpreu', unitPriceCents: 300);
 
         self::assertSame([self::id(2)], self::ids($this->search('leche', ['aldi'])));
+        self::assertSame([self::id(1)], self::ids($this->search('leche', ['mercadona'])));
         self::assertSame([self::id(1), self::id(2)], self::ids($this->search('leche', ['mercadona', 'aldi'])));
         self::assertSame([], self::ids($this->search('leche', [])));
     }
@@ -210,48 +213,146 @@ final class DbalProductSearchReadModelTest extends DbalTestCase
         self::assertSame(['kg' => 1200, 'l' => 89], $cheapest);
     }
 
+    #[Test]
+    public function a_word_that_is_a_dictionary_entry_also_finds_its_equivalents(): void
+    {
+        $this->seed(1, 'Leche entera', supermarket: 'mercadona');
+        $this->seed(2, 'Llet sencera', supermarket: 'aldi', unitPriceCents: 90);
+        $this->seed(3, 'Lletuga', supermarket: 'aldi', unitPriceCents: 80, unit: 'kg');
+
+        self::assertSame([self::id(2), self::id(1), self::id(3)], self::ids($this->search('leche')), 'llet is searched as a prefix: Lletuga is noise PD-101 accepts');
+        self::assertSame([self::id(2), self::id(1), self::id(3)], self::ids($this->search('llet')));
+        self::assertSame([self::id(2), self::id(1)], self::ids($this->search('leche entera')));
+        self::assertSame([self::id(2), self::id(1)], self::ids($this->search('LLET Sencera')));
+    }
+
+    #[Test]
+    public function pan_and_pa_both_find_the_bread_of_every_supermarket(): void
+    {
+        $this->seed(1, 'Pan de molde', supermarket: 'mercadona', unitPriceCents: 300, unit: 'kg');
+        $this->seed(2, 'Pa de pagès', supermarket: 'aldi', unitPriceCents: 400, unit: 'kg');
+        $this->seed(3, 'Pasta espaguetis', supermarket: 'aldi', unitPriceCents: 200, unit: 'kg');
+        $this->seed(4, 'Leche entera');
+
+        self::assertSame([self::id(3), self::id(1), self::id(2)], self::ids($this->search('pan')));
+        self::assertSame([self::id(3), self::id(1), self::id(2)], self::ids($this->search('pa')));
+    }
+
+    #[Test]
+    public function a_word_that_is_only_the_start_of_an_entry_gets_no_equivalent(): void
+    {
+        $this->seed(1, 'Leche entera', supermarket: 'mercadona');
+        $this->seed(2, 'Llet sencera', supermarket: 'aldi');
+
+        self::assertSame([self::id(1)], self::ids($this->search('lec')));
+        self::assertSame([self::id(2)], self::ids($this->search('lle')));
+    }
+
+    #[Test]
+    public function without_an_exact_match_it_returns_the_results_with_typos_as_approximate(): void
+    {
+        $this->seed(1, 'Leche entera', unitPriceCents: 100);
+        $this->seed(2, 'Leche semi', unitPriceCents: 90);
+        $this->seed(3, 'Leche en polvo', unitPriceCents: 1200, unit: 'kg');
+        $this->seed(4, 'Agua mineral');
+
+        $page = $this->search('lece');
+
+        self::assertTrue($page->approximate);
+        self::assertSame([self::id(2), self::id(1), self::id(3)], self::ids($page), 'same grouping and order as exact results');
+        self::assertSame(3, $page->total);
+        self::assertSame(['kg' => 1200, 'l' => 90], self::sorted($page->cheapestUnitPriceCentsByUnit));
+    }
+
+    #[Test]
+    public function with_an_exact_match_it_returns_no_approximate_result(): void
+    {
+        $this->seed(1, 'Leche entera');
+        $this->seed(2, 'Lechuga', unit: 'kg');
+
+        $page = $this->search('leche');
+
+        self::assertFalse($page->approximate);
+        self::assertSame([self::id(1)], self::ids($page), 'Lechuga is one typo away but exact and approximate are never mixed');
+    }
+
+    #[Test]
+    public function it_finds_nothing_when_nothing_matches_with_typos_either(): void
+    {
+        $this->seed(1, 'Leche entera');
+
+        $page = $this->search('zumo');
+
+        self::assertSame([], $page->results);
+        self::assertSame(0, $page->total);
+        self::assertSame([], $page->cheapestUnitPriceCentsByUnit);
+        self::assertFalse($page->approximate);
+    }
+
+    #[Test]
+    public function the_fallback_keeps_the_supermarket_filter_and_the_availability(): void
+    {
+        $this->seed(1, 'Leche entera', supermarket: 'aldi');
+        $this->seed(2, 'Leche semi', supermarket: 'mercadona', available: false);
+
+        $page = $this->search('lece', ['mercadona']);
+
+        self::assertSame([], self::ids($page));
+        self::assertFalse($page->approximate);
+    }
+
+    #[Test]
+    public function with_a_supermarket_filter_the_fallback_runs_when_that_supermarket_has_no_exact_result(): void
+    {
+        $this->seed(1, 'Lece de tigre', supermarket: 'mercadona');
+        $this->seed(2, 'Leche entera', supermarket: 'aldi');
+
+        $all = $this->search('lece');
+        $aldi = $this->search('lece', ['aldi']);
+
+        self::assertFalse($all->approximate);
+        self::assertSame([self::id(1)], self::ids($all));
+        self::assertTrue($aldi->approximate);
+        self::assertSame([self::id(2)], self::ids($aldi));
+    }
+
+    #[Test]
+    public function the_typos_allowed_depend_on_the_length_of_the_word(): void
+    {
+        $this->seed(1, 'Pa de pagès', unit: 'kg');
+        $this->seed(2, 'Leche entera');
+        $this->seed(3, 'Plátano de Canarias', unit: 'kg');
+
+        self::assertSame([], self::ids($this->search('pz')), 'no typo under 4 letters');
+        self::assertSame([], self::ids($this->search('lxcxe')), 'one typo from 4 to 6 letters');
+        self::assertSame([self::id(2)], self::ids($this->search('lxche')));
+        self::assertSame([self::id(3)], self::ids($this->search('plstsno')), 'two typos from 7 letters');
+    }
+
     /**
      * @param list<string> $supermarkets
      */
     private function search(string $text, array $supermarkets = self::ALL_SUPERMARKETS, int $page = 1, int $perPage = 20): ProductSearchPage
     {
-        return new DbalProductSearchReadModel($this->connection)
+        if (!$this->indexed) {
+            $this->index(__DIR__.'/../../../../Fixtures/Search/search.yaml')->rebuild();
+            $this->indexed = true;
+        }
+
+        return new TypesenseProductSearchReadModel($this->typesense, self::ALIAS)
             ->search($text, array_map(SupermarketId::fromString(...), $supermarkets), $page, $perPage);
     }
 
-    private function seed(
-        int $number,
-        string $name,
-        ?string $brand = null,
-        string $supermarket = 'mercadona',
-        int $priceCents = 100,
-        ?int $unitPriceCents = 100,
-        ?string $unit = 'l',
-        ?int $packageQuantity = 1000,
-        ?string $packageUnit = 'l',
-        ?string $imageUrl = null,
-        bool $available = true,
-    ): void {
-        $this->connection->insert('product', [
-            'id' => BinaryUuid::toDatabase(self::id($number)),
-            'supermarket_id' => $supermarket,
-            'external_id' => (string) $this->nextExternalId++,
-            'name' => $name,
-            'brand' => $brand,
-            'image_url' => $imageUrl,
-            'package_quantity' => $packageQuantity,
-            'package_unit' => $packageUnit,
-            'price_cents' => $priceCents,
-            'unit_price_cents' => $unitPriceCents,
-            'unit_price_unit' => $unit,
-            'available' => $available,
-            'last_seen_at' => '2026-11-08 06:00:00',
-        ], ['id' => ParameterType::BINARY, 'available' => ParameterType::BOOLEAN]);
-    }
-
-    private static function id(int $number): string
+    /**
+     * @param array<string, int> $cheapest
+     *
+     * @return array<string, int>
+     */
+    private static function sorted(array $cheapest): array
     {
-        return \sprintf('00000000-0000-4000-8000-%012d', $number);
+        ksort($cheapest);
+
+        return $cheapest;
     }
 
     /**

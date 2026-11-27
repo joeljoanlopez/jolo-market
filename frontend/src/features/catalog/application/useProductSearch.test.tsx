@@ -28,6 +28,7 @@ function page(number: number): ProductSearchPage {
     perPage: 20,
     total: 40,
     cheapestUnitPriceCents: { l: 83 },
+    approximate: false,
   };
 }
 

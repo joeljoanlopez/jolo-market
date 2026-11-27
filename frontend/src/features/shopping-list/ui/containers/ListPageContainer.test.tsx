@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { formatPrice } from '@/features/catalog/domain/format';
 import type { Product } from '@/features/catalog/domain/product';
 import { aProduct } from '@/features/catalog/ui/components/testProduct';
+import { ServerError } from '@/shared/http/errors';
 import es from '@/shared/i18n/locales/es.json';
 import { FakeAuthGateway, maria } from '@/test/FakeAuthGateway';
 import { FakeProductCatalog } from '@/test/FakeProductCatalog';
@@ -393,6 +394,7 @@ function withProducts(products: Product[]) {
       perPage: 20,
       total: products.length,
       cheapestUnitPriceCents: {},
+      approximate: false,
     });
   const lists = new FakeShoppingLists();
   for (const product of products) {
@@ -547,6 +549,38 @@ describe('ListPageContainer: product suggestions (E12)', () => {
     catalog.respond = () => Promise.reject(new Error('network down'));
     await user.click(screen.getByRole('button', { name: copy.add.submit }));
     expect(await within(await itemList()).findByRole('checkbox', { name: 'leche' })).toBeVisible();
+  });
+
+  it('suggests approximate results without a notice (PD-104)', async () => {
+    const { catalog, lists } = withProducts([milk]);
+    const working = catalog.respond;
+    catalog.respond = async (params) => ({ ...(await working(params)), approximate: true });
+    const stored = lists.seed();
+    renderList(lists, stored.id, catalog);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(copy.add.text), 'lece');
+
+    expect(await suggestion('Leche entera')).toBeVisible();
+    expect(screen.queryByText(/Mostrando resultados parecidos/)).not.toBeInTheDocument();
+  });
+
+  it('shows the same suggestion error with a retry when search is unavailable (503, PD-105)', async () => {
+    const { catalog, lists } = withProducts([milk]);
+    const working = catalog.respond;
+    catalog.respond = () =>
+      Promise.reject(
+        new ServerError({ type: 'about:blank', title: 'Service Unavailable', status: 503 }),
+      );
+    const stored = lists.seed();
+    renderList(lists, stored.id, catalog);
+    const user = userEvent.setup();
+
+    await user.type(await screen.findByLabelText(copy.add.text), 'leche');
+    expect(await screen.findByRole('alert')).toHaveTextContent(copy.suggestions.error);
+    catalog.respond = working;
+    await user.click(screen.getByRole('button', { name: copy.suggestions.retry }));
+    expect(await suggestion('Leche entera')).toBeVisible();
   });
 
   it('adds to the quantity of a product already in the list and unchecked (PD-45)', async () => {

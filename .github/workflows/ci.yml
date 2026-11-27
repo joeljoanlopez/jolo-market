@@ -53,8 +53,8 @@ jobs:
           echo "UID=$(id -u)" >> .env
           echo "GID=$(id -g)" >> .env
 
-      - name: Start php and mysql
-        run: docker compose up -d --build --wait php mysql
+      - name: Start php, mysql and typesense
+        run: docker compose up -d --build --wait php mysql typesense
 
       # Composer's download cache lives in the git-ignored backend/var/ so the runner can keep it.
       - uses: actions/cache@v6
@@ -164,7 +164,7 @@ jobs:
 
       - name: Start the stack
         run: |
-          docker compose up -d --build --wait php mysql
+          docker compose up -d --build --wait php mysql typesense
           docker compose exec -T -e COMPOSER_AUTH -e COMPOSER_CACHE_DIR=/var/www/backend/var/composer-cache php composer install --no-interaction --no-progress
           # nginx pulls in php and the frontend. The scheduler stays down: it would ingest from
           # the real supermarkets.
@@ -176,6 +176,8 @@ jobs:
         run: |
           docker compose exec -T php bin/console doctrine:migrations:migrate --no-interaction
           docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" "$MYSQL_DATABASE"' < backend/tests/Fixtures/e2e/catalog.sql
+          # The catalog arrives after php started, so its index is built here (PD-100).
+          docker compose exec -T php bin/console app:catalog:reindex-search --no-interaction
 
       - name: Wait for the SPA and the API
         run: |

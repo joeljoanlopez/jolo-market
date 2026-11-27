@@ -16,7 +16,14 @@ export class FakeProductCatalog implements ProductCatalog {
   readonly searches: SearchProductsParams[] = [];
   supermarkets: Supermarket[] = [];
   respond: (params: SearchProductsParams) => Promise<ProductSearchPage> = () =>
-    Promise.resolve({ items: [], page: 1, perPage: 20, total: 0, cheapestUnitPriceCents: {} });
+    Promise.resolve({
+      items: [],
+      page: 1,
+      perPage: 20,
+      total: 0,
+      cheapestUnitPriceCents: {},
+      approximate: false,
+    });
 
   /** Products `getProduct` finds; any other id is a 404. */
   readonly products = new Map<string, ProductDetail>();

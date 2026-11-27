@@ -9,6 +9,7 @@ use App\Shared\Domain\Exception\DomainError;
 use App\Shared\Domain\Exception\InvalidArgument;
 use App\Shared\Domain\Exception\NotFound;
 use App\Shared\Domain\Exception\Unauthorized;
+use App\Shared\Domain\Exception\Unavailable;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -54,6 +55,7 @@ final readonly class ProblemJsonExceptionListener
             $exception instanceof NotFound => Response::HTTP_NOT_FOUND,
             $exception instanceof InvalidArgument => Response::HTTP_UNPROCESSABLE_ENTITY,
             $exception instanceof Conflict => Response::HTTP_CONFLICT,
+            $exception instanceof Unavailable => Response::HTTP_SERVICE_UNAVAILABLE,
             $exception instanceof HttpExceptionInterface => $exception->getStatusCode(),
             default => Response::HTTP_INTERNAL_SERVER_ERROR,
         };

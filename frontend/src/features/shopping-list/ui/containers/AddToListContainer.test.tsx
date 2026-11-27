@@ -20,6 +20,7 @@ function renderSearch(lists: FakeShoppingLists, path = '/search?q=leche') {
       perPage: 20,
       total: 1,
       cheapestUnitPriceCents: {},
+      approximate: false,
     });
   return renderApp(path, { auth: FakeAuthGateway.loggedInAs(maria), catalog, lists });
 }

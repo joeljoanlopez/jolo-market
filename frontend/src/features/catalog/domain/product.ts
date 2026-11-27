@@ -45,4 +45,6 @@ export interface ProductSearchPage {
   perPage: number;
   total: number;
   cheapestUnitPriceCents: CheapestUnitPriceCents;
+  /** The results come from the typo fallback, because nothing matched exactly (PD-103, PD-104). */
+  approximate: boolean;
 }

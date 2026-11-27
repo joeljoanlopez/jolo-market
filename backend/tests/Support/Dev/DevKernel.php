@@ -14,7 +14,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 /**
  * The application in the "dev" environment, as tests need it: the development-only services
  * (PD-57) are there, but it uses the test database and its own cache and log directories, so a
- * test never touches the developer's data. Its clock is frozen when the kernel boots.
+ * test never touches the developer's data or search index. Its clock is frozen when the kernel boots.
  */
 final class DevKernel extends Kernel
 {
@@ -47,6 +47,8 @@ final class DevKernel extends Kernel
                 'session' => ['storage_factory_id' => 'session.storage.factory.mock_file'],
             ]);
             $container->loadFromExtension('doctrine', ['dbal' => ['dbname_suffix' => '_test']]);
+            // Its own search index too, never the developer's (PD-100).
+            $container->setParameter('catalog.search_alias', 'products_dev_test');
 
             $container->register('test.dev.clock', FixedClock::class)
                 ->setFactory([FixedClock::class, 'at'])

@@ -8,9 +8,18 @@ final readonly class IngestCatalogResult
 {
     /**
      * @param list<IngestionRunSummary> $runs
+     * @param string|null               $searchIndexError why the search index could not be rebuilt after the runs
      */
-    public function __construct(public array $runs)
+    public function __construct(public array $runs, public ?string $searchIndexError = null)
     {
+    }
+
+    /**
+     * Every run succeeded and the search index reflects them.
+     */
+    public function succeeded(): bool
+    {
+        return $this->allSucceeded() && null === $this->searchIndexError;
     }
 
     public function allSucceeded(): bool

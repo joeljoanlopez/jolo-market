@@ -7,6 +7,10 @@ namespace App\Catalog\Infrastructure\Dev;
 use App\Catalog\Application\IngestCatalog\IngestCatalogCommand;
 use App\Catalog\Application\IngestCatalog\IngestCatalogHandler;
 use App\Catalog\Application\IngestCatalog\IngestionSettings;
+use App\Catalog\Application\ReindexProductSearch\ReindexProductSearchCommand;
+use App\Catalog\Application\ReindexProductSearch\ReindexProductSearchHandler;
+use App\Catalog\Application\SearchProducts\SearchUnavailable;
+use App\Catalog\Infrastructure\Search\InvalidSynonymFile;
 use App\Shared\Infrastructure\Dev\SettableClock;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
@@ -34,11 +38,13 @@ final readonly class BackfillCatalogConsoleCommand
         private IngestionSettings $settings,
         private SettableClock $clock,
         private DbalIngestionRunDays $runDays,
+        private ReindexProductSearchHandler $reindex,
     ) {
     }
 
     /**
-     * Exit code: 0 when every run succeeded, 1 when any run failed, 2 for an invalid --days.
+     * Exit code: 0 when every run succeeded and the search index was rebuilt, 1 when any run or the rebuild failed, 2 for
+     * an invalid --days.
      */
     public function __invoke(
         SymfonyStyle $io,
@@ -67,7 +73,7 @@ final readonly class BackfillCatalogConsoleCommand
                     }
 
                     $this->clock->set($instant);
-                    $result = ($this->ingest)(new IngestCatalogCommand($supermarket->value()));
+                    $result = ($this->ingest)(new IngestCatalogCommand($supermarket->value(), rebuildSearchIndex: false));
                     ++$runs;
                     $failed += $result->allSucceeded() ? 0 : 1;
                 }
@@ -78,7 +84,19 @@ final readonly class BackfillCatalogConsoleCommand
 
         if ($failed > 0) {
             $io->error(\sprintf('%d of %d dummy runs failed. See the ingestion log.', $failed, $runs));
+        }
 
+        // Once for every run, not once a day (PD-100).
+        try {
+            $indexed = ($this->reindex)(new ReindexProductSearchCommand())->indexed;
+            $io->writeln(\sprintf('Indexed %d products.', $indexed));
+        } catch (SearchUnavailable|InvalidSynonymFile $failure) {
+            $io->error('The search index could not be rebuilt: '.$failure->getMessage());
+
+            return Command::FAILURE;
+        }
+
+        if ($failed > 0) {
             return Command::FAILURE;
         }
 

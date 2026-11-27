@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Catalog\Infrastructure\Http;
 
+use App\Catalog\Infrastructure\Search\TypesenseClient;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\HttpClient\HttpClient;
 
 final class SearchProductsControllerTest extends CatalogApiTestCase
 {
@@ -17,6 +19,8 @@ final class SearchProductsControllerTest extends CatalogApiTestCase
         $this->seed(3, 'Leche en polvo', priceCents: 450, unitPriceCents: 900, unit: 'kg', packageQuantity: 500, packageUnit: 'kg');
         $this->seed(4, 'Leche pack sorpresa', priceCents: 300, unitPriceCents: null, unit: null, packageQuantity: null, packageUnit: null);
         $this->seed(5, 'Pan de molde');
+
+        $this->indexSearch();
 
         $this->client->request('GET', '/api/products?q=leche');
 
@@ -72,6 +76,7 @@ final class SearchProductsControllerTest extends CatalogApiTestCase
             'page' => 1,
             'perPage' => 20,
             'total' => 4,
+            'approximate' => false,
         ], $body);
     }
 
@@ -81,6 +86,8 @@ final class SearchProductsControllerTest extends CatalogApiTestCase
         for ($number = 1; $number <= 21; ++$number) {
             $this->seed($number, 'Leche '.$number, unitPriceCents: $number);
         }
+
+        $this->indexSearch();
 
         $this->client->request('GET', '/api/products?q=leche&page=2');
 
@@ -94,12 +101,44 @@ final class SearchProductsControllerTest extends CatalogApiTestCase
     }
 
     #[Test]
+    public function it_says_whether_the_results_are_exact_or_approximate(): void
+    {
+        $this->seed(1, 'Leche entera');
+        $this->indexSearch();
+
+        $this->client->request('GET', '/api/products?q=leche');
+        $exact = $this->json();
+        $this->client->request('GET', '/api/products?q=lece');
+        $body = $this->json();
+
+        self::assertFalse($exact['approximate']);
+        self::assertTrue($body['approximate']);
+        self::assertIsArray($body['items']);
+        self::assertSame([self::id(1)], array_column($body['items'], 'id'));
+    }
+
+    #[Test]
+    public function it_answers_503_without_internal_details_when_typesense_does_not_answer(): void
+    {
+        // Without a reboot before the request, the container keeps the adapter pointed at a closed port.
+        $this->client->request('GET', '/api/supermarkets');
+        $this->client->disableReboot();
+        self::getContainer()->set(TypesenseClient::class, new TypesenseClient(HttpClient::create(), 'http://127.0.0.1:1', 'key'));
+
+        $this->client->request('GET', '/api/products?q=leche');
+
+        $this->assertProblem(503);
+        self::assertSame(['type' => 'about:blank', 'title' => 'Service Unavailable', 'status' => 503], $this->json());
+    }
+
+    #[Test]
     public function it_returns_an_empty_page_when_nothing_matches(): void
     {
+        $this->indexSearch();
         $this->client->request('GET', '/api/products?q=leche');
 
         self::assertResponseStatusCodeSame(200);
-        self::assertSame('{"items":[],"page":1,"perPage":20,"total":0,"cheapestUnitPriceCents":{}}', $this->client->getResponse()->getContent());
+        self::assertSame('{"items":[],"page":1,"perPage":20,"total":0,"cheapestUnitPriceCents":{},"approximate":false}', $this->client->getResponse()->getContent());
     }
 
     #[Test]
@@ -107,6 +146,8 @@ final class SearchProductsControllerTest extends CatalogApiTestCase
     {
         $this->seed(1, 'Leche entera');
         $this->seed(2, 'Leche entera', supermarket: 'aldi');
+
+        $this->indexSearch();
 
         $this->client->request('GET', '/api/products?q=leche&supermarket=aldi');
 

@@ -6,6 +6,7 @@ import { I18nextProvider } from 'react-i18next';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { ServerError } from '@/shared/http/errors';
 import es from '@/shared/i18n/locales/es.json';
 import { FakeProductCatalog } from '@/test/FakeProductCatalog';
 import { testI18n } from '@/test/i18n';
@@ -34,6 +35,7 @@ function resultsPage(page: number, overrides: Partial<ProductSearchPage> = {}): 
     perPage: 2,
     total: 5,
     cheapestUnitPriceCents: { l: 70 },
+    approximate: false,
     ...overrides,
   };
 }
@@ -117,6 +119,26 @@ describe('SearchPageContainer', () => {
     ).toEqual([true, false]);
   });
 
+  it('announces approximate results above them (PD-104)', async () => {
+    catalog.respond = () => Promise.resolve(resultsPage(1, { approximate: true }));
+    renderAt('/search?q=lece');
+
+    const notice = await screen.findByText(
+      'No hay resultados para «lece». Mostrando resultados parecidos.',
+    );
+    expect(await results()).toEqual(['Leche 1A', 'Leche 1B']);
+    expect(
+      notice.compareDocumentPosition(screen.getByRole('list', { name: es.catalog.search.results })),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('shows no notice with exact results', async () => {
+    renderAt('/search?q=leche');
+
+    await results();
+    expect(screen.queryByText(/Mostrando resultados parecidos/)).not.toBeInTheDocument();
+  });
+
   it('says when nothing matches', async () => {
     catalog.respond = () => Promise.resolve(resultsPage(1, { items: [], total: 0 }));
     renderAt('/search?q=xyz');
@@ -126,6 +148,20 @@ describe('SearchPageContainer', () => {
 
   it('shows an error that can be retried', async () => {
     catalog.respond = () => Promise.reject(new Error('boom'));
+    renderAt('/search?q=leche');
+
+    expect(await screen.findByText(es.catalog.search.error)).toBeInTheDocument();
+    catalog.respond = (params) => Promise.resolve(resultsPage(params.page ?? 1));
+    await userEvent.click(screen.getByRole('button', { name: es.catalog.search.retry }));
+
+    expect(await results()).toEqual(['Leche 1A', 'Leche 1B']);
+  });
+
+  it('shows the same error with a retry when search is unavailable (503, PD-105)', async () => {
+    catalog.respond = () =>
+      Promise.reject(
+        new ServerError({ type: 'about:blank', title: 'Service Unavailable', status: 503 }),
+      );
     renderAt('/search?q=leche');
 
     expect(await screen.findByText(es.catalog.search.error)).toBeInTheDocument();

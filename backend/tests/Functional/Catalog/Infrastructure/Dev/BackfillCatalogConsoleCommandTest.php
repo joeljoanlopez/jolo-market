@@ -61,6 +61,17 @@ final class BackfillCatalogConsoleCommandTest extends KernelTestCase
     }
 
     #[Test]
+    public function it_rebuilds_the_search_index_once_at_the_end(): void
+    {
+        $this->command->execute(['--days' => '2']);
+
+        $products = $this->connection->fetchOne('SELECT COUNT(*) FROM product');
+        self::assertIsNumeric($products);
+        self::assertStringContainsString(\sprintf('Indexed %d products.', $products), $this->command->getDisplay());
+        self::assertSame(1, substr_count($this->command->getDisplay(), 'Indexed'));
+    }
+
+    #[Test]
     public function it_dates_the_snapshots_of_each_run_on_its_day(): void
     {
         $this->command->execute(['--days' => '3']);

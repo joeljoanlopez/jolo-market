@@ -30,6 +30,20 @@ final class PsrIngestionLoggerTest extends TestCase
     }
 
     #[Test]
+    public function it_logs_a_failed_search_index_rebuild_as_an_error(): void
+    {
+        $psrLogger = new InMemoryLogger();
+
+        new PsrIngestionLogger($psrLogger)->searchIndexFailed('Product search is unavailable: timeout.');
+
+        self::assertSame([[
+            'level' => LogLevel::ERROR,
+            'message' => 'The search index could not be rebuilt after ingestion.',
+            'context' => ['error' => 'Product search is unavailable: timeout.'],
+        ]], $psrLogger->records);
+    }
+
+    #[Test]
     public function it_logs_a_successful_run_as_info_with_its_counts_and_duration(): void
     {
         $psrLogger = new InMemoryLogger();

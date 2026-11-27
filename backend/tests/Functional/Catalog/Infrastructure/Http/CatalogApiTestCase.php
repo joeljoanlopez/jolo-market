@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional\Catalog\Infrastructure\Http;
 
+use App\Catalog\Application\ReindexProductSearch\ProductSearchIndex;
 use App\Shared\Infrastructure\Persistence\Dbal\BinaryUuid;
 use App\Tests\Support\Identity\AuthenticatedApiClient;
 use Doctrine\DBAL\Connection;
@@ -76,6 +77,16 @@ abstract class CatalogApiTestCase extends WebTestCase
             'available' => $available,
             'last_seen_at' => '2026-11-08 06:00:00',
         ], ['id' => ParameterType::BINARY, 'available' => ParameterType::BOOLEAN]);
+    }
+
+    /**
+     * Search reads the Typesense index (the "products_test" alias), not the database: index what was seeded.
+     */
+    protected function indexSearch(): void
+    {
+        $index = self::getContainer()->get(ProductSearchIndex::class);
+        self::assertInstanceOf(ProductSearchIndex::class, $index);
+        $index->rebuild();
     }
 
     protected function seedSnapshot(int $productNumber, string $capturedAt, int $priceCents, ?int $unitPriceCents = null, ?string $unit = null): void

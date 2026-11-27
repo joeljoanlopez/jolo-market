@@ -43,7 +43,7 @@ production_env() {
     [ "$status" -eq 0 ]
     local target
     for target in help init start stop restart logs shell migrate check check-backend check-frontend test-unit \
-        test-deploy ci-scope unmapped-categories; do
+        test-deploy ci-scope unmapped-categories reindex; do
         [[ $output =~ (^|$'\n')\ *$target\ +[A-Z][^$'\n']+ ]] || { echo "missing: $target"; return 1; }
     done
     [ -z "$(calls)" ]
@@ -106,6 +106,13 @@ production_env() {
     [ "$(calls)" = "docker compose exec php bin/console app:catalog:unmapped-categories" ]
 }
 
+@test "reindex rebuilds the product search index" {
+    run make reindex
+
+    [ "$status" -eq 0 ]
+    [ "$(calls)" = "docker compose exec php bin/console app:catalog:reindex-search" ]
+}
+
 @test "a failed docker command fails the target" {
     export FAKE_DOCKER_FAIL_ON=up
 
@@ -118,7 +125,7 @@ production_env() {
     production_env
     local target
     for target in init start stop restart logs shell migrate check check-backend test-unit test-deploy \
-        unmapped-categories; do
+        unmapped-categories reindex; do
         run make "$target"
 
         [ "$status" -ne 0 ] || { echo "ran: $target"; return 1; }

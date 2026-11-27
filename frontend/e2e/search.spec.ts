@@ -13,12 +13,14 @@ test('searching "leche" lists the results grouped by unit and ranked by unit pri
   await expect(page).toHaveURL('/search?q=leche');
   const results = page.getByRole('list', { name: es.catalog.search.results }).getByRole('listitem');
 
-  // PD-33: the unit with most results first (L: 4, kg: 2, unit: 1), ascending unit price
-  // within each group, and the product without a unit price last.
+  // PD-33: the unit with most results first (L: 5, kg: 2, unit: 1), ascending unit price
+  // within each group, and the product without a unit price last. Bonpreu's "Llet sencera" is
+  // found through the Spanish ↔ Catalan dictionary (PD-101).
   await expect(results.getByRole('heading', { level: 2 })).toHaveText([
     'Leche entera',
     'Leche semidesnatada',
     'Leche desnatada',
+    'Llet sencera',
     'Leche sin lactosa',
     'Leche condensada',
     'Leche en polvo',
@@ -31,7 +33,7 @@ test('searching "leche" lists the results grouped by unit and ranked by unit pri
     const price = /([\d,]+)\s*€\/L/.exec(text)?.[1] ?? '';
     return Math.round(Number(price.replace(',', '.')) * 100);
   });
-  expect(litreCents).toEqual([89, 90, 105, 129]);
+  expect(litreCents).toEqual([89, 90, 105, 110, 129]);
 
   await expect(
     results.filter({ hasText: es.catalog.product.cheapest }).getByRole('heading', { level: 2 }),
@@ -43,4 +45,32 @@ test('searching "leche" lists the results grouped by unit and ranked by unit pri
   await expect(
     page.getByRole('heading', { name: 'Leche entera retirada', exact: true }),
   ).toHaveCount(0);
+});
+
+// E16.13. Search in Spanish or Catalan finds the products of every supermarket (PD-101).
+test('searching "pa" shows the bread of both supermarkets, whatever their language', async ({
+  page,
+}) => {
+  await page.goto('/search?q=pa');
+
+  const results = page.getByRole('list', { name: es.catalog.search.results });
+  await expect(results.getByRole('heading', { level: 2 })).toHaveText([
+    'Pan de molde',
+    'Pa de pagès',
+  ]);
+  await expect(results.getByText('Mercadona', { exact: true })).toBeVisible();
+  await expect(results.getByText('Bonpreu i Esclat', { exact: true })).toBeVisible();
+});
+
+test('a typo shows the approximate results with a notice (PD-103, PD-104)', async ({ page }) => {
+  await page.goto('/search?q=lece');
+
+  await expect(
+    page.getByText(es.catalog.search.approximate.replace('{{query}}', 'lece')),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole('list', { name: es.catalog.search.results })
+      .getByRole('heading', { name: 'Leche entera', exact: true }),
+  ).toBeVisible();
 });

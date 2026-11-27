@@ -12,6 +12,8 @@ x-backend-environment: &backend-environment
   INSTANCE_POSTAL_CODE:
   ENABLED_SUPERMARKETS:
   TOTP_ENCRYPTION_KEY:
+  TYPESENSE_URL:
+  TYPESENSE_API_KEY: ${TYPESENSE_API_KEY:?Set TYPESENSE_API_KEY in the root .env (openssl rand -hex 32)}
   CATALOG_HTTP_USER_AGENT:
   INGESTION_SCHEDULE:
   PRICE_HISTORY_RETENTION_MONTHS:
@@ -58,6 +60,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      typesense:
+        condition: service_healthy
 
   # Scheduled jobs (catalog ingestion, price history prune). The time limit restarts it regularly to free memory.
   scheduler:
@@ -89,7 +93,25 @@ services:
       retries: 20
       start_period: 30s
 
+  # Product search index (PD-100). Derived data rebuilt from MySQL, so it is not backed up. Not published outside the
+  # Compose network.
+  typesense:
+    image: typesense/typesense:30.2
+    command: ["--data-dir", "/data", "--api-key", "${TYPESENSE_API_KEY:?Set TYPESENSE_API_KEY in the root .env (openssl rand -hex 32)}"]
+    restart: unless-stopped
+    volumes:
+      - typesense-data:/data
+    healthcheck:
+      # The image has no curl or wget.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8108 && printf 'GET /health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q '\"ok\":true' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
 volumes:
   mysql-data:
+  # Search index, rebuilt from MySQL when missing (PD-100).
+  typesense-data:
   # Login sessions, kept across deploys (PD-37).
   php-sessions:

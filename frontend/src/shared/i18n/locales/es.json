@@ -28,6 +28,7 @@
       "idle": "Escribe al menos 2 caracteres para buscar.",
       "loading": "Buscando…",
       "empty": "No hay resultados para «{{query}}».",
+      "approximate": "No hay resultados para «{{query}}». Mostrando resultados parecidos.",
       "error": "No se ha podido completar la búsqueda.",
       "retry": "Reintentar",
       "total_one": "{{count}} resultado",

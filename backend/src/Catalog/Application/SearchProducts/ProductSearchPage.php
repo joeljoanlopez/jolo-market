@@ -11,6 +11,8 @@ final readonly class ProductSearchPage
      * @param int                       $total                        results of the whole query, not only this page
      * @param array<string, int>        $cheapestUnitPriceCentsByUnit lowest unit price per unit over the whole query,
      *                                                                so the cheapest of each unit group can be highlighted (PD-33)
+     * @param bool                      $approximate                  the results come from the typo fallback, because
+     *                                                                nothing matched exactly (PD-103, PD-104)
      */
     public function __construct(
         public array $results,
@@ -18,6 +20,7 @@ final readonly class ProductSearchPage
         public int $page,
         public int $perPage,
         public array $cheapestUnitPriceCentsByUnit,
+        public bool $approximate = false,
     ) {
     }
 }
