@@ -65,6 +65,7 @@ function toSearchPage(body: unknown): ProductSearchPage {
     perPage: integer(json.perPage, 'perPage'),
     total: integer(json.total, 'total'),
     cheapestUnitPriceCents: toCheapest(json.cheapestUnitPriceCents),
+    approximate: boolean(json.approximate, 'approximate'),
   };
 }
 
@@ -166,6 +167,13 @@ function integer(value: unknown, field: string): number {
     throw unexpected(field, value);
   }
   return value as number;
+}
+
+function boolean(value: unknown, field: string): boolean {
+  if (typeof value !== 'boolean') {
+    throw unexpected(field, value);
+  }
+  return value;
 }
 
 const units: readonly string[] = ['kg', 'l', 'unit'] satisfies Unit[];
