@@ -42,13 +42,13 @@ final class ManageListApiTest extends ShoppingListApiTestCase
             'owner' => ['id' => $this->maria, 'username' => 'maria'],
             'members' => [['id' => $this->joan, 'username' => 'joan']],
             'items' => [
-                ['id' => $text, 'position' => 0, 'quantity' => 1, 'checked' => false, 'type' => 'text', 'text' => 'servilletas', 'product' => null],
+                ['id' => $text, 'position' => 0, 'quantity' => 1, 'checked' => false, 'type' => 'text', 'text' => 'servilletas', 'product' => null, 'section' => 'other', 'sectionOverride' => null],
                 ['id' => $milkItem, 'position' => 1, 'quantity' => 2, 'checked' => false, 'type' => 'product', 'text' => null,
-                    'product' => ['id' => $milk, 'name' => 'Leche entera', 'brand' => 'Hacendado', 'supermarketId' => 'mercadona', 'priceCents' => 125, 'imageUrl' => null, 'available' => true]],
+                    'product' => ['id' => $milk, 'name' => 'Leche entera', 'brand' => 'Hacendado', 'supermarketId' => 'mercadona', 'priceCents' => 125, 'imageUrl' => null, 'available' => true, 'section' => 'other'], 'section' => 'other', 'sectionOverride' => null],
                 ['id' => $breadItem, 'position' => 2, 'quantity' => 1, 'checked' => true, 'type' => 'product', 'text' => null,
-                    'product' => ['id' => $bread, 'name' => 'Pan', 'brand' => null, 'supermarketId' => 'aldi', 'priceCents' => 89, 'imageUrl' => null, 'available' => true]],
+                    'product' => ['id' => $bread, 'name' => 'Pan', 'brand' => null, 'supermarketId' => 'aldi', 'priceCents' => 89, 'imageUrl' => null, 'available' => true, 'section' => 'other'], 'section' => 'other', 'sectionOverride' => null],
                 ['id' => $goneItem, 'position' => 3, 'quantity' => 1, 'checked' => false, 'type' => 'product', 'text' => null,
-                    'product' => ['id' => $gone, 'name' => 'Leche desnatada', 'brand' => null, 'supermarketId' => 'mercadona', 'priceCents' => 99, 'imageUrl' => null, 'available' => false]],
+                    'product' => ['id' => $gone, 'name' => 'Leche desnatada', 'brand' => null, 'supermarketId' => 'mercadona', 'priceCents' => 99, 'imageUrl' => null, 'available' => false, 'section' => 'other'], 'section' => 'other', 'sectionOverride' => null],
             ],
             'totals' => [
                 ['supermarketId' => 'aldi', 'supermarketName' => 'Aldi', 'totalCents' => 89, 'itemCount' => 1],
@@ -86,7 +86,7 @@ final class ManageListApiTest extends ShoppingListApiTestCase
         $items = $this->json()['items'] ?? null;
         self::assertIsArray($items);
         self::assertIsArray($items[0]);
-        self::assertSame(['id' => $water, 'name' => null, 'brand' => null, 'supermarketId' => null, 'priceCents' => null, 'imageUrl' => null, 'available' => false], $items[0]['product']);
+        self::assertSame(['id' => $water, 'name' => null, 'brand' => null, 'supermarketId' => null, 'priceCents' => null, 'imageUrl' => null, 'available' => false, 'section' => 'other'], $items[0]['product']);
         self::assertSame([], $this->json()['totals'] ?? null);
     }
 

@@ -16,6 +16,7 @@ use App\ShoppingList\Domain\Model\Member;
 use App\ShoppingList\Domain\Model\ProductItem;
 use App\ShoppingList\Domain\Model\ShoppingList;
 use App\ShoppingList\Domain\Model\ShoppingListNotFound;
+use App\ShoppingList\Domain\ValueObject\ItemSection;
 use App\ShoppingList\Domain\ValueObject\ProductId;
 
 /**
@@ -86,6 +87,7 @@ final readonly class GetListHandler
         $content = $item->content();
         $text = $content instanceof FreeTextItem ? $content->text->value() : null;
         $product = $content instanceof ProductItem ? self::productView($content->productId, $products) : null;
+        $override = $item->section()?->value;
 
         return new ListItemView(
             $item->id()->value(),
@@ -95,6 +97,8 @@ final readonly class GetListHandler
             null === $product ? ListItemView::TEXT : ListItemView::PRODUCT,
             $text,
             $product,
+            $override ?? $product->section ?? ItemSection::OTHER->value,
+            $override,
         );
     }
 
@@ -105,10 +109,10 @@ final readonly class GetListHandler
     {
         $product = $products[$id->value()] ?? null;
         if (null === $product) {
-            return new ListProductView($id->value(), null, null, null, null, null, false);
+            return new ListProductView($id->value(), null, null, null, null, null, false, ItemSection::OTHER->value);
         }
 
-        return new ListProductView($id->value(), $product->name, $product->brand, $product->supermarketId, $product->priceCents, $product->imageUrl, $product->available);
+        return new ListProductView($id->value(), $product->name, $product->brand, $product->supermarketId, $product->priceCents, $product->imageUrl, $product->available, $product->section);
     }
 
     /**

@@ -6,14 +6,17 @@ namespace App\Catalog\Infrastructure\Persistence\Dbal;
 
 use App\Catalog\Application\GetProduct\ProductView;
 use App\Catalog\Application\GetProduct\ProductViewReadModel;
+use App\Catalog\Domain\Service\SectionMapping;
+use App\Catalog\Domain\ValueObject\CategoryPath;
 use App\Catalog\Domain\ValueObject\ProductId;
+use App\Catalog\Domain\ValueObject\SupermarketId;
 use App\Shared\Infrastructure\Persistence\Dbal\BinaryUuid;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\ParameterType;
 
 final readonly class DbalProductViewReadModel implements ProductViewReadModel
 {
-    public function __construct(private Connection $connection)
+    public function __construct(private Connection $connection, private SectionMapping $sections)
     {
     }
 
@@ -21,7 +24,7 @@ final readonly class DbalProductViewReadModel implements ProductViewReadModel
     {
         $row = $this->connection->fetchAssociative(
             'SELECT p.name, p.brand, p.supermarket_id, s.name AS supermarket_name, p.package_quantity, p.package_unit,
-                    p.price_cents, p.unit_price_cents, p.unit_price_unit, p.image_url, p.available
+                    p.price_cents, p.unit_price_cents, p.unit_price_unit, p.image_url, p.available, p.category
              FROM product p JOIN supermarket s ON s.id = p.supermarket_id
              WHERE p.id = :id',
             ['id' => BinaryUuid::toDatabase($id->value())],
@@ -32,11 +35,19 @@ final readonly class DbalProductViewReadModel implements ProductViewReadModel
             return null;
         }
 
+        $supermarketId = DbalColumn::string($row['supermarket_id']);
+        $category = DbalColumn::nullableString($row['category']);
+        // Worked out on every read, so extending the mapping moves the items already in lists (PD-91).
+        $section = $this->sections->sectionOf(
+            SupermarketId::fromString($supermarketId),
+            null === $category ? null : CategoryPath::fromString($category),
+        );
+
         return new ProductView(
             $id->value(),
             DbalColumn::string($row['name']),
             DbalColumn::nullableString($row['brand']),
-            DbalColumn::string($row['supermarket_id']),
+            $supermarketId,
             DbalColumn::string($row['supermarket_name']),
             DbalColumn::nullableInt($row['package_quantity']),
             DbalColumn::nullableString($row['package_unit']),
@@ -45,6 +56,7 @@ final readonly class DbalProductViewReadModel implements ProductViewReadModel
             DbalColumn::nullableString($row['unit_price_unit']),
             DbalColumn::nullableString($row['image_url']),
             1 === DbalColumn::int($row['available']),
+            $section->value,
         );
     }
 }

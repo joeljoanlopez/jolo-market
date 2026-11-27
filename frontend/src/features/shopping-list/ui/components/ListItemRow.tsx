@@ -6,9 +6,11 @@ import { productPath } from '@/features/catalog/domain/productPath';
 import { ProductImage } from '@/features/catalog/ui/components/ProductImage';
 import { Button } from '@/shared/ui/atoms/Button/Button';
 import { Checkbox } from '@/shared/ui/atoms/Checkbox/Checkbox';
+import { Select } from '@/shared/ui/atoms/Select/Select';
 import { Text } from '@/shared/ui/atoms/Text/Text';
 import { cn } from '@/shared/ui/lib/cn';
 
+import { SECTIONS, isSectionId, type SectionId } from '../../domain/sections';
 import type { ListItem, ProductItem } from '../../domain/shoppingList';
 
 interface ListItemRowProps {
@@ -17,6 +19,8 @@ interface ListItemRowProps {
   supermarketName: string | null;
   onCheckedChange: (checked: boolean) => void;
   onRemove: () => void;
+  /** A section id chosen by hand, or `null` to follow the catalog ("Otros" for free text, PD-92). */
+  onSectionChange: (section: SectionId | null) => void;
 }
 
 /** One item: check it, see its quantity and, for a product, its price or that it is unavailable. */
@@ -25,6 +29,7 @@ export function ListItemRow({
   supermarketName,
   onCheckedChange,
   onRemove,
+  onSectionChange,
 }: ListItemRowProps) {
   const { t } = useTranslation();
   const name = itemName(item) ?? t('lists.item.unknownProduct');
@@ -63,6 +68,9 @@ export function ListItemRow({
             {t('lists.item.unavailable')}
           </Text>
         ) : null}
+        {item.checked ? null : (
+          <SectionSelect item={item} name={name} onSectionChange={onSectionChange} />
+        )}
       </div>
       <Button
         variant="secondary"
@@ -73,6 +81,51 @@ export function ListItemRow({
         {t('lists.item.removeShort')}
       </Button>
     </li>
+  );
+}
+
+/** The value of the "Automática" option of a product item. */
+const AUTOMATIC = '';
+
+/**
+ * The section of a pending item (PD-92, PD-117). A product can follow its catalog section
+ * ("Automática"); a free-text item without a choice is in "Otros", so choosing "Otros" removes it.
+ */
+function SectionSelect({
+  item,
+  name,
+  onSectionChange,
+}: {
+  item: ListItem;
+  name: string;
+  onSectionChange: (section: SectionId | null) => void;
+}) {
+  const { t } = useTranslation();
+  const defaultValue = item.type === 'product' ? AUTOMATIC : 'other';
+
+  return (
+    <Select
+      size="sm"
+      aria-label={t('lists.item.section', { name })}
+      value={item.sectionOverride ?? defaultValue}
+      onChange={(event) => {
+        const value = event.target.value;
+        onSectionChange(value === defaultValue || !isSectionId(value) ? null : value);
+      }}
+    >
+      {item.type === 'product' ? (
+        <option value={AUTOMATIC}>
+          {t('lists.item.automaticSection', {
+            section: t(`lists.sections.${item.product.section}`),
+          })}
+        </option>
+      ) : null}
+      {SECTIONS.map((section) => (
+        <option key={section} value={section}>
+          {t(`lists.sections.${section}`)}
+        </option>
+      ))}
+    </Select>
   );
 }
 

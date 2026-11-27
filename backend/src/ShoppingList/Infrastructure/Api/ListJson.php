@@ -70,7 +70,10 @@ final class ListJson
                 'priceCents' => $product->priceCents,
                 'imageUrl' => $product->imageUrl,
                 'available' => $product->available,
+                'section' => $product->section,
             ],
+            'section' => $item->section,
+            'sectionOverride' => $item->sectionOverride,
         ];
     }
 }

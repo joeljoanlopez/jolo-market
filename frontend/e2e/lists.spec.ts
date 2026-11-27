@@ -220,14 +220,9 @@ test('a user filters a list by supermarket, keeps the filter on reload and goes 
   await expect(item(page, 'pan')).toBeVisible();
 });
 
+/** The row of an item: the closest list item around its checkbox, inside its section (E14). */
 function row(page: Page, name: string) {
-  return (
-    page
-      .getByRole('list', { name: lists.page.items })
-      .getByRole('listitem')
-      // `has` resolves inside each list item, so it names the checkbox alone, not through `item()`.
-      .filter({ has: page.getByRole('checkbox', { name, exact: true }) })
-  );
+  return item(page, name).locator('xpath=ancestor::li[1]');
 }
 
 // E15.5. The e2e catalog has no images (PD-99), so every product shows the placeholder.
@@ -263,4 +258,61 @@ test('a user sees product images in the suggestions and the list, and opens a pr
   await expect(page).toHaveURL(listUrl);
   await addItem(page, 'pan', '1');
   await expect(row(page, 'pan').getByRole('img', { includeHidden: true })).toHaveCount(0);
+});
+
+function section(page: Page, name: string) {
+  return page
+    .getByRole('list', { name: lists.page.items })
+    .getByRole('list', { name, exact: true });
+}
+
+function sectionHeaders(page: Page) {
+  return page.getByRole('list', { name: lists.page.items }).getByRole('heading', { level: 2 });
+}
+
+// E14.13. Runs against the known catalog of backend/tests/Fixtures/e2e/catalog.sql, where the milk is
+// in "Lácteos y huevos".
+test('a user sees a list grouped by section, moves an item to another section and checks one', async ({
+  page,
+}) => {
+  const sections = lists.sections;
+  const listName = `Secciones e2e ${String(Date.now() % 1_000_000)}`;
+  await page.goto('/');
+  await page.getByLabel(lists.create.name, { exact: true }).fill(listName);
+  await page.getByRole('button', { name: lists.create.submit }).click();
+  await expect(page).toHaveURL(/\/lists\/[^/]+$/);
+
+  // 1. A dairy product and a free-text item, each under its section, "Otros" last (PD-90, PD-91, PD-92).
+  await addItem(page, 'servilletas', '1');
+  const field = page.getByRole('combobox', { name: lists.add.text });
+  await field.fill('leche');
+  await suggestion(page, 'Leche entera').click();
+  await expect(sectionHeaders(page)).toHaveText([sections['dairy-and-eggs'], sections.other]);
+  await expect(
+    section(page, sections['dairy-and-eggs']).getByRole('checkbox'),
+  ).toHaveAccessibleName('Leche entera');
+  await expect(section(page, sections.other).getByRole('checkbox')).toHaveAccessibleName(
+    'servilletas',
+  );
+
+  // 2. The free-text item moves to the section chosen, and stays there after a reload (PD-92).
+  await page
+    .getByRole('combobox', { name: lists.item.section.replace('{{name}}', 'servilletas') })
+    .selectOption({ label: sections.household });
+  await expect(sectionHeaders(page)).toHaveText([sections['dairy-and-eggs'], sections.household]);
+  await page.reload();
+  await expect(sectionHeaders(page)).toHaveText([sections['dairy-and-eggs'], sections.household]);
+  await expect(section(page, sections.household).getByRole('checkbox')).toHaveAccessibleName(
+    'servilletas',
+  );
+
+  // 3. A checked item leaves its section for the block at the end (PD-93).
+  // The row moves to the checked block, so it is clicked rather than `check()`ed (a new element).
+  await item(page, 'Leche entera').click();
+  await expect(sectionHeaders(page)).toHaveText([sections.household]);
+  const boxes = page.getByRole('list', { name: lists.page.items }).getByRole('checkbox');
+  await expect(boxes).toHaveCount(2);
+  await expect(boxes.nth(0)).toHaveAccessibleName('servilletas');
+  await expect(boxes.nth(1)).toHaveAccessibleName('Leche entera');
+  await expect(boxes.nth(1)).toBeChecked();
 });

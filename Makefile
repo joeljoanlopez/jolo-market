@@ -6,10 +6,10 @@ SHELL := /bin/sh
 
 COMPOSE := docker compose
 
-.PHONY: help dev-stack-only init start stop restart logs shell migrate check check-backend check-frontend test-unit test-deploy ci-scope
+.PHONY: help dev-stack-only init start stop restart logs shell migrate check check-backend check-frontend test-unit test-deploy ci-scope unmapped-categories
 
 help: ## List every target with its description
-	@awk 'BEGIN { FS = ":.*## " } /^[a-z-]+:.*## / { printf "  %-15s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@awk 'BEGIN { FS = ":.*## " } /^[a-z-]+:.*## / { printf "  %-20s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
 # Every target that runs Docker depends on it, so none of them touches the production stack (PD-60).
 dev-stack-only:
@@ -64,6 +64,10 @@ check-backend: dev-stack-only ## Run PHP-CS-Fixer, PHPStan, Deptrac and every PH
 
 test-unit: dev-stack-only ## Run the backend unit suite only (fast TDD loop)
 	$(COMPOSE) exec php composer test:unit
+
+# Read only: the output is the input for extending the section mapping (PD-95).
+unmapped-categories: dev-stack-only ## List the catalog categories that map to the "Otros" section
+	$(COMPOSE) exec php bin/console app:catalog:unmapped-categories
 
 # On the host, like CI.
 check-frontend: ## Run Prettier, ESLint, tsc and Vitest on the host

@@ -7,6 +7,7 @@ namespace App\Tests\Unit\ShoppingList\Application;
 use App\ShoppingList\Application\EditItems\AddItemCommand;
 use App\ShoppingList\Application\EditItems\ClearCheckedItemsCommand;
 use App\ShoppingList\Application\EditItems\ClearCheckedItemsHandler;
+use App\ShoppingList\Application\EditItems\InvalidItemSection;
 use App\ShoppingList\Application\EditItems\InvalidItemType;
 use App\ShoppingList\Application\EditItems\ProductNotAvailable;
 use App\ShoppingList\Application\EditItems\RemoveItemCommand;
@@ -23,6 +24,7 @@ use App\ShoppingList\Domain\Model\ShoppingListNotFound;
 use App\ShoppingList\Domain\Port\ShoppingListChangedConcurrently;
 use App\ShoppingList\Domain\ValueObject\InvalidItemText;
 use App\ShoppingList\Domain\ValueObject\InvalidQuantity;
+use App\ShoppingList\Domain\ValueObject\ItemSection;
 use App\ShoppingList\Domain\ValueObject\ItemText;
 use App\ShoppingList\Domain\ValueObject\ListItemId;
 use App\ShoppingList\Domain\ValueObject\ListName;
@@ -218,6 +220,61 @@ final class EditItemsHandlersTest extends ShoppingListHandlersTestCase
 
         $this->expectException(InvalidItemPosition::class);
         ($this->updateItem())(new UpdateItemCommand(self::MARIA, $listId, $bread, position: -1));
+    }
+
+    #[Test]
+    public function a_member_chooses_and_removes_the_section_of_an_item(): void
+    {
+        $listId = $this->sharedList();
+        $bread = $this->addText($listId, 'pan', quantity: 2);
+
+        ($this->updateItem())(new UpdateItemCommand(self::JOAN, $listId, $bread, changeSection: true, section: 'bakery'));
+        self::assertSame(ItemSection::BAKERY, $this->list($listId)->items()[0]->section());
+        self::assertSame(2, $this->list($listId)->items()[0]->quantity()->value());
+
+        ($this->updateItem())(new UpdateItemCommand(self::JOAN, $listId, $bread, changeSection: true, section: null));
+        self::assertNull($this->list($listId)->items()[0]->section());
+    }
+
+    #[Test]
+    public function updating_other_fields_keeps_the_chosen_section(): void
+    {
+        $listId = $this->createList();
+        $bread = $this->addText($listId, 'pan');
+        ($this->updateItem())(new UpdateItemCommand(self::MARIA, $listId, $bread, changeSection: true, section: 'bakery'));
+
+        ($this->updateItem())(new UpdateItemCommand(self::MARIA, $listId, $bread, checked: true));
+
+        self::assertSame(ItemSection::BAKERY, $this->list($listId)->items()[0]->section());
+    }
+
+    #[Test]
+    public function an_unknown_section_is_rejected(): void
+    {
+        $listId = $this->createList();
+        $bread = $this->addText($listId, 'pan');
+
+        $this->expectException(InvalidItemSection::class);
+
+        ($this->updateItem())(new UpdateItemCommand(self::MARIA, $listId, $bread, changeSection: true, section: 'toys'));
+    }
+
+    #[Test]
+    public function a_section_change_saved_while_someone_else_checks_the_item_keeps_both(): void
+    {
+        $listId = $this->createList();
+        $bread = $this->addText($listId, 'pan');
+        $this->lists->beforeNextSaves(static function (InMemoryShoppingListRepository $lists) use ($listId, $bread): void {
+            $list = $lists->findById(ShoppingListId::fromString($listId)) ?? self::fail('No list.');
+            $list->check(self::user(self::MARIA), ListItemId::fromString($bread), self::at('2026-11-27 12:00:00'));
+            $lists->save($list);
+        });
+
+        ($this->updateItem())(new UpdateItemCommand(self::MARIA, $listId, $bread, changeSection: true, section: 'bakery'));
+
+        $item = $this->list($listId)->items()[0];
+        self::assertTrue($item->isChecked());
+        self::assertSame(ItemSection::BAKERY, $item->section());
     }
 
     #[Test]

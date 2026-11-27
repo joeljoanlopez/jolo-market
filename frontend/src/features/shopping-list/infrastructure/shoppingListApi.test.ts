@@ -41,6 +41,8 @@ const listJson = {
       type: 'text',
       text: 'pan',
       product: null,
+      section: 'bakery',
+      sectionOverride: 'bakery',
     },
     {
       id: 'item-2',
@@ -57,7 +59,10 @@ const listJson = {
         priceCents: 125,
         imageUrl: null,
         available: true,
+        section: 'dairy-and-eggs',
       },
+      section: 'dairy-and-eggs',
+      sectionOverride: null,
     },
   ],
   totals: [
@@ -74,7 +79,16 @@ const list = {
   owner: { id: 'user-maria', username: 'maria' },
   members: [{ id: 'user-joan', username: 'joan' }],
   items: [
-    { id: 'item-1', position: 0, quantity: 2, checked: false, type: 'text', text: 'pan' },
+    {
+      id: 'item-1',
+      position: 0,
+      quantity: 2,
+      checked: false,
+      type: 'text',
+      text: 'pan',
+      section: 'bakery',
+      sectionOverride: 'bakery',
+    },
     {
       id: 'item-2',
       position: 1,
@@ -89,7 +103,10 @@ const list = {
         priceCents: 125,
         imageUrl: null,
         available: true,
+        section: 'dairy-and-eggs',
       },
+      section: 'dairy-and-eggs',
+      sectionOverride: null,
     },
   ],
   totals: [
@@ -264,7 +281,10 @@ describe('shoppingListApi', () => {
                 priceCents: null,
                 imageUrl: null,
                 available: false,
+                section: 'other',
               },
+              section: 'other',
+              sectionOverride: null,
             },
           ],
           totals: [],
@@ -294,7 +314,10 @@ describe('shoppingListApi', () => {
               priceCents: null,
               imageUrl: null,
               available: false,
+              section: 'other',
             },
+            section: 'other',
+            sectionOverride: null,
           },
         ],
         totals: [],
@@ -308,6 +331,19 @@ describe('shoppingListApi', () => {
         HttpResponse.json({
           ...listJson,
           items: [{ ...listJson.items[0], type: 'recipe' }],
+        }),
+      ),
+    );
+
+    await expect(api.getList(listId)).rejects.toBeInstanceOf(UnexpectedResponseError);
+  });
+
+  it('rejects an item with an unknown section', async () => {
+    server.use(
+      http.get(`${baseUrl}/api/lists/${listId}`, () =>
+        HttpResponse.json({
+          ...listJson,
+          items: [{ ...listJson.items[0], section: 'toys' }],
         }),
       ),
     );
@@ -372,6 +408,8 @@ describe('shoppingListApi', () => {
     await api.renameList(listId, 'Cena');
     await api.removeMember(listId, 'user-joan');
     await api.updateItem(listId, 'item-1', { checked: true });
+    await api.updateItemSection(listId, 'item-1', 'bakery');
+    await api.updateItemSection(listId, 'item-1', null);
     await api.removeItem(listId, 'item-1');
     await api.clearCheckedItems(listId);
     await api.leaveList(listId);
@@ -394,6 +432,18 @@ describe('shoppingListApi', () => {
         method: 'PATCH',
         path: `/api/lists/${listId}/items/item-1`,
         body: { checked: true },
+        csrf: 'XMLHttpRequest',
+      },
+      {
+        method: 'PATCH',
+        path: `/api/lists/${listId}/items/item-1`,
+        body: { section: 'bakery' },
+        csrf: 'XMLHttpRequest',
+      },
+      {
+        method: 'PATCH',
+        path: `/api/lists/${listId}/items/item-1`,
+        body: { section: null },
         csrf: 'XMLHttpRequest',
       },
       {

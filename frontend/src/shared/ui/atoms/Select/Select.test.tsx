@@ -19,4 +19,15 @@ describe('Select', () => {
     expect(onChange).toHaveBeenCalledOnce();
     expect(screen.getByRole('combobox')).toHaveClass('border-border');
   });
+
+  it('has a compact size that fits inside a row', () => {
+    render(
+      <Select aria-label="Sección" size="sm" defaultValue="a">
+        <option value="a">A</option>
+      </Select>,
+    );
+
+    expect(screen.getByRole('combobox')).toHaveClass('h-8', 'text-sm', 'w-auto');
+    expect(screen.getByRole('combobox')).not.toHaveClass('w-full');
+  });
 });

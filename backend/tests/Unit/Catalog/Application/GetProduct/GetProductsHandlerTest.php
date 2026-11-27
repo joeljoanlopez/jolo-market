@@ -39,6 +39,6 @@ final class GetProductsHandlerTest extends TestCase
 
     private static function product(string $id, bool $available): ProductView
     {
-        return new ProductView($id, 'Leche', null, 'mercadona', 'Mercadona', 1000, 'l', 125, 125, 'l', null, $available);
+        return new ProductView($id, 'Leche', null, 'mercadona', 'Mercadona', 1000, 'l', 125, 125, 'l', null, $available, 'dairy-and-eggs');
     }
 }

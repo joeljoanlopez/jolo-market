@@ -1,3 +1,5 @@
+import type { SectionId } from './sections';
+
 /** Docs: docs/architecture.md#http-api-draft (`/api/lists`) and PD-2, PD-4, PD-22, PD-44, PD-45. */
 export type ListRole = 'owner' | 'member';
 
@@ -28,6 +30,8 @@ export interface ListProduct {
   priceCents: number | null;
   imageUrl: string | null;
   available: boolean;
+  /** The section its catalog category maps to; `other` for an unknown product (PD-91, PD-119). */
+  section: SectionId;
 }
 
 interface ItemBase {
@@ -36,6 +40,10 @@ interface ItemBase {
   position: number;
   quantity: number;
   checked: boolean;
+  /** The section it is shown in: the one chosen by hand, else the catalog's, else `other` (PD-96). */
+  section: SectionId;
+  /** The section a member chose by hand, or `null` (PD-92). */
+  sectionOverride: SectionId | null;
 }
 
 export type TextItem = ItemBase & { type: 'text'; text: string };
@@ -77,13 +85,6 @@ export const MAX_QUANTITY = 99;
 
 export function isOwner(list: ShoppingList): boolean {
   return list.role === 'owner';
-}
-
-/** Unchecked items first, then checked ones, each group in position order (PD-45). */
-export function itemsForDisplay(items: readonly ListItem[]): ListItem[] {
-  return [...items].sort(
-    (a, b) => Number(a.checked) - Number(b.checked) || a.position - b.position,
-  );
 }
 
 /** The list with one item checked or unchecked, e.g. to show the change before the API answers. */

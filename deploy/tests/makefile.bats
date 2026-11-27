@@ -43,7 +43,7 @@ production_env() {
     [ "$status" -eq 0 ]
     local target
     for target in help init start stop restart logs shell migrate check check-backend check-frontend test-unit \
-        test-deploy ci-scope; do
+        test-deploy ci-scope unmapped-categories; do
         [[ $output =~ (^|$'\n')\ *$target\ +[A-Z][^$'\n']+ ]] || { echo "missing: $target"; return 1; }
     done
     [ -z "$(calls)" ]
@@ -99,6 +99,13 @@ production_env() {
     [ "$(calls)" = "docker compose exec php bin/console doctrine:migrations:migrate --no-interaction" ]
 }
 
+@test "unmapped-categories lists the catalog categories that map to Otros" {
+    run make unmapped-categories
+
+    [ "$status" -eq 0 ]
+    [ "$(calls)" = "docker compose exec php bin/console app:catalog:unmapped-categories" ]
+}
+
 @test "a failed docker command fails the target" {
     export FAKE_DOCKER_FAIL_ON=up
 
@@ -110,7 +117,8 @@ production_env() {
 @test "every target that runs docker refuses the production stack and runs nothing" {
     production_env
     local target
-    for target in init start stop restart logs shell migrate check check-backend test-unit test-deploy; do
+    for target in init start stop restart logs shell migrate check check-backend test-unit test-deploy \
+        unmapped-categories; do
         run make "$target"
 
         [ "$status" -ne 0 ] || { echo "ran: $target"; return 1; }

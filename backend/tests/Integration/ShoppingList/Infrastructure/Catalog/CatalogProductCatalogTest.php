@@ -24,15 +24,15 @@ final class CatalogProductCatalogTest extends KernelTestCase
     public function it_reads_current_product_data_through_the_catalog_query_api(): void
     {
         $readModel = new InMemoryProductViewReadModel();
-        $readModel->add(new ProductView(self::MILK, 'Leche entera', 'Hacendado', 'mercadona', 'Mercadona', 1000, 'l', 125, 125, 'l', 'https://example.com/milk.jpg', true));
-        $readModel->add(new ProductView(self::WATER, 'Agua', null, 'aldi', 'Aldi', null, null, 30, null, null, null, false));
+        $readModel->add(new ProductView(self::MILK, 'Leche entera', 'Hacendado', 'mercadona', 'Mercadona', 1000, 'l', 125, 125, 'l', 'https://example.com/milk.jpg', true, 'dairy-and-eggs'));
+        $readModel->add(new ProductView(self::WATER, 'Agua', null, 'aldi', 'Aldi', null, null, 30, null, null, null, false, 'other'));
         $catalog = new CatalogProductCatalog(new GetProductsHandler($readModel));
 
         $products = $catalog->findByIds([ProductId::fromString(self::MILK), ProductId::fromString(self::UNKNOWN), ProductId::fromString(self::WATER)]);
 
         self::assertEquals([
-            self::MILK => new CatalogProduct(self::MILK, 'Leche entera', 'Hacendado', 'mercadona', 'Mercadona', 125, 'https://example.com/milk.jpg', true),
-            self::WATER => new CatalogProduct(self::WATER, 'Agua', null, 'aldi', 'Aldi', 30, null, false),
+            self::MILK => new CatalogProduct(self::MILK, 'Leche entera', 'Hacendado', 'mercadona', 'Mercadona', 125, 'https://example.com/milk.jpg', true, 'dairy-and-eggs'),
+            self::WATER => new CatalogProduct(self::WATER, 'Agua', null, 'aldi', 'Aldi', 30, null, false, 'other'),
         ], $products);
     }
 

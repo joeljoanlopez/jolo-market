@@ -269,7 +269,24 @@
       "unavailable": "No disponible",
       "unknownProduct": "Producto retirado del catálogo",
       "remove": "Quitar {{name}}",
-      "removeShort": "Quitar"
+      "removeShort": "Quitar",
+      "section": "Sección de {{name}}",
+      "automaticSection": "Automática ({{section}})"
+    },
+    "sections": {
+      "fruit-and-vegetables": "Fruta y verdura",
+      "bakery": "Panadería",
+      "meat-and-fish": "Carne y pescado",
+      "deli-and-cheese": "Charcutería y quesos",
+      "dairy-and-eggs": "Lácteos y huevos",
+      "pantry": "Despensa",
+      "frozen": "Congelados",
+      "drinks": "Bebidas",
+      "household": "Limpieza y hogar",
+      "personal-care": "Cuidado personal",
+      "baby": "Bebé",
+      "pets": "Mascotas",
+      "other": "Otros"
     },
     "add": {
       "text": "Qué necesitas",
