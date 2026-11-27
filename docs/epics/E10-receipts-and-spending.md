@@ -49,7 +49,7 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 
 ### ShoppingList
 
-- [ ] E10.8 Add a ShoppingList query API `CheckListAccessHandler`: list id + actor → allowed or `ShoppingListNotFound` (404), with the same rule as `GetList` (owner or member, PD-63).
+- [x] E10.8 Add a ShoppingList query API `CheckListAccessHandler`: list id + actor → allowed or `ShoppingListNotFound` (404), with the same rule as `GetList` (owner or member, PD-63).
 - [ ] E10.9 Make `DeleteList` publish a `ShoppingListDeleted` application event through a new `ShoppingListEvents` port, after the list is removed. ShoppingList knows nothing about receipts (PD-44, PD-63).
 
 ### Application (Receipts)
