@@ -70,6 +70,12 @@ services:
             $synonymFile: '%kernel.project_dir%/config/search/synonyms.yaml'
             $alias: '%catalog.search_alias%'
 
+    App\Catalog\Infrastructure\Search\TypesenseProductSearchReadModel:
+        arguments:
+            $alias: '%catalog.search_alias%'
+
+    App\Catalog\Application\SearchProducts\ProductSearchReadModel: '@App\Catalog\Infrastructure\Persistence\Dbal\DbalProductSearchReadModel'
+
 when@test:
     parameters:
         # The functional tests index into their own collections, never the development index.
