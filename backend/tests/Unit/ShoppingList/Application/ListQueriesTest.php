@@ -87,18 +87,51 @@ final class ListQueriesTest extends ShoppingListHandlersTestCase
         $this->catalog->add(self::GONE, 'Leche desnatada', 99, 'bonpreu');
         $listId = $this->createList();
         $this->addText($listId, 'servilletas', quantity: 3);
-        $milk = $this->addProduct($listId, self::MILK, quantity: 2);
+        $this->addProduct($listId, self::MILK, quantity: 2);
         $this->addProduct($listId, self::WATER, quantity: 6);
         $this->addProduct($listId, self::BREAD);
         $this->addProduct($listId, self::GONE);
         $this->catalog->add(self::GONE, 'Leche desnatada', 99, 'bonpreu', available: false);
-        $this->check($listId, $milk);
 
         $view = $this->getList(self::MARIA, $listId);
 
         self::assertEquals([
             new SupermarketTotal('aldi', 'Aldi', 89, 1),
             new SupermarketTotal('mercadona', 'Mercadona', 2 * 125 + 6 * 30, 2),
+        ], $view->totals);
+    }
+
+    #[Test]
+    public function checking_an_item_lowers_its_supermarket_total_and_unchecking_brings_it_back(): void
+    {
+        $this->catalog->add(self::MILK, 'Leche entera', 125, 'mercadona');
+        $this->catalog->add(self::WATER, 'Agua', 30, 'mercadona');
+        $listId = $this->createList();
+        $milk = $this->addProduct($listId, self::MILK, quantity: 2);
+        $this->addProduct($listId, self::WATER, quantity: 6);
+
+        $this->check($listId, $milk);
+        self::assertEquals([new SupermarketTotal('mercadona', 'Mercadona', 6 * 30, 1)], $this->getList(self::MARIA, $listId)->totals);
+
+        $this->uncheck($listId, $milk);
+        self::assertEquals([new SupermarketTotal('mercadona', 'Mercadona', 2 * 125 + 6 * 30, 2)], $this->getList(self::MARIA, $listId)->totals);
+    }
+
+    #[Test]
+    public function a_fully_bought_supermarket_stays_in_the_totals_at_zero_sorted_by_name(): void
+    {
+        $this->catalog->add(self::MILK, 'Leche entera', 125, 'mercadona');
+        $this->catalog->add(self::BREAD, 'Pan', 89, 'aldi');
+        $listId = $this->createList();
+        $milk = $this->addProduct($listId, self::MILK);
+        $this->addProduct($listId, self::BREAD);
+        $this->check($listId, $milk);
+
+        $view = $this->getList(self::MARIA, $listId);
+
+        self::assertEquals([
+            new SupermarketTotal('aldi', 'Aldi', 89, 1),
+            new SupermarketTotal('mercadona', 'Mercadona', 0, 0),
         ], $view->totals);
     }
 
@@ -214,6 +247,11 @@ final class ListQueriesTest extends ShoppingListHandlersTestCase
     private function chooseSection(string $listId, string $itemId, string $section): void
     {
         (new UpdateItemHandler($this->updater, $this->clock))(new UpdateItemCommand(self::MARIA, $listId, $itemId, changeSection: true, section: $section));
+    }
+
+    private function uncheck(string $listId, string $itemId): void
+    {
+        (new UpdateItemHandler($this->updater, $this->clock))(new UpdateItemCommand(self::MARIA, $listId, $itemId, checked: false));
     }
 
     private function check(string $listId, string $itemId): void

@@ -21,7 +21,7 @@ use App\ShoppingList\Domain\ValueObject\ProductId;
 
 /**
  * The list with fresh product data and per-supermarket totals (E4.10). Unavailable products are
- * shown flagged and left out of the totals (PD-22).
+ * shown flagged and left out of the totals (PD-22). The totals count only pending items (PD-120).
  */
 final readonly class GetListHandler
 {
@@ -131,7 +131,13 @@ final readonly class GetListHandler
                 continue;
             }
 
+            // A supermarket whose products are all bought stays at zero so its chip and row do not vanish (PD-121).
             $current = $bySupermarket[$product->supermarketId] ?? ['name' => $product->supermarketName, 'total' => Money::eur(0), 'count' => 0];
+            if ($item->isChecked()) {
+                $bySupermarket[$product->supermarketId] = $current;
+                continue;
+            }
+
             $bySupermarket[$product->supermarketId] = [
                 'name' => $current['name'],
                 'total' => $current['total']->add(Money::eur($product->priceCents)->multiply($item->quantity()->value())),
