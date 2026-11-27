@@ -10,6 +10,8 @@ use App\Receipts\Application\GetListSpending\GetListSpendingHandler;
 use App\Receipts\Application\GetListSpending\GetListSpendingQuery;
 use App\Receipts\Application\GetReceipt\GetReceiptHandler;
 use App\Receipts\Application\GetReceipt\GetReceiptQuery;
+use App\Receipts\Application\GetReceiptPhoto\GetReceiptPhotoHandler;
+use App\Receipts\Application\GetReceiptPhoto\GetReceiptPhotoQuery;
 use App\Receipts\Application\UploadReceipt\InvalidReceiptPhoto;
 use App\Receipts\Application\UploadReceipt\UploadReceiptCommand;
 use App\Receipts\Application\UploadReceipt\UploadReceiptHandler;
@@ -33,7 +35,26 @@ final readonly class ReceiptsController
         private GetListReceiptsHandler $listReceipts,
         private GetListSpendingHandler $listSpending,
         private GetReceiptHandler $getReceipt,
+        private GetReceiptPhotoHandler $getPhoto,
     ) {
+    }
+
+    /**
+     * The stored image, members only (PD-63). Its type is the one detected on upload, never the client's.
+     */
+    #[Route('/api/lists/{id}/receipts/{receiptId}/photo', name: 'api_lists_receipts_photo', methods: ['GET'])]
+    public function photo(#[CurrentUser] UserInterface $actor, string $id, string $receiptId): Response
+    {
+        $photo = ($this->getPhoto)(new GetReceiptPhotoQuery($actor->getUserIdentifier(), $id, $receiptId));
+
+        $response = new Response($photo->contents, Response::HTTP_OK, [
+            'Content-Type' => $photo->mediaType,
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+        $response->setPrivate();
+        $response->setMaxAge(3600);
+
+        return $response;
     }
 
     #[Route('/api/lists/{id}/receipts', name: 'api_lists_receipts_list', methods: ['GET'])]
