@@ -2,7 +2,7 @@
 
 **Goal:** any logged-in user searches in Spanish or Catalan and finds the products of every supermarket, although Bonpreu i Esclat names its products in Catalan, Mercadona in Spanish and Aldi in a mix of both: "leche" also finds Bonpreu's "llet". A self-hosted Typesense index, fed from MySQL, applies a Spanish ↔ Catalan dictionary kept in the repository and falls back to typo-tolerant matching when nothing matches exactly. This makes comparing the chains useful again. Requested in [issue #66](https://github.com/joeljoanlopez/jolo-market/issues/66).
 
-Related decisions: PD-22, PD-24, PD-33, PD-61, PD-80, PD-100, PD-101, PD-102, PD-103, PD-104, PD-105.
+Related decisions: PD-22, PD-24, PD-33, PD-61, PD-80, PD-100, PD-101, PD-102, PD-103, PD-104, PD-105, PD-124, PD-125, PD-126.
 
 ## Acceptance criteria
 
@@ -11,6 +11,8 @@ Related decisions: PD-22, PD-24, PD-33, PD-61, PD-80, PD-100, PD-101, PD-102, PD
 - A word that is only the start of a dictionary entry gets no equivalent: "lec" finds "leche…" products but not "llet" (PD-101).
 - A search with exact results shows no approximate result (PD-103).
 - A search with no exact result and a typo ("lece") shows the approximate results, and `/search` shows "No hay resultados para «lece». Mostrando resultados parecidos." above them (PD-103, PD-104).
+- With a supermarket filter, the fallback runs when that supermarket has no exact result, and searches that supermarket only (PD-124).
+- The fallback allows no typo in words under 4 letters, 1 in words of 4 to 6 letters and 2 from 7 letters (PD-125).
 - Results keep the rules they have today: only available products (PD-22) of enabled supermarkets (PD-24), grouped by unit and ordered by unit price with the same tie-breaks, the cheapest of each group highlighted, the supermarket filter, 20 per page (PD-33), for exact and approximate results alike (PD-103).
 - The suggestions of a list's "Qué necesitas" field use the same search, equivalents and typo fallback included, without a notice (PD-80, PD-104).
 - When Typesense does not answer, `GET /api/products` answers `503`, and `/search` and the list suggestions show the existing search error with "Reintentar"; lists keep working (PD-105).
@@ -41,7 +43,8 @@ Typesense is reached through Symfony HttpClient from Catalog Infrastructure only
 ### Search (Catalog)
 
 - [ ] E16.6 Add `approximate` (bool) to `ProductSearchPage` and add `TypesenseProductSearchReadModel`, which implements `ProductSearchReadModel` on the index. Every word must match the start of a word of the name or brand, ignoring case and accents. A word that is a whole dictionary entry also matches its equivalents as prefixes, and a word that is only the start of an entry gets none (PD-101). Results keep the PD-22, PD-24 and PD-33 rules: units with more results first (ties kg, l, unit), no unit price last, then unit price, shelf price, name and id, and `total` and `cheapestUnitPriceCentsByUnit` over the whole query. Integration tests against Typesense, with a small indexed catalog, cover "leche"/"llet", "pan"/"pa", "lec" (no equivalent), the order, the supermarket filter and unavailable products. Port the current `DbalProductSearchReadModel` tests that still apply (PD-33, PD-101).
-- [ ] E16.7 Add the typo fallback to `TypesenseProductSearchReadModel`: when the exact search has no result, search again allowing up to 2 typos per word, with the same filters and order, and return `approximate: true`. Exact and approximate results are never mixed. Tests cover "lece" (approximate results), a query with exact results (no approximate one) and a query that matches nothing either way (empty page, `approximate: false`) (PD-103).
+- [ ] E16.7 Add the typo fallback to `TypesenseProductSearchReadModel`: when the exact search has no result, search again allowing up to 2 typos per word, with the same filters and order, and return `approximate: true`. Exact and approximate results are never mixed. Tests cover "lece" (approximate results), a query with exact results (no approximate one), a query that matches nothing either way (empty page, `approximate: false`) and a filtered query with no exact result in that supermarket (PD-103, PD-124, PD-125).
+  - Note: the number of typos per word follows the word length (PD-125); with a supermarket filter the fallback is decided inside that supermarket (PD-124).
 - [ ] E16.8 Wire `TypesenseProductSearchReadModel` as the `ProductSearchReadModel` and remove `DbalProductSearchReadModel` and its tests, together with the FULLTEXT index on `product(name, brand)` (migration), since nothing else uses it. Check this with a search of the code first (PD-100, PD-105).
 
 ### API
@@ -50,7 +53,8 @@ Typesense is reached through Symfony HttpClient from Catalog Infrastructure only
 
 ### Dictionary content
 
-- [ ] E16.10 Write the first `backend/config/search/synonyms.yaml`: about 150–250 frequent words of the catalog's categories (dairy, bakery, fruit and vegetables, meat, fish, drinks, pantry, frozen, cleaning, personal care), paired Spanish ↔ Catalan with singular and plural forms, taken from the words of the Bonpreu product names in the dev catalog. A test checks that the shipped file loads (E16.2). The product owner reviews the list in the pull request (PD-102).
+- [ ] E16.10 Write the first `backend/config/search/synonyms.yaml`: about 150–250 frequent words of the catalog's categories (dairy, bakery, fruit and vegetables, meat, fish, drinks, pantry, frozen, cleaning, personal care), paired Spanish ↔ Catalan with singular and plural forms, from common grocery vocabulary, covering every word of the dummy catalog that has a Catalan equivalent. A test checks that the shipped file loads (E16.2). The product owner reviews the list in the pull request (PD-102, PD-126).
+  - Note: the dummy catalog gives the three chains the same Spanish names, so it has no Catalan words to take (PD-126).
 
 ### Frontend
 
