@@ -7,6 +7,7 @@ Self-hosted supermarket price comparator and shared shopping list, inspired by [
 ## What it does
 
 - **Compare prices** across supermarkets by searching a product (e.g. "leche entera") and ranking every result by **unit price** (€/kg, €/L or €/unit).
+- **Search in Spanish or Catalan**: Bonpreu i Esclat names its products in Catalan, Mercadona in Spanish and Aldi in both, so a Spanish ↔ Catalan dictionary makes "leche" also find "llet" and "pa" also find "pan". A typo ("lece") still finds something: when nothing matches exactly, the search shows similar results and says so.
 - **Shared shopping lists**: share a list through a secret link. Whoever opens it while logged in joins the list, and the owner manages its members.
 - **Add products from inside a list**: the "Qué necesitas" field of a list suggests catalog products while you type (name, brand, supermarket and prices). Pick one with a click or the arrow keys and Enter, or add the text as a free-text item. "Ver todos los resultados" opens the search, which then adds straight to that list.
 - **Private instance**: users are created by an admin, activate their account through a one-time link, and log in with mandatory TOTP 2FA.
@@ -41,10 +42,11 @@ The full list of product decisions lives in [`docs/architecture.md`](docs/archit
 | --- | --- |
 | Backend | PHP 8.5 + Symfony 7.4 LTS (API only) |
 | Persistence | MySQL 9.7 LTS, Doctrine DBAL + Doctrine Migrations |
+| Search | Typesense 30 (self-hosted search index, rebuilt from MySQL) |
 | Frontend | TypeScript + React + Vite (SPA), Tailwind CSS |
 | Backend tests | PHPUnit, PHPStan (max level), Deptrac, PHP-CS-Fixer |
 | Frontend tests | Vitest, Testing Library, MSW, Playwright |
-| Runtime | Docker Compose (nginx, php-fpm, mysql, scheduler) |
+| Runtime | Docker Compose (nginx, php-fpm, mysql, typesense, scheduler) |
 
 Rationale for each choice and exact pinned versions: [`docs/architecture.md`](docs/architecture.md#stack).
 
@@ -130,7 +132,7 @@ The development environment (`APP_ENV=dev`) works offline (PD-53 to PD-57). Thes
 | `app:dev:seed [--reset] [--force]` | Creates the dummy users that are missing and runs the backfill. Safe to run again: it never touches existing users and adds nothing that is already there. |
 | `app:dev:users` | Creates `admin` (`ADMIN`) and `usuario` (`USER`), active, with the password `Dev-password-1` and fixed TOTP secrets. A user with either name is left as it is. |
 | `app:dev:totp <username>` | Prints the current TOTP code of an active user and how many seconds it is still valid. Exits with `1` for an unknown or not active user. |
-| `app:dev:catalog:backfill [--days=180]` | Runs the dummy ingestion once per day for the last N days (1 to 730, today included), with the clock on that day, so products have a price history. Days that already have a run are skipped. Exits with `2` for an invalid `--days`. |
+| `app:dev:catalog:backfill [--days=180]` | Runs the dummy ingestion once per day for the last N days (1 to 730, today included), with the clock on that day, so products have a price history. Days that already have a run are skipped. It rebuilds the search index once at the end. Exits with `2` for an invalid `--days`. |
 | `app:dev:catalog:reset`, `app:dev:users:reset`, `app:dev:lists:reset` | Empty the tables of one context: the catalog (products, snapshots, runs), the users (with the setup code, which ends every session) or the shopping lists. They ask first; `--force` skips the question, and without interaction they refuse (exit `1`) unless forced. |
 
 **Dummy catalog.** `app:catalog:ingest` and the `scheduler` use dummy sources of Mercadona, Bonpreu i Esclat and Aldi instead of the real stores. Each chain has 30 to 40 products in several categories, many of them sold by the three chains at different prices (milk, olive oil, eggs…), with every case the app handles: prices per kg, L and unit, packs, products without a unit price, approximate sizes priced by the store's reference price and one malformed product that is skipped. The data depends only on the day: a few prices change from one day to the next or weekly, and one or two products per chain are missing one day out of five, so they become unavailable and come back.
@@ -158,7 +160,19 @@ Requests to the stores identify themselves with `CATALOG_HTTP_USER_AGENT`, wait 
 
 The `scheduler` service runs it automatically on `INGESTION_SCHEDULE` (daily at 05:00 Europe/Madrid by default; `docker compose exec php bin/console debug:scheduler` shows the next run).
 
-It prints a summary per supermarket and exits with `0` when every run succeeded, `1` when any failed and `2` for invalid input or configuration. Each run is stored in the `ingestion_run` table and logged on the `ingestion` channel.
+It prints a summary per supermarket, then rebuilds the [search index](#product-search), and exits with `0` when every run succeeded and the index was rebuilt, `1` when any run or the rebuild failed (the catalog stays imported) and `2` for invalid input or configuration. Each run is stored in the `ingestion_run` table and logged on the `ingestion` channel.
+
+### Product search
+
+Search runs on a Typesense index (the `typesense` service), built from the products in MySQL. It is rebuilt after every ingestion run, and on start when it is missing or empty (a fresh stack, a new dummy catalog). To rebuild it by hand, for example after changing the dictionary:
+
+```sh
+make reindex   # docker compose exec php bin/console app:catalog:reindex-search
+```
+
+It prints how many products it indexed and exits with `0`, or `1` when Typesense fails or the dictionary is invalid; search keeps answering from the previous index meanwhile. When Typesense is down, search answers `503` and the app shows its search error with "Reintentar"; lists keep working.
+
+**The dictionary** lives in [`backend/config/search/synonyms.yaml`](backend/config/search/synonyms.yaml): each line is a group of equivalent words, such as `- [leche, leches, llet, llets]`. When a searched word is a whole word of a group, the others are searched too, as the start of a word ("pa" finds "Pan de molde"; "lec" gets no equivalent). To add words, add a group or extend one, with singular and plural forms, in a pull request; the change applies at the next reindex. A group needs two or more single words (no spaces or hyphens) and a word may be in one group only; case and accents do not matter. An invalid file stops the reindex with a message that names the problem.
 
 ### Price history retention
 
@@ -295,6 +309,7 @@ Each item of `GET /api/lists/<id>` carries `section` (where it is shown) and `se
 | `make check-frontend` | `cd frontend && npm run check`, on your machine like CI (fails when Node is missing) |
 | `make test-deploy` | `deploy/test.sh` |
 | `make unmapped-categories` | `docker compose exec php bin/console app:catalog:unmapped-categories`: the catalog categories that map to "Otros" (see [Categories without a section](#categories-without-a-section)) |
+| `make reindex` | `docker compose exec php bin/console app:catalog:reindex-search`: rebuilds the search index and reloads the dictionary (see [Product search](#product-search)) |
 | `make ci-scope` | `deploy/ci-scope.sh`: prints which CI jobs your branch runs, compared with `origin/main` (see [Continuous integration](#continuous-integration)); no Docker needed |
 
 ### Backend checks
@@ -344,6 +359,7 @@ export COMPOSE_PROJECT_NAME=jolo-market-e2e HTTP_PORT=8081
 docker compose up -d --wait nginx
 docker compose exec php bin/console doctrine:migrations:migrate --no-interaction
 docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" "$MYSQL_DATABASE"' < backend/tests/Fixtures/e2e/catalog.sql
+docker compose exec php bin/console app:catalog:reindex-search   # search reads the index, not the database
 ```
 
 Install the browser once, then run the suite from `frontend/`:
@@ -407,7 +423,7 @@ docker compose up -d --build --wait
 
 `COMPOSE_FILE=compose.prod.yaml` makes every `docker compose` command (including the ones below) use the production stack; without it they start the development stack. Never list `compose.yaml` in it as well: its bind mounts would hide the code inside the production images.
 
-On start the php container checks the configuration, waits for MySQL, applies the database migrations and starts php-fpm. A missing or invalid `INSTANCE_POSTAL_CODE`, `ENABLED_SUPERMARKETS` or `TOTP_ENCRYPTION_KEY` stops it with a message that names the variable, and `up --wait` reports the container as unhealthy:
+On start the php container checks the configuration, waits for MySQL, applies the database migrations, builds the search index when it is missing or empty and starts php-fpm. A missing or invalid `INSTANCE_POSTAL_CODE`, `ENABLED_SUPERMARKETS`, `TOTP_ENCRYPTION_KEY`, `TYPESENSE_URL` or `TYPESENSE_API_KEY` stops it with a message that names the variable, and `up --wait` reports the container as unhealthy:
 
 ```sh
 docker compose logs php     # what failed
@@ -425,12 +441,14 @@ In production every setting lives in the root `.env`: the code is inside the ima
 | `MYSQL_ROOT_PASSWORD`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD` | yes | MySQL credentials. Set them before the first start: MySQL reads them only when it creates its volume. |
 | `APP_SECRET` | yes | Symfony secret: `openssl rand -hex 32`. Compose refuses to start without it. |
 | `TOTP_ENCRYPTION_KEY` | yes | Encrypts the TOTP secrets: `openssl rand -base64 32`. Keep it with your backups: changing or losing it forces every user to enroll their device again. |
+| `TYPESENSE_API_KEY` | yes | API key of the search service: `openssl rand -hex 32`. Compose refuses to start without it. The search index is rebuilt from MySQL, so it is not in the backups and the key can change at any time. |
 | `INSTANCE_POSTAL_CODE` | yes | Spanish postal code whose prices are imported, for example `08001`. |
 | `DEFAULT_URI` | yes | Public address of the instance, for example `https://market.example.com`. Activation links start with it. |
 | `ENABLED_SUPERMARKETS` | no | Supermarkets to import and show (default `mercadona,aldi,bonpreu`). |
 | `INGESTION_SCHEDULE`, `PRICE_HISTORY_PRUNE_SCHEDULE` | no | Cron expressions in Europe/Madrid (defaults `0 5 * * *` and `30 4 * * *`). |
 | `PRICE_HISTORY_RETENTION_MONTHS` | no | Months of price history kept (default `24`). |
 | `CATALOG_HTTP_USER_AGENT` | no | User-Agent sent to the supermarkets. |
+| `TYPESENSE_URL` | no | Address of the search service (default `http://typesense:8108`, the `typesense` service). |
 | `SYMFONY_TRUSTED_PROXIES` | behind a proxy | `private_ranges` when a reverse proxy on the same host forwards to nginx (see below). |
 | `AUTO_DEPLOY` | no | `true` turns on [auto-deploy](#auto-deploy-optional). |
 
@@ -499,6 +517,8 @@ docker image prune -f     # remove the old images
 ```
 
 The php container applies new migrations when it starts. [Auto-deploy](#auto-deploy-optional) does the same after every merge to `main` with a green CI.
+
+**Upgrading to the Typesense search (E16):** the stack gains a `typesense` service that needs `TYPESENSE_API_KEY` in the root `.env`. Add it before pulling (`echo "TYPESENSE_API_KEY=$(openssl rand -hex 32)" >> .env`): without it Compose refuses to start, and so does auto-deploy. The php container builds the search index on its first start.
 
 ### Backup and restore
 
