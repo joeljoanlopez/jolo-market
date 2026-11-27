@@ -54,8 +54,9 @@ Typesense is reached through Symfony HttpClient from Catalog Infrastructure only
 
 ### Dictionary content
 
-- [ ] E16.10 Write the first `backend/config/search/synonyms.yaml`: about 150–250 frequent words of the catalog's categories (dairy, bakery, fruit and vegetables, meat, fish, drinks, pantry, frozen, cleaning, personal care), paired Spanish ↔ Catalan with singular and plural forms, from common grocery vocabulary, covering every word of the dummy catalog that has a Catalan equivalent. A test checks that the shipped file loads (E16.2). The product owner reviews the list in the pull request (PD-102, PD-126).
+- [x] E16.10 Write the first `backend/config/search/synonyms.yaml`: about 150–250 frequent words of the catalog's categories (dairy, bakery, fruit and vegetables, meat, fish, drinks, pantry, frozen, cleaning, personal care), paired Spanish ↔ Catalan with singular and plural forms, from common grocery vocabulary, covering every word of the dummy catalog that has a Catalan equivalent. A test checks that the shipped file loads (E16.2). The product owner reviews the list in the pull request (PD-102, PD-126).
   - Note: the dummy catalog gives the three chains the same Spanish names, so it has no Catalan words to take (PD-126).
+  - Note: the first file has 152 entries (about 600 forms with the plurals): the 150–250 "words" of PD-102 are counted as entries, each a frequent word with its translation and plural forms. Two spellings of one word in a group (`ecológica`, `ecològica`) are merged by the loader, since search ignores accents. Words dropped on purpose because their equivalent is so short that it would match too much: `mano`/`mà`, `cuerpo`/`cos`, `molido`/`molt`, `con`/`amb`, `té`/`te`.
 
 ### Frontend
 

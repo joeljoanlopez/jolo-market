@@ -31,7 +31,7 @@ final readonly class SynonymFile
             $number = $index + 1;
             $group = $this->group($rawGroup, $number);
             foreach ($group as $word) {
-                // Search ignores accents, so "plátano" and "platano" are the same word.
+                // Across groups too, "plátano" and "platano" are the same word.
                 $word = SearchWords::of($word)[0];
                 if (isset($groupOfWord[$word])) {
                     throw InvalidSynonymFile::because($this->path, \sprintf('"%s" is in groups %d and %d', $word, $groupOfWord[$word], $number));
@@ -88,11 +88,13 @@ final readonly class SynonymFile
             if ('' !== $word && 1 !== \count(SearchWords::of($word))) {
                 throw InvalidSynonymFile::because($this->path, \sprintf('"%s" in group %d is not a single word', $word, $number));
             }
-            if ('' !== $word && !\in_array($word, $words, true)) {
-                $words[] = $word;
+            // Search ignores accents, so "ecológica" and "ecològica" are one word: the first spelling is kept.
+            if ('' !== $word && !isset($words[SearchWords::of($word)[0]])) {
+                $words[SearchWords::of($word)[0]] = $word;
             }
         }
 
+        $words = array_values($words);
         if ([] === $words) {
             throw InvalidSynonymFile::because($this->path, \sprintf('group %d is empty', $number));
         }

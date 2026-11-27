@@ -24,6 +24,28 @@ final class SynonymFileTest extends TestCase
     }
 
     #[Test]
+    public function the_shipped_dictionary_loads_and_holds_the_basics_of_each_category(): void
+    {
+        $groups = new SynonymFile(__DIR__.'/../../../../../config/search/synonyms.yaml')->groups();
+
+        // One entry per frequent word, with its translation and plurals (PD-102).
+        self::assertGreaterThanOrEqual(150, \count($groups));
+        self::assertLessThanOrEqual(250, \count($groups));
+        foreach ([['leche', 'llet'], ['pan', 'pa'], ['huevo', 'ou'], ['aceite', 'oli']] as [$spanish, $catalan]) {
+            self::assertContains([$spanish, $catalan], array_map(
+                static fn (array $group): array => \in_array($spanish, $group, true) && \in_array($catalan, $group, true) ? [$spanish, $catalan] : [],
+                $groups,
+            ));
+        }
+    }
+
+    #[Test]
+    public function it_keeps_one_spelling_of_the_words_of_a_group_that_differ_only_by_their_accents(): void
+    {
+        self::assertSame([['ecológica', 'bio']], new SynonymFile(self::FIXTURES.'same-word-in-one-group.yaml')->groups());
+    }
+
+    #[Test]
     public function it_reads_a_file_without_groups(): void
     {
         self::assertSame([], new SynonymFile(self::FIXTURES.'no-groups.yaml')->groups());
