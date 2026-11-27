@@ -9,7 +9,7 @@ const selectVariants = cva(
     variants: {
       size: {
         md: 'h-10 w-full px-3 text-base',
-        /** Inside a row, next to other content (PD-116). */
+        /** Inside a row, next to other content (PD-117). */
         sm: 'h-8 w-auto px-2 text-sm',
       },
     },

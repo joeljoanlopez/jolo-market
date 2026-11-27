@@ -2,7 +2,7 @@
 
 **Goal:** the owner and the members of a shopping list see its pending items grouped by store section (Fruta y verdura, Lácteos y huevos, Despensa…), in a fixed order that follows a typical walk through the store, so they can shop section by section. A product's section comes from its catalog category, and any member can change the section of any item. Requested in [issue #65](https://github.com/joeljoanlopez/jolo-market/issues/65).
 
-Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, PD-85, PD-90, PD-91, PD-92, PD-93, PD-94, PD-95, PD-96, PD-115, PD-116, PD-117, PD-118.
+Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, PD-85, PD-90, PD-91, PD-92, PD-93, PD-94, PD-95, PD-96, PD-116, PD-117, PD-118, PD-119.
 
 ## Acceptance criteria
 
@@ -16,7 +16,7 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 - Existing items need no migration: free-text items show in "Otros" and product items in their catalog section (PD-94).
 - With a supermarket filter chosen (E13), the filtered items are grouped the same way (PD-93).
 - Extending the mapping moves items already in lists to their new section, without touching stored data (PD-91).
-- `GET /api/lists/{id}` returns `section` and `sectionOverride` on each item, and `section` on the `product` of a product item (its catalog section, PD-118); `PATCH /api/lists/{id}/items/{itemId}` accepts `section` (a section id or `null`), and an unknown section id is a `422` (PD-96).
+- `GET /api/lists/{id}` returns `section` and `sectionOverride` on each item, and `section` on the `product` of a product item (its catalog section, PD-119); `PATCH /api/lists/{id}/items/{itemId}` accepts `section` (a section id or `null`), and an unknown section id is a `422` (PD-96).
 - `app:catalog:unmapped-categories` (and `make unmapped-categories`) lists, per supermarket, the stored categories that map to "Otros" with their product count, most products first, and changes nothing (PD-95).
 - All new copy (section names, the selector, "Automática (…)") is Spanish in `es.json` (PD-8).
 
@@ -24,7 +24,7 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 
 ### Domain (Catalog)
 
-- [x] E14.1 Add the `Section` enum in `Catalog\Domain` with the thirteen sections of PD-90, their English ids and their display order, and a `SectionMapping` domain service that turns a supermarket id and a `CategoryPath` into a `Section` by the longest matching prefix, `other` for a missing or unknown path (PD-91). Start with the mapping of the dummy catalog categories (`DummyCatalog`), so every dummy product gets a section other than `other` ("Lácteos y huevos > Quesos" and "Carne y pescado > Embutidos" go to `deli-and-cheese`, PD-115); unit tests cover the longest-prefix rule, a missing path and an unknown path.
+- [x] E14.1 Add the `Section` enum in `Catalog\Domain` with the thirteen sections of PD-90, their English ids and their display order, and a `SectionMapping` domain service that turns a supermarket id and a `CategoryPath` into a `Section` by the longest matching prefix, `other` for a missing or unknown path (PD-91). Start with the mapping of the dummy catalog categories (`DummyCatalog`), so every dummy product gets a section other than `other` ("Lácteos y huevos > Quesos" and "Carne y pescado > Embutidos" go to `deli-and-cheese`, PD-116); unit tests cover the longest-prefix rule, a missing path and an unknown path.
 
 ### Application (Catalog → ShoppingList)
 
@@ -33,11 +33,11 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 ### Domain and persistence (ShoppingList)
 
 - [x] E14.3 Add an optional section choice to list items (`FreeTextItem` and `ProductItem`): `ShoppingList::changeItemSection(itemId, ?section)` sets or removes it (removing it on a free-text item leaves it in "Otros"), an unknown item is `ListItemNotFound`, and adding an already listed product keeps the choice (PD-92, PD-94). Add a nullable `section` column to `list_item` with a migration (existing rows stay `NULL`, PD-94), and map it in the DBAL repository.
-- [x] E14.4 Accept `section` in `UpdateItemCommand`/`UpdateItemHandler`, validated against the section ids (unknown → a validation exception mapped to `422`), saved with the retry of PD-43. A checked item accepts it too (PD-117).
+- [x] E14.4 Accept `section` in `UpdateItemCommand`/`UpdateItemHandler`, validated against the section ids (unknown → a validation exception mapped to `422`), saved with the retry of PD-43. A checked item accepts it too (PD-118).
 
 ### API
 
-- [x] E14.5 Return `section` (the choice, else the catalog section, else `other`) and `sectionOverride` on each item of `GET /api/lists/{id}` (`ListJson`), and the catalog `section` on each item's `product` (PD-118), and accept `section` (id or `null`) in `PATCH /api/lists/{id}/items/{itemId}` (`ListItemsController`): `204`, unknown section id `422`, unknown item `404` (PD-96). Functional tests cover a free-text item, a mapped product, an unmapped product, a removed product, setting and removing a choice, and the `version` change that polling picks up.
+- [x] E14.5 Return `section` (the choice, else the catalog section, else `other`) and `sectionOverride` on each item of `GET /api/lists/{id}` (`ListJson`), and the catalog `section` on each item's `product` (PD-119), and accept `section` (id or `null`) in `PATCH /api/lists/{id}/items/{itemId}` (`ListItemsController`): `204`, unknown section id `422`, unknown item `404` (PD-96). Functional tests cover a free-text item, a mapped product, an unmapped product, a removed product, setting and removing a choice, and the `version` change that polling picks up.
 
 ### Console
 
@@ -50,12 +50,12 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 
 ### Frontend (domain and infrastructure)
 
-- [x] E14.8 Add `section` and `sectionOverride` to the list item type, and the catalog `section` to its product (PD-118), in `features/shopping-list/domain` and map them in `shoppingListApi` (PD-96). Add an `updateItemSection(listId, itemId, section | null)` call to the `ShoppingLists` port, `shoppingListApi` and `FakeShoppingLists`.
+- [x] E14.8 Add `section` and `sectionOverride` to the list item type, and the catalog `section` to its product (PD-119), in `features/shopping-list/domain` and map them in `shoppingListApi` (PD-96). Add an `updateItemSection(listId, itemId, section | null)` call to the `ShoppingLists` port, `shoppingListApi` and `FakeShoppingLists`.
 - [x] E14.9 Add pure functions in `features/shopping-list/domain` that group the unchecked items of a list (or of the E13 filtered items) by section, in the order of PD-90, keeping list order inside each section and leaving out empty sections, and return the checked items apart in list order (PD-93).
 
 ### Frontend (presentational)
 
-- [x] E14.10 Add a `SectionHeader` component and a section selector on `ListItemRow` for pending items (a compact native select under the quantity line, labelled with the item's name, PD-116): the thirteen sections by their Spanish names, and for a product item also "Automática (<catalog section>)" (PD-92). It only gets props and emits `onSectionChange(section | null)`. Theme tokens only, `cva` variants if needed.
+- [x] E14.10 Add a `SectionHeader` component and a section selector on `ListItemRow` for pending items (a compact native select under the quantity line, labelled with the item's name, PD-117): the thirteen sections by their Spanish names, and for a product item also "Automática (<catalog section>)" (PD-92). It only gets props and emits `onSectionChange(section | null)`. Theme tokens only, `cva` variants if needed.
 
 ### Frontend (container)
 
@@ -65,7 +65,7 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 ### End to end
 
 - [x] E14.13 Extend `frontend/e2e/lists.spec.ts`: a user adds a dairy product and a free-text item to a list, sees each under its section header in the PD-90 order ("Otros" last), moves the free-text item to another section and sees it there after a reload, and checks an item and sees it in the checked block at the end.
-  - Note: the e2e catalog (`backend/tests/Fixtures/e2e/catalog.sql`) now files its products under "Lácteos y huevos" instead of "Lácteos", so the dummy mapping (PD-115) puts the milk in Lácteos y huevos.
+  - Note: the e2e catalog (`backend/tests/Fixtures/e2e/catalog.sql`) now files its products under "Lácteos y huevos" instead of "Lácteos", so the dummy mapping (PD-116) puts the milk in Lácteos y huevos.
 
 ### Docs
 

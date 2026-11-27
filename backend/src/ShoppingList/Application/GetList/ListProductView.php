@@ -6,7 +6,7 @@ namespace App\ShoppingList\Application\GetList;
 
 /**
  * The current catalog data of a product item. A product the catalog no longer knows has only
- * its id and is unavailable; every other field is null. $section is its catalog section (PD-118),
+ * its id and is unavailable; every other field is null. $section is its catalog section (PD-119),
  * "other" for a product the catalog no longer knows (PD-91).
  */
 final readonly class ListProductView

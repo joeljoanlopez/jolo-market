@@ -69,6 +69,7 @@ Full description: [`docs/architecture.md`](docs/architecture.md#architecture-sty
 - Existing epics are implemented with the procedure in [`.claude/skills/implement-epic/SKILL.md`](.claude/skills/implement-epic/SKILL.md) (Claude Code: `/implement-epic E<n>`; other assistants: follow that file). It asks every open question and undefined case before coding, records the answers, implements the tasks with TDD and opens one pull request for the epic.
 - Tick a checkbox (`- [x]`) **only** when the task is implemented, tested, and all quality checks pass.
 - If a task turns out to be bigger, or needs a decision, add a note under it and ask. Do not silently change its scope.
+- When an epic comes from a GitHub issue, its board status follows PD-115: the project's built-in workflows set `To do` and `In review` (the implementation PR body must contain `Closes #n`); you move it to `In progress` when you start implementing the epic.
 - Keep the epic index (`docs/epics/README.md`) status column up to date.
 - When adding or changing an endpoint, command or config variable, update `docs/architecture.md` and the README in the same change.
 - When you add or change a development command (a Composer or npm script, a script in `deploy/`, a console command used while developing), **ask the product owner whether it should get a `make` target** in the root `Makefile` (PD-61).

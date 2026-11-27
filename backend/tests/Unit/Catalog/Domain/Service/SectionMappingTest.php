@@ -53,7 +53,7 @@ final class SectionMappingTest extends TestCase
     }
 
     /**
-     * Every dummy product gets a real section (PD-115). The dummy chains share these paths.
+     * Every dummy product gets a real section (PD-116). The dummy chains share these paths.
      *
      * @param list<string> $path
      */

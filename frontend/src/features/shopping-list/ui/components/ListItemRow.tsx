@@ -88,7 +88,7 @@ export function ListItemRow({
 const AUTOMATIC = '';
 
 /**
- * The section of a pending item (PD-92, PD-116). A product can follow its catalog section
+ * The section of a pending item (PD-92, PD-117). A product can follow its catalog section
  * ("Automática"); a free-text item without a choice is in "Otros", so choosing "Otros" removes it.
  */
 function SectionSelect({

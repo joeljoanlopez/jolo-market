@@ -39,7 +39,7 @@ final class DummyCatalogSourceTest extends TestCase
     }
 
     /**
-     * PD-115: development shows every product under a real section.
+     * PD-116: development shows every product under a real section.
      */
     #[Test]
     #[DataProvider('chains')]

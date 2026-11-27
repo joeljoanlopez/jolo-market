@@ -16,7 +16,7 @@ use App\Catalog\Domain\ValueObject\SupermarketId;
 final readonly class SectionMapping
 {
     /**
-     * The categories of the dummy catalog (E8, PD-115). The dummy sources use the real chains'
+     * The categories of the dummy catalog (E8, PD-116). The dummy sources use the real chains'
      * ids, so these rules apply to all three.
      *
      * @var list<array{list<string>, Section}>

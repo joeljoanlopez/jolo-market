@@ -132,7 +132,7 @@ describe('ListItemRow', () => {
     expect(screen.getByText(es.lists.item.unavailable)).toBeInTheDocument();
   });
 
-  describe('section selector (PD-92, PD-116)', () => {
+  describe('section selector (PD-92, PD-117)', () => {
     const sectionNames = Object.values(es.lists.sections);
     const selector = (name: string) =>
       screen.getByRole('combobox', { name: es.lists.item.section.replace('{{name}}', name) });

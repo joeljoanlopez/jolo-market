@@ -30,7 +30,7 @@ export interface ListProduct {
   priceCents: number | null;
   imageUrl: string | null;
   available: boolean;
-  /** The section its catalog category maps to; `other` for an unknown product (PD-91, PD-118). */
+  /** The section its catalog category maps to; `other` for an unknown product (PD-91, PD-119). */
   section: SectionId;
 }
 

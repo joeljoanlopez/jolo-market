@@ -265,7 +265,7 @@ final class ShoppingList
 
     /**
      * Any member chooses the item's section, or removes the choice with null (PD-92). A checked
-     * item accepts it too (PD-117).
+     * item accepts it too (PD-118).
      */
     public function changeItemSection(UserId $actor, ListItemId $itemId, ?ItemSection $section, \DateTimeImmutable $now): void
     {
