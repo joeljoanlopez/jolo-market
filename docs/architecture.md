@@ -173,12 +173,12 @@ Decisions confirmed by the product owner. Changing any of them requires asking f
 | Language (FE) | TypeScript (strict) | Required stack. |
 | Framework (FE) | **React + Vite** | Mature ecosystem. Fits atomic design and the container/presentational pattern. Vite gives fast dev builds and a static output that nginx serves. |
 | Server state (FE) | TanStack Query | Caching, background refetch and **polling** (`refetchInterval`) out of the box, which covers PD-7. |
-| Routing (FE) | React Router | Covers `/setup`, `/login`, `/activate/:token`, `/`, `/search`, `/product/:id`, `/lists/:id`, `/join/:token`, `/admin/users`, with route guards for authenticated and admin areas. |
+| Routing (FE) | React Router | Covers `/setup`, `/login`, `/activate/:token`, `/`, `/search`, `/product/:id`, `/lists/:id`, `/lists/:id/receipts/:receiptId`, `/join/:token`, `/admin/users`, with route guards for authenticated and admin areas. |
 | i18n (FE) | react-i18next | Covers PD-8. |
 | Styling (FE) | **Tailwind CSS** (Vite plugin) + `class-variance-authority` + `tailwind-merge` | Design tokens (colors, spacing, typography, radii) are defined once in the Tailwind theme. Only values from that scale are used, which keeps the UI consistent. Component variants are declared in one place with `cva`. Class conflicts are resolved with `tailwind-merge`. No runtime CSS-in-JS. |
 | BE quality | PHPUnit, PHPStan (max), **Deptrac** (layer rules), PHP-CS-Fixer, Infection (mutation testing, optional gate) | Deptrac enforces the hexagonal dependency rule in CI. |
 | FE quality | Vitest, Testing Library, MSW, Playwright, ESLint, Prettier, `tsc --noEmit` | |
-| Runtime | Docker Compose: `nginx`, `php` (fpm), `scheduler`, `mysql`, `typesense` | Single-host self-hosting. |
+| Runtime | Docker Compose: `nginx`, `php` (fpm), `scheduler`, `worker`, `mysql`, `typesense` | Single-host self-hosting. |
 
 ### Pinned versions
 
@@ -241,7 +241,7 @@ Solid arrows are calls, and dashed arrows are interface implementations. Every d
 | `Infrastructure` | Everything above + vendor | — |
 | Context A | Context B **only** through B's `Application` public API (query services) | B's Domain or Infrastructure |
 
-Allowed cross-context paths today: ShoppingList Infrastructure → Catalog Application (`GetProductsHandler`) and Identity Application (`FindUsernamesHandler`).
+Allowed cross-context paths today: ShoppingList Infrastructure → Catalog Application (`GetProductsHandler`) and Identity Application (`FindUsernamesHandler`); Receipts Infrastructure → ShoppingList Application (`CheckListAccessHandler`, the `ShoppingListDeleted` event), Catalog Application (`SuggestProductsHandler`, `GetProductsHandler`, `ListSupermarketsHandler`) and Identity Application (`FindUsernamesHandler`).
 
 ### Rules of thumb
 
@@ -261,9 +261,12 @@ Allowed cross-context paths today: ShoppingList Infrastructure → Catalog Appli
 | **Catalog** | Supermarkets, their products, current prices, price history, ingestion from external sources, search and comparison. | `Supermarket`, `Product` |
 | **Identity** | Users, roles, activation links, password, mandatory TOTP 2FA, login. | `User` |
 | **ShoppingList** | Lists with owner and members, joining through the secret link, items (free text or product reference), checking items, per-supermarket totals. | `ShoppingList` |
+| **Receipts** | Photos of supermarket receipts uploaded to a list, read into drafts, reviewed, linked to products and confirmed; the shared "text → product" memory; the spending of a list per month and supermarket (E10). | `Receipt` |
 | **Shared** | Shared kernel: `Money`, `Uuid`, `UserId`, `Clock`, base exceptions. Kept minimal. | — |
 
 `ShoppingList` reads product data (name, price, supermarket) through a **Catalog query port** (`ProductCatalog` interface in ShoppingList's Application layer, implemented in Infrastructure by calling Catalog's application query service). It never imports Catalog domain classes.
+
+`Receipts` reaches the other contexts only through ports of its Application layer: `ListAccess` (ShoppingList's `CheckListAccessHandler`: owner or member, PD-63), `ReceiptProductCatalog` (Catalog's `SuggestProductsHandler` and `GetProductsHandler`), `ReceiptSupermarkets` (Catalog's `ListSupermarketsHandler`) and `ReceiptUserDirectory` (Identity's `FindUsernamesHandler`). ShoppingList knows nothing about receipts: deleting a list publishes the `ShoppingListDeleted` application event through its `ShoppingListEvents` port, and Receipts handles it in the worker.
 
 `ShoppingList` only knows users by `UserId` (shared kernel). The current user reaches use cases as an explicit `actorId` in each command/query. Use cases never read Symfony's security token; the controller extracts the id and passes it in. Display names of members are read through a `UserDirectory` port implemented on top of Identity's application query service.
 
@@ -386,6 +389,44 @@ ListItem (entity inside the aggregate)
 
 **Adapters (ShoppingList Infrastructure):** `DbalShoppingListRepository` (`UPDATE … WHERE version = :loaded`, then members and items rewritten in the same transaction), `RandomShareTokenGenerator` (`random_bytes(32)`, base64url, 43 characters), `CatalogProductCatalog` on Catalog's `GetProductsHandler` (ids → `ProductView`s, one lookup per product) and `IdentityUserDirectory` on Identity's `FindUsernamesHandler`. Controllers take the actor id from the session user's identifier (`UserInterface::getUserIdentifier()`), so they do not depend on Identity's infrastructure.
 
+### Receipts
+
+```text
+Receipt (aggregate root, E10)
+  id: ReceiptId                     also names the stored photo
+  listId: ListId                    the shopping list it belongs to (PD-63)
+  supermarketId: SupermarketId      chosen on upload among the enabled ones (PD-64)
+  uploaderId: UserId
+  photoType: PhotoType              JPEG | PNG | WEBP, from the file's first bytes (PD-68)
+  uploadedAt
+  status: ReceiptStatus             READING → DRAFT → CONFIRMED (PD-65)
+  readBy: ?ReadBy                   AI | OCR | NONE; null while reading (PD-114)
+  date: ?ReceiptDate                a day in Europe/Madrid, never in the future (PD-66)
+  total: ?Money                     the total paid, more than 0
+  lines: ReceiptLine[]              at most 200, in their order on the receipt
+  version                           optimistic lock, like lists
+
+ReceiptLine (entity)
+  id, kind: PRODUCT | DISCOUNT, text: LineText (1–120), amount: Money (> 0)
+  quantity: ?LineQuantity           product lines: units 1–999 or kg as thousandths 1–99 999
+  linkedProductId: ?ProductId       product lines only
+  suggestedProductId: ?ProductId    shown, not linked until accepted (PD-67)
+```
+
+- `Receipt::upload` starts it as `READING`. `completeReading(ReadResult, now)` moves it to `DRAFT` with what was read (a date in the future is left out), or empty and read by `NONE` (`ReadResult::failed()`); a second reading is `ReceiptAlreadyRead` (409).
+- Editing: `addProductLine`, `addDiscountLine`, `updateLine` (a new text drops the link and the suggestion, PD-128), `removeLine`, `linkProduct`, `suggestProduct`, `unlink` (discount lines are `NotAProductLine`, 422), `changeDate`, `changeTotal`. While `READING` every edit and `confirm` is `ReceiptStillReading` (409).
+- `confirm()` needs a date and a total (`ReceiptNotConfirmable`, 422) and may run again on a confirmed receipt (PD-130). Editing a confirmed receipt keeps it confirmed.
+- `difference()` is products − discounts − total as a `ReceiptDifference` (a positive `Money` and its sign, PD-19), null without a total. It never blocks confirming (PD-66).
+- `LineText::normalized()` (lowercase, repeated whitespace collapsed) is what the link memory compares (PD-67).
+
+**Ports (Receipts Domain):** `ReceiptRepository` (`save` with the version check, throwing `ReceiptChangedConcurrently`; `remove`; `findById`; `findByList`; `removeByList`), `ReceiptPhotoStorage` (`store`, `read`, `delete`) and `ProductLinkMemory` (`find(supermarketId, text)`, `remember(supermarketId, text, productId)`, the last one wins). **Ports (Receipts Application):** `ListAccess`, `ReceiptProductCatalog` (`bestMatch(supermarketId, text)`, `findByIds`), `ReceiptSupermarkets` (`isEnabled`, `namesOf`), `ReceiptUserDirectory`, `ReceiptReader` (photo → `ReadReceiptData` with its `readBy`, or null when every reader failed) and `ReceiptReadingQueue` (`requestReading`); `SpendingReadModel` (`totalsOf(listId)`) for the spending query.
+
+**Use cases** (`Receipts\Application`), each with an explicit `actorId` and the access check of `ListAccess` (a non-member gets `404`; a receipt of another list is `ReceiptNotFound`): `UploadReceipt` (enabled supermarket, else `SupermarketNotEnabled`, 422; JPEG, PNG or WebP up to 10 MB, else `InvalidReceiptPhoto`, 422; stores the photo, saves the receipt as reading and queues it), `ReadReceipt` (the worker: reads the photo, completes the reading, then `LineLinker` links every product line the memory knows and suggests the most similar product for the others; a receipt deleted meanwhile is skipped, PD-129), `EditReceipt/{UpdateReceipt, AddLine, UpdateLine, RemoveLine, LinkLine, UnlinkLine, DeleteReceipt}` (`AddLine` and a text change in `UpdateLine` run `LineLinker` too, PD-128; `LinkLine` checks the product is of the receipt's supermarket, else `ProductNotOfSupermarket`, 422; `DeleteReceipt` works in any status and deletes the photo), `ConfirmReceipt` (confirms, then remembers "text → product" of every linked line, PD-67; it never touches list items or the catalog, PD-71), `RemoveListReceipts` (on `ShoppingListDeleted`) and the queries `GetReceipt`, `GetReceiptPhoto`, `GetListReceipts` (`pending` newest upload first, `confirmed` newest date first) and `GetListSpending` (confirmed receipts only, per month of the receipt date and per supermarket, newest month first, PD-70). Edits go through `ReceiptUpdater`, which runs the edit again on a fresh copy when someone else saved first, up to 5 attempts.
+
+**Adapters (Receipts Infrastructure):** `DbalReceiptRepository` (`UPDATE … WHERE version = :loaded`, then lines rewritten, so an edit never brings back a deleted receipt), `DbalProductLinkMemory` (upsert on `(supermarket_id, normalized_text)`), `DbalSpendingReadModel` (`SUM(total_cents)` grouped by month and supermarket), `FilesystemReceiptPhotoStorage` (one file per receipt id in `RECEIPT_STORAGE_DIR`, written aside and renamed), `MessengerReceiptReadingQueue` and the Messenger handlers `ReadReceiptMessageHandler` and `ShoppingListDeletedMessageHandler`, `ShoppingListListAccess`, `CatalogReceiptProductCatalog`, `CatalogReceiptSupermarkets`, `IdentityReceiptUserDirectory` and the API controllers. Until the AI and OCR readers are built (E10.17–E10.21, E10.41), the `ReceiptReader` is `NoReceiptReader`, which always fails, so every upload becomes an empty draft read by `none` (PD-127).
+
+**Catalog query API for receipts:** `SuggestProductsHandler` (E10.7): a receipt text and a supermarket give its most similar products, available or not. `WordPrefixSimilarity` (Catalog domain service) counts the query words that match the start of a word in the name or brand, ignoring case, accents and punctuation (`ENT.` → "Entera"); ties go by name. `DbalSuggestionCandidates` returns the products of the supermarket whose name or brand contains any of the words (a superset, at most 200, those with more words first), which the handler scores.
+
 ## Backend structure
 
 ```text
@@ -421,6 +462,8 @@ backend/
 │   │   ├── Domain/ Application/ Infrastructure/   # same layout; Symfony Security + scheb/2fa adapters live in Infrastructure/Security
 │   ├── ShoppingList/
 │   │   ├── Domain/ Application/ Infrastructure/   # same layout
+│   ├── Receipts/
+│   │   ├── Domain/ Application/ Infrastructure/   # same layout; Infrastructure/{Api, Persistence/Dbal, Storage, Messenger, Reading, ShoppingList, Catalog, Identity}
 │   └── Shared/
 │       ├── Domain/              # Clock port, ValueObject/ (Money, Currency, Uuid), Exception/ (PD-18; Unavailable → 503)
 │       ├── Application/
@@ -463,7 +506,8 @@ frontend/src/
 │   │       └── components/  # ProductResultList, PriceTag... (props only, no fetching)
 │   ├── auth/                # login, activation, 2FA setup, session (current user)
 │   ├── admin/               # user management
-│   └── shopping-list/       # same layout
+│   ├── shopping-list/       # same layout
+│   └── receipts/            # same layout (E10)
 ├── shared/
 │   ├── ui/                  # atoms/ molecules/ organisms/ templates/
 │   ├── i18n/                # react-i18next setup + locales/es.json
@@ -539,6 +583,11 @@ Rules:
   - `infrastructure/`: `createShoppingListApi(httpClient)`, validating every body into domain types.
   - `ui/containers/`: `MyListsContainer` (home), `ListPageContainer` (`/lists/:listId`: items grouped by section (a `SectionHeader` and a list named after the section per group, then the checked items in one list at the end, all inside the "Elementos de la lista" list, PD-93), add form with catalog suggestions from the catalog `useProductSearch` (PD-80, PD-81), the supermarket filter read from and written to the `supermarket` parameter (`/lists/:listId?supermarket=<supermarketId>`; choosing a chip pushes a history entry, "Todos" removes the parameter, and a value that names no chip is replaced out of the URL, PD-86) with the notice of hidden items without a supermarket (PD-85), totals per supermarket, and for the owner the share link, members panel and delete; for a member "Abandonar lista"), `JoinPageContainer` (`/join/:token`: joins and opens the list; an invalid or revoked link shows "Este enlace no funciona") `AddToListContainer` (the "Añadir a una lista" picker on each search result, wired in `app/routes.tsx` through `SearchPageContainer`'s `renderProductActions`, so the catalog never imports this feature; with the search's `list` and that list among "My lists" it is a single "Añadir a la lista" button that adds straight to it, PD-82) and `BackToListContainer` ("Volver a <list name>" on `/search?list=`, nothing for an unknown or inaccessible list). Deleting the list and regenerating the link ask first (PD-42 style).
   - `ui/components/`: `MyListsList`, `CreateListForm`, `ListItemRow` (the name of a known product links to its page; a product item shows its `ProductImage` at 48 px between the checkbox and the text, faded once checked, and for a known product wrapped in a link to its page with `tabIndex={-1}` and `aria-hidden`, so it is neither a second tab stop nor announced twice; a free-text item gets an empty spacer of the same width, PD-97; a pending item shows a compact native `Select` (`size="sm"`) labelled "Sección de <name>" under its quantity line with the thirteen sections, and for a product first "Automática (<catalog section>)"; it emits `onSectionChange(section | null)`, `null` for "Automática" and for "Otros" on a free-text item, PD-92, PD-117), `SectionHeader` (an `h2` with only the section name, PD-93), `AddItemForm` (the text field is an accessible combobox: `aria-expanded`, `aria-controls`, `aria-activedescendant`; ArrowDown / ArrowUp highlight, Enter adds the highlighted product or the free text, Escape closes), `ProductSuggestions` (the `listbox` panel: text option, products with their `ProductImage` at 48 px (not a link and hidden from assistive technology, so tapping it picks the product, PD-97), the catalog `SupermarketBadge` and `PriceTag`, "Ver todos los resultados", loading, empty and error-with-retry states), `BackToListLink`, `SupermarketFilter` (a `group` of toggle chips: "Todos" and one per supermarket with its `SupermarketBadge` and total, the chosen one with `aria-pressed`; it emits `onSelect(supermarketId | null)`), `SupermarketTotals`, `ShareLinkButton`, `MembersPanel`, `ListActions`, `ListNotFound`, `JoinStatus`, `AddToListPicker`. Shared atom `Checkbox`.
+- Receipts feature (`features/receipts`, E10):
+  - `domain/`: `Receipt`, `ReceiptSummary`, `ReceiptLine`, `ReceiptStatus`, `LineQuantity`, `ListReceipts`, `MonthlySpending`, and pure functions `formatLineQuantity` (`2 ud`, `0,532 kg`), `formatMonth` (`noviembre 2026`), `formatReceiptDate`, `hasDifference`, `isReadingAny`, `photoProblem` (JPEG, PNG or WebP up to 10 MB, PD-68), and the parsers of typed amounts and quantities (`centsFromEuros`, `quantityFromInput`).
+  - `application/`: port `ReceiptsApi` over the receipt routes, injected with `ReceiptsApiContext` (`App`'s `receipts` prop). `useListReceipts(listId)` and `useListSpending(listId, polling)` poll every 5 s only while a receipt of the list is being read (PD-7, PD-65); `useReceipt` polls while its receipt is being read. `useUploadReceipt` (errors `invalid` for a `422`, `failed` otherwise) and `useReceiptEditing` (every review mutation; it reloads the receipt, the list's receipts and the spending).
+  - `infrastructure/`: `createReceiptsApi(httpClient)`; the upload uses `httpClient.postForm` (multipart, no JSON `Content-Type`, with the CSRF header).
+  - `ui/containers/`: `ListReceiptsContainer`, the receipts section of `/lists/:listId` (the shopping-list page gets it through its `renderListExtras` slot, filled in `app/routes.tsx`): `UploadReceiptForm`, `PendingReceiptsList` ("Leyendo…", "Borrador"), `ConfirmedReceiptsList` and `MonthlySpending` with the supermarket colors (PD-20). `ReceiptPageContainer` is `/lists/:listId/receipts/:receiptId`: the photo, date and total (`ReceiptFieldsForm`), the lines (`ReceiptLineRow`, `LineForm`) with "Aceptar", "Cambiar" (`ProductPicker`, the catalog search limited to the receipt's supermarket, PD-33) and "Sin enlazar", the difference warning, "Confirmar" ("Confirmar de nuevo" once confirmed, PD-130) and "Borrar" with the inline confirmation of PD-42. A non-member gets the not-found page.
 - `domain/` has no React imports.
 - API DTOs are mapped to domain types in `infrastructure/`. Components never see raw API shapes.
 - All user-visible strings go through `t()`. No hard-coded Spanish in components.
@@ -669,6 +718,15 @@ Security wiring (E3.17 to E3.19, technical decision confirmed by the product own
 4. Lists are then accessed by **id**, and only owner and members are authorized. The token is used only to join.
 5. While the list is open, the SPA polls `GET /api/lists/{id}` every ~5 s with `If-None-Match`. The server answers `304` when `version` has not changed.
 
+### 6. Receipts (E10)
+
+1. A member uploads a photo (`POST /api/lists/{id}/receipts`, multipart) for one of the enabled supermarkets. The API checks the file's first bytes and its size, stores it under `RECEIPT_STORAGE_DIR`, saves the receipt as `reading` and queues a `ReadReceiptCommand` on the `receipts` Messenger transport, then answers `202 {id}` at once (PD-65).
+2. The `worker` reads it: the AI first and the local OCR as fallback (PD-112), once E10.17–E10.21 and E10.41 exist; until then the reader always fails (PD-127). The receipt becomes a draft with what was read, or an empty draft read by `none`. Lines whose text the memory knows for that supermarket are linked; the others get the most similar product as a suggestion (PD-67).
+3. The list page polls the receipts every 5 s while one is being read and shows "Leyendo…" turning into "Borrador" (PD-7).
+4. In the review a member fixes the date, the total and the lines, accepts suggestions, picks other products with the search of that supermarket or leaves lines unlinked. Lines added by hand, or whose text changes, use the memory and the suggestion too (PD-128). A difference between lines and total is a warning only (PD-66).
+5. Confirming stores "text → product" of the linked lines (the last confirmation wins); the receipt then counts in the spending of its month (PD-70). Confirming changes neither the list items nor the catalog (PD-71).
+6. Deleting a receipt deletes its photo (PD-129). Deleting a list publishes `ShoppingListDeleted`, and the worker removes its receipts and photos (PD-63).
+
 ## HTTP API (draft)
 
 JSON over REST under `/api`. Errors use RFC 9457 `application/problem+json` (PD-18):
@@ -730,8 +788,21 @@ All routes require a fully authenticated session (login + 2FA) except those mark
 | PATCH | `/api/lists/{id}/items/{itemId}` | Any of `{quantity, checked, position, section}` → `204`. `position` is the 0-based index to move the item to. `section` is a section id that sets the item's section by hand, or `null` that removes the choice (PD-92, PD-96); a checked item accepts it too (PD-118). Unknown section id → `422`. Unknown item → `404` |
 | DELETE | `/api/lists/{id}/items/{itemId}` | Remove item → `204`; unknown item → `404` |
 | DELETE | `/api/lists/{id}/items?checked=true` | Clear checked items → `204` |
+| POST | `/api/lists/{id}/receipts` | Multipart `supermarketId` + `photo` (JPEG, PNG or WebP up to 10 MB, PD-68) → `202 {id}`, the receipt being read (PD-65). Not enabled supermarket, other file type, bigger file or missing field → `422` |
+| GET | `/api/lists/{id}/receipts` | `{pending: [receipt], confirmed: [receipt]}`; `pending` (reading and draft) newest upload first, `confirmed` newest date first. A receipt: `{id, status, supermarketId, supermarketName, date, totalCents, uploader: {id, username}, uploadedAt}` |
+| GET | `/api/lists/{id}/spending` | Confirmed receipts only: `{months: [{month: "YYYY-MM", totalCents, supermarkets: [{supermarketId, supermarketName, totalCents}]}]}`, newest month first, supermarkets by name (PD-70) |
+| GET | `/api/lists/{id}/receipts/{receiptId}` | The receipt above plus `differenceCents` (products − discounts − total, `null` without a total) and `lines: [{id, kind: "product"|"discount", text, unit: "units"|"kg"|null, quantity, amountCents, linkedProduct, suggestedProduct}]`; a product is `{id, name, brand, available}` with `name: null` when the catalog no longer knows it. `readBy` is not returned (PD-114) |
+| GET | `/api/lists/{id}/receipts/{receiptId}/photo` | The stored image with its detected type, `Cache-Control: private`, `X-Content-Type-Options: nosniff` |
+| PATCH | `/api/lists/{id}/receipts/{receiptId}` | `{date?, totalCents?}` → `204`. A date in the future or a total of 0 → `422`; while reading → `409` |
+| POST | `/api/lists/{id}/receipts/{receiptId}/lines` | `{kind, text, unit?, quantity?, amountCents}` → `201 {id}`. A product line needs `unit` and `quantity`; a discount line has neither |
+| PATCH | `/api/lists/{id}/receipts/{receiptId}/lines/{lineId}` | Any of `{text, unit + quantity, amountCents}` → `204`; a new text links or suggests again (PD-128) |
+| DELETE | `/api/lists/{id}/receipts/{receiptId}/lines/{lineId}` | Remove the line → `204` |
+| PUT | `/api/lists/{id}/receipts/{receiptId}/lines/{lineId}/product` | `{productId}` of the receipt's supermarket → `204`; another supermarket's or an unknown product, or a discount line → `422` |
+| DELETE | `/api/lists/{id}/receipts/{receiptId}/lines/{lineId}/product` | Leave the line unlinked (also drops the suggestion) → `204` |
+| POST | `/api/lists/{id}/receipts/{receiptId}/confirm` | Confirm (again, PD-130) and remember the linked lines → `204`; without date or total → `422` |
+| DELETE | `/api/lists/{id}/receipts/{receiptId}` | Delete the receipt and its photo, in any status (PD-129) → `204` |
 
-List routes (`/api/lists/{id}…`) answer `404` to anyone who is neither owner nor member, and owner-only routes also answer `404` to members (same rule as admin areas, PD-15). Every change increments the list `version`.
+Receipt routes answer `409` to any edit or confirmation of a receipt still being read, and `404` for an unknown receipt or line or one of another list. List routes (`/api/lists/{id}…`) answer `404` to anyone who is neither owner nor member, and owner-only routes also answer `404` to members (same rule as admin areas, PD-15). Every change increments the list `version`.
 
 `GET /api/lists/{id}` returns:
 
@@ -772,6 +843,10 @@ Tables (draft, finalized in migrations):
 | `shopping_list` | `id` (BINARY(16)), `owner_id`, `share_token` (ascii_bin, case-sensitive) UNIQUE, `name` (80), `version`, `created_at`, `updated_at` — INDEX(`owner_id`) |
 | `list_member` | `list_id`, `user_id`, `joined_at` — PK(`list_id`, `user_id`), INDEX(`user_id`), FK `list_id` ON DELETE CASCADE |
 | `list_item` | `id`, `list_id`, `type` (`free_text`/`product`), `text` (120), `product_id`, `quantity`, `checked`, `section` (the section chosen by hand, PD-92; `NULL` follows the catalog, so existing rows needed no migration, PD-94), `position` (0-based) — INDEX(`list_id`, `position`), FK `list_id` ON DELETE CASCADE. `owner_id`, `user_id` and `product_id` belong to other contexts and have no foreign key |
+| `receipt` | `id` (BINARY(16)), `list_id`, `supermarket_id`, `uploader_id`, `photo_type` (`jpeg`/`png`/`webp`), `uploaded_at`, `status` (`reading`/`draft`/`confirmed`), `read_by` (`ai`/`ocr`/`none`, `NULL` while reading), `receipt_date` (DATE), `total_cents`, `version` — INDEX(`list_id`). `list_id`, `uploader_id` and `supermarket_id` belong to other contexts and have no foreign key; a deleted list's receipts are removed through `ShoppingListDeleted` |
+| `receipt_line` | `id`, `receipt_id`, `position`, `kind` (`product`/`discount`), `text` (120), `quantity_unit` (`units`/`kg`), `quantity` (units or thousandths of a kg), `amount_cents`, `linked_product_id`, `suggested_product_id` — INDEX(`receipt_id`, `position`), FK `receipt_id` ON DELETE CASCADE |
+| `receipt_product_link` | PK(`supermarket_id`, `normalized_text` (utf8mb4_bin)), `product_id`, `remembered_at` — the shared "text → product" memory (PD-67) |
+| `messenger_messages` | The Doctrine Messenger queue (`queue_name` `receipts` and `failed`), created by a migration (`auto_setup=0`) |
 
 Charset and collation: `utf8mb4` / `utf8mb4_0900_ai_ci`.
 
@@ -808,6 +883,8 @@ flowchart LR
         nginx["<b>nginx</b><br/>Serves the SPA build (static files)<br/>Proxies /api → php"]
         php["<b>php</b><br/>php-fpm + Symfony API"]
         scheduler["<b>scheduler</b><br/>Same image as php<br/>messenger:consume scheduler_default"]
+        worker["<b>worker</b><br/>Same image as php<br/>messenger:consume receipts"]
+        receipts[("receipts<br/>named volume<br/>photos")]
         mysql[("<b>mysql</b><br/>MySQL 9.7")]
         volume[("mysql-data<br/>named volume")]
         typesense[("<b>typesense</b><br/>Typesense 30<br/>search index")]
@@ -823,6 +900,9 @@ flowchart LR
     php -->|HTTP search| typesense
     scheduler -->|HTTP reindex| typesense
     scheduler -->|HTTPS catalog ingestion| stores
+    worker -->|SQL queue, receipts| mysql
+    php --- receipts
+    worker --- receipts
     mysql --- volume
 ```
 
@@ -831,12 +911,15 @@ flowchart LR
 | `nginx` | Serves the frontend build and proxies `/api` to php-fpm. It is the only exposed port. |
 | `php` | Symfony API (php-fpm). It never calls supermarkets during a request. |
 | `scheduler` | Runs scheduled jobs (catalog ingestion). It uses the same image and code as `php`. |
+| `worker` | Consumes the `receipts` Messenger transport (Doctrine, `messenger_messages`): reads uploaded receipts (PD-65) and removes the receipts of deleted lists (PD-63). Same image and code as `php`; it mounts the `receipts` volume and restarts every hour (`--time-limit=3600`). Failed messages are retried 3 times, then kept in the `failed` transport. The receipt reader is a placeholder that always fails until E10.17–E10.21 and E10.41 (PD-127); the optional local AI of PD-112 and PD-113 (`RECEIPT_AI_*`) comes with them. |
 | `mysql` | Database, persisted in a named volume. Not exposed outside the Compose network. |
 | `typesense` | Product search index (PD-100), rebuilt from MySQL after every ingestion run and on start when it is missing or empty. Data in the `typesense-data` named volume (fast restarts); derived data, so not backed up. Not exposed outside the Compose network; php and scheduler wait for its health check (`GET /health`). |
 
 In development, a `frontend` service runs the Vite dev server (HMR), and nginx proxies to it instead of serving the static build.
 
-Configuration lives in `.env` (`APP_SECRET`, `DATABASE_URL`, `INSTANCE_POSTAL_CODE`, `ENABLED_SUPERMARKETS`, `INGESTION_SCHEDULE`, `PRICE_HISTORY_RETENTION_MONTHS`, `PRICE_HISTORY_PRUNE_SCHEDULE`, `TOTP_ENCRYPTION_KEY`, `TYPESENSE_URL`, `TYPESENSE_API_KEY`).
+Configuration lives in `.env` (`APP_SECRET`, `DATABASE_URL`, `INSTANCE_POSTAL_CODE`, `ENABLED_SUPERMARKETS`, `INGESTION_SCHEDULE`, `PRICE_HISTORY_RETENTION_MONTHS`, `PRICE_HISTORY_PRUNE_SCHEDULE`, `TOTP_ENCRYPTION_KEY`, `TYPESENSE_URL`, `TYPESENSE_API_KEY`, `RECEIPT_STORAGE_DIR`).
+
+Receipt photos (E10) live in the `receipts` named volume, mounted at `/var/receipts` (`RECEIPT_STORAGE_DIR`, default `/var/receipts`; the tests use `/tmp/jolo-market-test-receipts`) in `php` and `worker`. The image creates the mount point owned by `www-data`, so a new volume is writable. nginx accepts request bodies up to 12 MB and PHP uploads up to 11 MB, so the 10 MB limit of PD-68 is the use case's own.
 
 ### Production stack
 
@@ -846,14 +929,14 @@ Configuration lives in `.env` (`APP_SECRET`, `DATABASE_URL`, `INSTANCE_POSTAL_CO
 - Configuration comes from the root `.env` only: the code is baked into the image, so `backend/.env.local` is not used. Compose passes `APP_SECRET` and `TYPESENSE_API_KEY` (both required: Compose refuses to start without them; the same key starts the `typesense` service), `DATABASE_URL` (built from the MySQL variables), and `DEFAULT_URI`, `INSTANCE_POSTAL_CODE`, `ENABLED_SUPERMARKETS`, `TOTP_ENCRYPTION_KEY`, `TYPESENSE_URL`, `CATALOG_HTTP_USER_AGENT`, `INGESTION_SCHEDULE`, `PRICE_HISTORY_RETENTION_MONTHS`, `PRICE_HISTORY_PRUNE_SCHEDULE` and `SYMFONY_TRUSTED_PROXIES` only when the `.env` sets them; otherwise the defaults of `backend/.env` apply.
 - `docker/php/entrypoint.sh` (php and scheduler) first runs `bin/console app:config:check`, which stops the container with one message per missing or invalid variable (E6.4): `INSTANCE_POSTAL_CODE` (a valid Spanish postal code), `ENABLED_SUPERMARKETS` (slugs, each with a catalog adapter), `TOTP_ENCRYPTION_KEY` (32 bytes in base64), `TYPESENSE_URL` (an http or https URL) and `TYPESENSE_API_KEY` (not empty). Each context implements `Shared\Infrastructure\Configuration\ConfigurationCheck` (`CatalogConfigurationCheck`, `SearchConfigurationCheck`, `IdentityConfigurationCheck`), reusing the parsing and validation of `EnvIngestionSettings` and `SodiumSecretEncrypter`. For `php-fpm` it then waits up to 60 s for MySQL (`dbal:run-sql "SELECT 1"`), runs `doctrine:migrations:migrate --allow-no-migration`, `app:setup:ensure-code` (PD-14) and `app:catalog:reindex-search --if-empty` (builds the search index when it is missing or empty, PD-100; a failure is reported but does not stop php-fpm, PD-105) before starting php-fpm.
 - Sessions: Symfony uses PHP's native handler (no `handler_id` or `save_path`), so `docker/php/prod.ini` points `session.save_path` to `var/sessions`, the mount point of the `php-sessions` volume: a deploy keeps users logged in (PD-37). The rate limiter counters live in the `cache.app` pool inside the container and start from zero after each deploy.
-- Health checks: mysql (`mysqladmin ping`), typesense (`GET /health` through bash, since the image has no curl), php (php-fpm accepts connections on port 9000, which only happens after the migrations) and nginx (`GET /`). nginx and the scheduler start once php is healthy.
+- Health checks: mysql (`mysqladmin ping`), typesense (`GET /health` through bash, since the image has no curl), php (php-fpm accepts connections on port 9000, which only happens after the migrations) and nginx (`GET /`). nginx, the scheduler and the worker start once php is healthy; the worker also mounts the `receipts` volume.
 - nginx (`docker/nginx/prod.conf`): `/api` goes to Symfony's front controller in the php container; files under `/assets/` (hashed by Vite) are cached for a year (`immutable`); any other path falls back to `index.html` with `Cache-Control: no-cache`; any other `.php` path is a 404. It appends the client address to `X-Forwarded-For`, so with `SYMFONY_TRUSTED_PROXIES=private_ranges` Symfony sees the real client IP (login rate limit) and the `https` scheme of a TLS proxy (secure cookies).
-- Backups (E6.6): `deploy/backup.sh [directory]` writes `jolo-market-<UTC timestamp>.sql.gz` (default `backups/`, git-ignored) with `mysqldump --single-transaction --set-gtid-purged=OFF --routines --triggers` run as root inside the mysql container (the application user lacks the `RELOAD`/`FLUSH_TABLES` privilege it needs). A failed dump leaves no file and exits `1`. Restore: see the README.
+- Backups (E6.6, E10.30): `deploy/backup.sh [directory]` writes `jolo-market-<UTC timestamp>.sql.gz` (default `backups/`, git-ignored) with `mysqldump --single-transaction --set-gtid-purged=OFF --routines --triggers` run as root inside the mysql container (the application user lacks the `RELOAD`/`FLUSH_TABLES` privilege it needs), and `jolo-market-<same timestamp>-receipts.tar.gz` with the receipt photos (`tar -czf - -C /var/receipts .` in the php container, PD-69). When either fails, neither file is left and it exits `1`. Restore: see the README.
 - CI job "Production images" builds `compose.prod.yaml` on every push to `main` (E6.8). TLS is terminated by the user's own reverse proxy.
 
 ### Development environment
 
-`compose.yaml` runs `nginx`, `php` (php-fpm, built from `docker/php/Dockerfile`), `scheduler` (same image, Messenger worker for scheduled jobs), `mysql`, `typesense` (search index, key `dev-only-public-typesense-key` of `backend/.env.dev`) and `frontend` (Vite dev server on Node 26, `npm ci` on start, `node_modules` in the `frontend-node-modules` named volume).
+`compose.yaml` runs `nginx`, `php` (php-fpm, built from `docker/php/Dockerfile`), `scheduler` (same image, Messenger worker for scheduled jobs), `worker` (same image, `messenger:consume receipts`, E10), `mysql`, `typesense` (search index, key `dev-only-public-typesense-key` of `backend/.env.dev`) and `frontend` (Vite dev server on Node 26, `npm ci` on start, `node_modules` in the `frontend-node-modules` named volume).
 
 | Variable (root `.env`, documented in `.env.example`) | Purpose |
 | --- | --- |

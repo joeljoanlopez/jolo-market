@@ -156,11 +156,12 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 
 ### Docs
 
-- [ ] E10.38 Update `docs/architecture.md` with the Receipts context:
+- [x] E10.38 Update `docs/architecture.md` with the Receipts context:
   - Bounded contexts, the domain model, ports and adapters, and the allowed cross-context paths.
   - The worker and the optional local AI in "Runtime and deployment".
   - The receipt flow in "Key flows", with the AI first and the OCR fallback (PD-112).
   - The HTTP API, and the tables in "Persistence".
+  - Note: the AI and OCR readers are documented as not built yet (PD-127); their details (schema, prompt, preprocessing) go in with E10.17–E10.21 and E10.41.
 - [ ] E10.39 Update the README:
   - Receipts API.
   - `RECEIPT_STORAGE_DIR` and the `receipts` volume in the `.env` reference.
