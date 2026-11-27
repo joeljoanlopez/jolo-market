@@ -9,7 +9,16 @@ import {
 } from './supermarketFilter';
 
 function aText(id: string, position: number): TextItem {
-  return { id, position, quantity: 1, checked: false, type: 'text', text: id };
+  return {
+    id,
+    position,
+    quantity: 1,
+    checked: false,
+    type: 'text',
+    text: id,
+    section: 'other',
+    sectionOverride: null,
+  };
 }
 
 function aProduct(
@@ -24,6 +33,8 @@ function aProduct(
     quantity: 1,
     checked: false,
     type: 'product',
+    section: 'other',
+    sectionOverride: null,
     product: {
       id: `product-${id}`,
       name: id,
@@ -32,6 +43,7 @@ function aProduct(
       priceCents: 100,
       imageUrl: null,
       available: true,
+      section: 'other',
     },
     ...overrides,
   };

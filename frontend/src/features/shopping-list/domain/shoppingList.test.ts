@@ -22,6 +22,8 @@ function aTextItem(overrides: Partial<TextItem> = {}): TextItem {
     checked: false,
     type: 'text',
     text: 'pan',
+    section: 'other',
+    sectionOverride: null,
     ...overrides,
   };
 }
@@ -33,6 +35,8 @@ function aProductItem(available: boolean, id = 'item-p'): ListItem {
     quantity: 1,
     checked: false,
     type: 'product',
+    section: 'other',
+    sectionOverride: null,
     product: {
       id: 'p1',
       name: 'Leche entera',
@@ -41,6 +45,7 @@ function aProductItem(available: boolean, id = 'item-p'): ListItem {
       priceCents: 125,
       imageUrl: null,
       available,
+      section: 'other',
     },
   };
 }

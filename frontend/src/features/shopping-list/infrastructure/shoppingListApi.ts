@@ -2,6 +2,7 @@ import { UnexpectedResponseError } from '@/shared/http/errors';
 import type { HttpClient } from '@/shared/http/httpClient';
 
 import type { ShoppingLists } from '../application/ShoppingLists';
+import { isSectionId, type SectionId } from '../domain/sections';
 import type {
   ListItem,
   ListMember,
@@ -70,6 +71,10 @@ export function createShoppingListApi(http: HttpClient): ShoppingLists {
       await http.patch(itemPath(listId, itemId), changes);
     },
 
+    async updateItemSection(listId, itemId, section) {
+      await http.patch(itemPath(listId, itemId), { section });
+    },
+
     async removeItem(listId, itemId) {
       await http.delete(itemPath(listId, itemId));
     },
@@ -123,6 +128,8 @@ function toItem(value: unknown): ListItem {
     position: integer(json.position, 'item.position'),
     quantity: integer(json.quantity, 'item.quantity'),
     checked: boolean(json.checked, 'item.checked'),
+    section: section(json.section, 'item.section'),
+    sectionOverride: nullable(json.sectionOverride, (id) => section(id, 'item.sectionOverride')),
   };
   switch (json.type) {
     case 'text':
@@ -146,6 +153,7 @@ function toProduct(value: unknown): ListProduct {
     priceCents: nullable(json.priceCents, (cents) => integer(cents, 'product.priceCents')),
     imageUrl: optionalString('imageUrl'),
     available: boolean(json.available, 'product.available'),
+    section: section(json.section, 'product.section'),
   };
 }
 
@@ -203,6 +211,13 @@ function role(value: unknown, field: string): ListRole {
     throw unexpected(field, value);
   }
   return value as ListRole;
+}
+
+function section(value: unknown, field: string): SectionId {
+  if (!isSectionId(value)) {
+    throw unexpected(field, value);
+  }
+  return value;
 }
 
 function date(value: unknown, field: string): Date {

@@ -9,7 +9,18 @@ import { useShoppingList } from './useShoppingList';
 
 function seedWithBread(lists: FakeShoppingLists) {
   return lists.seed({
-    items: [{ id: 'bread', position: 0, quantity: 1, checked: false, type: 'text', text: 'pan' }],
+    items: [
+      {
+        id: 'bread',
+        position: 0,
+        quantity: 1,
+        checked: false,
+        type: 'text',
+        text: 'pan',
+        section: 'other',
+        sectionOverride: null,
+      },
+    ],
   });
 }
 

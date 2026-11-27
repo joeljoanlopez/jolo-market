@@ -46,9 +46,36 @@ describe('ListPageContainer', () => {
     const stored = lists.seed({
       name: 'Compra semanal',
       items: [
-        { id: 'a', position: 0, quantity: 1, checked: true, type: 'text', text: 'pan' },
-        { id: 'b', position: 1, quantity: 2, checked: false, type: 'text', text: 'huevos' },
-        { id: 'c', position: 2, quantity: 1, checked: false, type: 'text', text: 'fruta' },
+        {
+          id: 'a',
+          position: 0,
+          quantity: 1,
+          checked: true,
+          type: 'text',
+          text: 'pan',
+          section: 'other',
+          sectionOverride: null,
+        },
+        {
+          id: 'b',
+          position: 1,
+          quantity: 2,
+          checked: false,
+          type: 'text',
+          text: 'huevos',
+          section: 'other',
+          sectionOverride: null,
+        },
+        {
+          id: 'c',
+          position: 2,
+          quantity: 1,
+          checked: false,
+          type: 'text',
+          text: 'fruta',
+          section: 'other',
+          sectionOverride: null,
+        },
       ],
     });
     renderList(lists, stored.id);
@@ -80,8 +107,26 @@ describe('ListPageContainer', () => {
     const lists = new FakeShoppingLists();
     const stored = lists.seed({
       items: [
-        { id: 'a', position: 0, quantity: 1, checked: false, type: 'text', text: 'pan' },
-        { id: 'b', position: 1, quantity: 1, checked: false, type: 'text', text: 'huevos' },
+        {
+          id: 'a',
+          position: 0,
+          quantity: 1,
+          checked: false,
+          type: 'text',
+          text: 'pan',
+          section: 'other',
+          sectionOverride: null,
+        },
+        {
+          id: 'b',
+          position: 1,
+          quantity: 1,
+          checked: false,
+          type: 'text',
+          text: 'huevos',
+          section: 'other',
+          sectionOverride: null,
+        },
       ],
     });
     renderList(lists, stored.id);
@@ -100,7 +145,18 @@ describe('ListPageContainer', () => {
   it('removes an item', async () => {
     const lists = new FakeShoppingLists();
     const stored = lists.seed({
-      items: [{ id: 'a', position: 0, quantity: 1, checked: false, type: 'text', text: 'pan' }],
+      items: [
+        {
+          id: 'a',
+          position: 0,
+          quantity: 1,
+          checked: false,
+          type: 'text',
+          text: 'pan',
+          section: 'other',
+          sectionOverride: null,
+        },
+      ],
     });
     renderList(lists, stored.id);
     const user = userEvent.setup();
@@ -114,16 +170,36 @@ describe('ListPageContainer', () => {
     const lists = new FakeShoppingLists();
     const stored = lists.seed({
       items: [
-        { id: 'a', position: 0, quantity: 2, checked: false, type: 'product', product: MILK },
+        {
+          id: 'a',
+          position: 0,
+          quantity: 2,
+          checked: false,
+          type: 'product',
+          product: MILK,
+          section: MILK.section,
+          sectionOverride: null,
+        },
         {
           id: 'b',
           position: 1,
           quantity: 1,
           checked: false,
           type: 'product',
+          section: 'other',
+          sectionOverride: null,
           product: { ...MILK, id: 'gone', name: 'Yogur natural', available: false },
         },
-        { id: 'c', position: 2, quantity: 1, checked: false, type: 'text', text: 'pan' },
+        {
+          id: 'c',
+          position: 2,
+          quantity: 1,
+          checked: false,
+          type: 'text',
+          text: 'pan',
+          section: 'other',
+          sectionOverride: null,
+        },
       ],
     });
     renderList(lists, stored.id);
@@ -143,13 +219,24 @@ describe('ListPageContainer', () => {
     const lists = new FakeShoppingLists();
     const stored = lists.seed({
       items: [
-        { id: 'a', position: 0, quantity: 1, checked: false, type: 'product', product: MILK },
+        {
+          id: 'a',
+          position: 0,
+          quantity: 1,
+          checked: false,
+          type: 'product',
+          product: MILK,
+          section: MILK.section,
+          sectionOverride: null,
+        },
         {
           id: 'b',
           position: 1,
           quantity: 1,
           checked: false,
           type: 'product',
+          section: 'other',
+          sectionOverride: null,
           product: {
             ...MILK,
             id: 'gone',
@@ -158,9 +245,19 @@ describe('ListPageContainer', () => {
             supermarketId: null,
             priceCents: null,
             available: false,
+            section: 'other',
           },
         },
-        { id: 'c', position: 2, quantity: 1, checked: false, type: 'text', text: 'pan' },
+        {
+          id: 'c',
+          position: 2,
+          quantity: 1,
+          checked: false,
+          type: 'text',
+          text: 'pan',
+          section: 'other',
+          sectionOverride: null,
+        },
       ],
     });
     renderList(lists, stored.id);
@@ -307,6 +404,7 @@ function withProducts(products: Product[]) {
       priceCents: product.priceCents,
       imageUrl: null,
       available: true,
+      section: 'other',
     });
   }
   return { catalog, lists };
@@ -396,7 +494,9 @@ describe('ListPageContainer: product suggestions (E12)', () => {
     await user.keyboard('{Enter}');
 
     expect(await within(await itemList()).findByRole('checkbox', { name: 'leche' })).toBeVisible();
-    expect(stored.items).toMatchObject([{ type: 'text', text: 'leche' }]);
+    expect(stored.items).toMatchObject([
+      { type: 'text', text: 'leche', section: 'other', sectionOverride: null },
+    ]);
     expect(screen.queryByRole('listbox')).toBeNull();
     expect(textField()).toHaveFocus();
   });
@@ -453,7 +553,16 @@ describe('ListPageContainer: product suggestions (E12)', () => {
     const { catalog, lists } = withProducts([milk]);
     const stored = lists.seed({
       items: [
-        { id: 'a', position: 0, quantity: 2, checked: false, type: 'product', product: MILK },
+        {
+          id: 'a',
+          position: 0,
+          quantity: 2,
+          checked: false,
+          type: 'product',
+          product: MILK,
+          section: MILK.section,
+          sectionOverride: null,
+        },
       ],
     });
     renderList(lists, stored.id, catalog);
@@ -493,14 +602,33 @@ const OIL: ListProduct = {
   priceCents: 800,
   imageUrl: null,
   available: true,
+  section: 'other',
 };
 
 function product(id: string, position: number, item: ListProduct, quantity = 1): ListItem {
-  return { id, position, quantity, checked: false, type: 'product', product: item };
+  return {
+    id,
+    position,
+    quantity,
+    checked: false,
+    type: 'product',
+    product: item,
+    section: item.section,
+    sectionOverride: null,
+  };
 }
 
 function text(id: string, position: number, value: string): ListItem {
-  return { id, position, quantity: 1, checked: false, type: 'text', text: value };
+  return {
+    id,
+    position,
+    quantity: 1,
+    checked: false,
+    type: 'text',
+    text: value,
+    section: 'other',
+    sectionOverride: null,
+  };
 }
 
 /** Milk of Mercadona, oil of Bonpreu, a free-text item and a product removed from the catalog. */
@@ -518,6 +646,7 @@ function seedMixedList(lists: FakeShoppingLists) {
         priceCents: null,
         imageUrl: null,
         available: false,
+        section: 'other',
       }),
     ],
   });

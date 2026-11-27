@@ -4,6 +4,7 @@ import type {
   ListSnapshot,
   ShoppingLists,
 } from '@/features/shopping-list/application/ShoppingLists';
+import type { SectionId } from '@/features/shopping-list/domain/sections';
 import type {
   ListItem,
   ListMember,
@@ -25,6 +26,7 @@ export const MILK: ListProduct = {
   priceCents: 125,
   imageUrl: null,
   available: true,
+  section: 'dairy-and-eggs',
 };
 
 /** A stored list, as the API keeps it: the role and the token are worked out per reader. */
@@ -190,7 +192,13 @@ export class FakeShoppingLists implements ShoppingLists {
         if (item.text.trim() === '') {
           throw invalid();
         }
-        list.items.push({ ...base, type: 'text', text: item.text.trim() });
+        list.items.push({
+          ...base,
+          type: 'text',
+          text: item.text.trim(),
+          section: 'other',
+          sectionOverride: null,
+        });
         return base.id;
       }
       const product = this.products.get(item.productId);
@@ -207,7 +215,13 @@ export class FakeShoppingLists implements ShoppingLists {
         this.issued--;
         return existing.id;
       }
-      list.items.push({ ...base, type: 'product', product });
+      list.items.push({
+        ...base,
+        type: 'product',
+        product,
+        section: product.section,
+        sectionOverride: null,
+      });
       return base.id;
     });
   }
@@ -219,6 +233,17 @@ export class FakeShoppingLists implements ShoppingLists {
         throw notFound();
       }
       Object.assign(item, changes);
+    });
+  }
+
+  updateItemSection(listId: string, itemId: string, section: SectionId | null): Promise<void> {
+    return this.memberChange(listId, (list) => {
+      const item = list.items.find((candidate) => candidate.id === itemId);
+      if (item === undefined) {
+        throw notFound();
+      }
+      item.sectionOverride = section;
+      item.section = section ?? (item.type === 'product' ? item.product.section : 'other');
     });
   }
 

@@ -17,6 +17,7 @@ const MILK: ListProduct = {
   priceCents: 125,
   imageUrl: 'https://img.example/leche.jpg',
   available: true,
+  section: 'other',
 };
 
 const UNKNOWN: ListProduct = {
@@ -27,6 +28,7 @@ const UNKNOWN: ListProduct = {
   priceCents: null,
   imageUrl: null,
   available: false,
+  section: 'other',
 };
 
 function aProductItem(product: Partial<ListProduct> = {}, checked = false): ProductItem {
@@ -36,6 +38,8 @@ function aProductItem(product: Partial<ListProduct> = {}, checked = false): Prod
     quantity: 1,
     checked,
     type: 'product',
+    section: 'other',
+    sectionOverride: null,
     product: { ...MILK, ...product },
   };
 }
@@ -47,6 +51,8 @@ const TEXT_ITEM: ListItem = {
   checked: false,
   type: 'text',
   text: 'pan',
+  section: 'other',
+  sectionOverride: null,
 };
 
 /** The product name and image link to the product page, so the row needs a router. */
