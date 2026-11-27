@@ -1,10 +1,19 @@
 #!/usr/bin/env bash
 # Fake gh. `gh auth status` exits with $FAKE_GH_AUTH (0 by default). `gh api <path> --jq <filter>` answers
-# with $FAKE_CHECK_RUNS or $FAKE_STATUS (JSON) through the real jq, as GitHub would.
+# with $FAKE_CHECK_RUNS or $FAKE_STATUS (JSON) through the real jq, as GitHub would. `gh api -X PATCH <path> --input -`
+# records the JSON body it reads from stdin as `patch-body <json>` in $CALLS_LOG, and fails when $FAKE_GH_PATCH_FAIL is set.
 printf 'gh %s\n' "$*" >>"$CALLS_LOG"
 case $1 in
     auth) exit "${FAKE_GH_AUTH:-0}" ;;
     api)
+        if [[ $2 == -X && $3 == PATCH ]]; then
+            printf 'patch-body %s\n' "$(cat)" >>"$CALLS_LOG"
+            if [[ -n ${FAKE_GH_PATCH_FAIL:-} ]]; then
+                echo "fake gh: failing on purpose" >&2
+                exit 1
+            fi
+            exit 0
+        fi
         path=$2 filter=$4
         case $path in
             */check-runs*) printf '%s' "$FAKE_CHECK_RUNS" | jq -r "$filter" ;;

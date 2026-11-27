@@ -58,8 +58,7 @@ If the user prefers to leave a question for later, the tasks that depend on it s
 
 1. Update `main` (`git fetch origin` and fast-forward `main` to `origin/main`) and branch from it: `<type>/e<n>-<kebab-slug>`, with the slug of the epic file name and the Conventional Commits type that fits most of the epic (`feat`, `fix`, `ci`, `build`, `refactor`, `docs`…).
 2. Make sure the Docker stack is running (`make start`) when the epic needs the backend checks or the end-to-end suite.
-3. If the epic has an associated issue (its goal says "Requested in [issue #n]"), set that issue's status to `In progress` (PD-115, see "Issue status" below).
-4. In `docs/epics/README.md`, set the epic status to `In progress`. Commit it together with the docs written in step 3 (`docs(epics): record E<n> decisions`, listing the new PDs), or with the first task if there were no questions.
+3. In `docs/epics/README.md`, set the epic status to `In progress`. Commit it together with the docs written in step 3 (`docs(epics): record E<n> decisions`, listing the new PDs), or with the first task if there were no questions.
 
 ## 5. Implement task by task
 
@@ -89,15 +88,12 @@ If a task turns out to be bigger than planned, or impossible as written, add a `
    - Title: `<type>(<scope>): <epic title> (E<n>)`.
    - Body: the goal, the tasks implemented (E<n>.m with one line each), the decisions recorded during the work (PD-n) and their notes, anything left pending (unticked tasks and why), how it was verified (checks and e2e), and the attribution line required in this session.
 2. Watch CI with `gh pr checks --watch`. If it fails, fix it on the branch and push again. A red CI means the epic is not done.
-3. If the epic has an associated issue, put `Closes #<n>` in the PR body and, as soon as the PR exists, set the issue's status to `In review` (PD-115).
+3. If the epic has an associated issue, put `Closes #<n>` in the PR body.
 4. Give the user the PR link, the decisions recorded and anything left pending.
 
 ## Issue status
 
-Epics requested from an issue follow PD-115, using the issue's native status (`Backlog`, `Todo`, `In progress`, `In review`, `Done`, `Not planned`, `Duplicate`), not a GitHub Projects field. Set it with:
+Epics requested from an issue ("Requested in [issue #n]") get their native issue status from the `Issue status` workflow (PD-115), not from you: creating the branch sets `In progress` and opening the PR sets `In review`. Two rules keep it working:
 
-```bash
-echo '{"status":"In progress"}' | gh api -X PATCH repos/joeljoanlopez/jolo-market/issues/<n> --input -
-```
-
-The body must be a JSON string (`{"status":{"name":"..."}}` is rejected). Check the result with `gh api repos/joeljoanlopez/jolo-market/issues/<n> --jq .status.name`. If it fails, tell the user which status is pending; do not skip it silently and do not block the work on it.
+- Name the branch exactly `<type>/e<n>-<slug>`, with the slug of the epic file name (step 1 of "Prepare the branch").
+- Do not set the status by hand. After the push, check that the workflow run is green (`gh run list --workflow "Issue status"`) and tell the user if it failed. Note that `create` workflows run from `main`, so the very first epic after the workflow is added may not get `In progress`.
