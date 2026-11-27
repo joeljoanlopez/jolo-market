@@ -18,6 +18,8 @@ final class SearchProductsControllerTest extends CatalogApiTestCase
         $this->seed(4, 'Leche pack sorpresa', priceCents: 300, unitPriceCents: null, unit: null, packageQuantity: null, packageUnit: null);
         $this->seed(5, 'Pan de molde');
 
+        $this->indexSearch();
+
         $this->client->request('GET', '/api/products?q=leche');
 
         self::assertResponseStatusCodeSame(200);
@@ -82,6 +84,8 @@ final class SearchProductsControllerTest extends CatalogApiTestCase
             $this->seed($number, 'Leche '.$number, unitPriceCents: $number);
         }
 
+        $this->indexSearch();
+
         $this->client->request('GET', '/api/products?q=leche&page=2');
 
         self::assertResponseStatusCodeSame(200);
@@ -96,6 +100,7 @@ final class SearchProductsControllerTest extends CatalogApiTestCase
     #[Test]
     public function it_returns_an_empty_page_when_nothing_matches(): void
     {
+        $this->indexSearch();
         $this->client->request('GET', '/api/products?q=leche');
 
         self::assertResponseStatusCodeSame(200);
@@ -107,6 +112,8 @@ final class SearchProductsControllerTest extends CatalogApiTestCase
     {
         $this->seed(1, 'Leche entera');
         $this->seed(2, 'Leche entera', supermarket: 'aldi');
+
+        $this->indexSearch();
 
         $this->client->request('GET', '/api/products?q=leche&supermarket=aldi');
 

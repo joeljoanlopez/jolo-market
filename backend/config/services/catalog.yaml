@@ -74,8 +74,6 @@ services:
         arguments:
             $alias: '%catalog.search_alias%'
 
-    App\Catalog\Application\SearchProducts\ProductSearchReadModel: '@App\Catalog\Infrastructure\Persistence\Dbal\DbalProductSearchReadModel'
-
 when@test:
     parameters:
         # The functional tests index into their own collections, never the development index.
@@ -84,6 +82,9 @@ when@test:
     services:
         test.catalog.typesense_client:
             alias: App\Catalog\Infrastructure\Search\TypesenseClient
+            public: true
+        App\Catalog\Application\ReindexProductSearch\ProductSearchIndex:
+            alias: App\Catalog\Infrastructure\Search\TypesenseProductSearchIndex
             public: true
         test.catalog.search_products_handler:
             alias: App\Catalog\Application\SearchProducts\SearchProductsHandler
