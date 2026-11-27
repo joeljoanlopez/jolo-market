@@ -115,12 +115,14 @@ final class Receipt
      */
     public function updateLine(ReceiptLineId $lineId, LineText $text, ?LineQuantity $quantity, Money $amount): void
     {
+        $this->assertRead();
         $this->line($lineId)->edit($text, $quantity, $amount);
         $this->changed();
     }
 
     public function removeLine(ReceiptLineId $lineId): void
     {
+        $this->assertRead();
         $lines = $this->lines;
         unset($lines[$this->indexOf($lineId)]);
         $this->lines = array_values($lines);
@@ -132,6 +134,7 @@ final class Receipt
      */
     public function linkProduct(ReceiptLineId $lineId, ProductId $productId): void
     {
+        $this->assertRead();
         $this->line($lineId)->link($productId);
         $this->changed();
     }
@@ -141,12 +144,14 @@ final class Receipt
      */
     public function suggestProduct(ReceiptLineId $lineId, ProductId $productId): void
     {
+        $this->assertRead();
         $this->line($lineId)->suggest($productId);
         $this->changed();
     }
 
     public function unlink(ReceiptLineId $lineId): void
     {
+        $this->assertRead();
         $this->line($lineId)->unlink();
         $this->changed();
     }
@@ -156,6 +161,7 @@ final class Receipt
      */
     public function changeDate(ReceiptDate $date, \DateTimeImmutable $now): void
     {
+        $this->assertRead();
         if ($date->isAfter(ReceiptDate::today($now))) {
             throw InvalidReceiptDate::inTheFuture($date->value());
         }
@@ -166,12 +172,33 @@ final class Receipt
 
     public function changeTotal(Money $total): void
     {
+        $this->assertRead();
         if (0 === $total->cents()) {
             throw InvalidReceiptAmount::notPositive();
         }
 
         $this->total = $total;
         $this->changed();
+    }
+
+    /**
+     * A draft becomes confirmed; confirming a confirmed receipt again is allowed (PD-130).
+     * Differences between lines and total do not stop it (PD-66).
+     */
+    public function confirm(): void
+    {
+        $this->assertRead();
+        if (null === $this->date || null === $this->total) {
+            throw ReceiptNotConfirmable::missingDateOrTotal();
+        }
+
+        $this->status = ReceiptStatus::CONFIRMED;
+        $this->changed();
+    }
+
+    public function isConfirmed(): bool
+    {
+        return ReceiptStatus::CONFIRMED === $this->status;
     }
 
     /**
@@ -277,12 +304,20 @@ final class Receipt
 
     private function addLine(ReceiptLine $line): void
     {
+        $this->assertRead();
         if (\count($this->lines) >= self::MAX_LINES) {
             throw TooManyReceiptLines::max(self::MAX_LINES);
         }
 
         $this->lines[] = $line;
         $this->changed();
+    }
+
+    private function assertRead(): void
+    {
+        if (ReceiptStatus::READING === $this->status) {
+            throw ReceiptStillReading::withId($this->id->value());
+        }
     }
 
     private function line(ReceiptLineId $lineId): ReceiptLine
