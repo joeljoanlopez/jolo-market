@@ -142,7 +142,7 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
   - "Borrar" with the inline confirmation of PD-42.
   - A non-member gets the not-found page.
   - Note: "Confirmar" stays as "Confirmar de nuevo" on a confirmed receipt (PD-130). While the receipt is being read, the page shows the photo and a "Leyendo" message and polls until the draft is ready. The routes give the page the app's not-found page through a `notFound` prop.
-- [ ] E10.36 Add all the Spanish copy of the feature to `es.json` (no hard-coded strings).
+- [x] E10.36 Add all the Spanish copy of the feature to `es.json` (no hard-coded strings).
 
 ### End to end
 
