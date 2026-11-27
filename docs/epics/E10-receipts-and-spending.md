@@ -2,7 +2,7 @@
 
 **Goal:** the owner and the members of a shopping list upload the photo of a Mercadona, Bonpreu i Esclat or Aldi receipt. The server reads it with the instance's local AI, or with local OCR when the AI is not configured or fails, and a draft comes out of it. They review the draft, link each line to a product of that supermarket and confirm it. The list then shows what was bought and how much was spent each month, per supermarket. Lines that were linked once are linked by themselves next time.
 
-Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 to PD-71, PD-112 to PD-114. Open questions: none.
+Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 to PD-71, PD-112 to PD-114, PD-127 to PD-130. Open questions: none.
 
 ## Acceptance criteria
 
@@ -11,9 +11,9 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 - In the review the user sees the photo and can edit the date and the total, and can add, edit and remove product lines (text, quantity in units or kg, amount) and discount lines (PD-66).
 - Each product line shows the product the memory knows for its text or a suggested one, from the receipt's supermarket only. The user can accept it, pick another one through the search, or leave the line unlinked (PD-67).
 - When products minus discounts differ from the total, the review warns about it, but the receipt can still be confirmed. It cannot be confirmed without a date and a total, and the date cannot be in the future (PD-66).
-- After a receipt is confirmed, a new receipt of the same supermarket in any list links the same printed text to the same product by itself. The last confirmation wins (PD-67).
+- After a receipt is confirmed, a new receipt of the same supermarket in any list links the same printed text to the same product by itself. The last confirmation wins (PD-67). A product line added by hand, or whose text changes, is linked by the memory or gets a suggestion too (PD-128).
 - The list shows its confirmed receipts (date, supermarket, total, uploader), newest first, and the total per month with its breakdown per supermarket. Drafts and receipts still being read are shown apart and do not count (PD-70).
-- Any member can edit a confirmed receipt again. Any member can delete a receipt after confirming. Deleting a receipt or the list removes its photo (PD-63, PD-65).
+- Any member can edit a confirmed receipt again and confirm it again, which stores the memory again (PD-130). Any member can delete a receipt in any status, also while it is being read, after confirming (PD-129). Deleting a receipt or the list removes its photo (PD-63, PD-65).
 - Users who are not owner or member get `404` for the receipts, the spending and the photos of the list (PD-63).
 - Confirming a receipt changes neither the list items nor the catalog prices and price history (PD-67, PD-71).
 - `deploy/backup.sh` also saves the receipt photos, and the README explains how to restore them (PD-69).
@@ -26,8 +26,10 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 
 - [ ] E10.1 Spike (one day): run Tesseract (`spa` + `cat`) on the sample receipts of each chain, choose the image preprocessing (grayscale, threshold, scaling) and check the text is good enough for a parser. Record what each chain prints (date, total, line, weight line, discount line) and the preprocessing in a note under this task.
   - Needs **2–3 real receipt photos per chain** from the product owner, with the card digits covered. They become the fixtures in `backend/tests/Fixtures/Receipts/`.
+  - Note: not done yet (PD-127): no real receipt photos or access to the local AI yet. ❓ Needs the photos and the model.
 - [ ] E10.40 Spike (one day): send the same sample photos to the product owner's local vision model through its OpenAI-compatible API with `response_format` `json_schema`. Write the JSON schema and the prompt (supermarket name, Spanish and Catalan receipts, amounts in cents, units or kg). Check whether the server honours `json_schema` and how long a receipt takes, and choose the image size sent. Record the model, server, schema, prompt, timings and the answers in a note under this task. The answers become the recorded fixtures of E10.41 (PD-112).
   - Needs the product owner's model name and server (Ollama, llama.cpp, vLLM, LM Studio…) to run it.
+  - Note: not done yet (PD-127): no real receipt photos or access to the local AI yet. ❓ Needs the photos and the model.
 
 ### Domain (Receipts)
 
@@ -55,6 +57,7 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 - [ ] E10.10 Add the Receipts ports `ListAccess` (on E10.8), `ReceiptProductCatalog` (suggestions from E10.7 and products by id through `GetProductsHandler`), `ReceiptUserDirectory` (uploader usernames), `ReceiptReader` (photo → read result for a supermarket with its `readBy`, or a failure) and `ReceiptReadingQueue` (asks for a receipt to be read later), each with an in-memory fake.
 - [ ] E10.11 Add `UploadReceipt`, which receives an explicit `actorId`. It rejects a non-member (404), a supermarket that is not enabled (422, PD-64), and a file that is not JPEG, PNG or WebP or that is over 10 MB (422, PD-68). It then stores the photo, saves the receipt as `READING` and queues the reading.
 - [ ] E10.12 Add `ReadReceipt`, run by the worker. It reads the photo and completes the reading. A product line whose text the memory knows gets that product linked. Every other product line gets the first suggestion as its **suggested** product, which is not linked until accepted. A reader failure gives an empty draft (PD-65, PD-67).
+  - Note: a receipt deleted before the worker reads it is skipped (PD-129).
 - [ ] E10.13 Add the editing use cases, each with an explicit `actorId` and the access check:
   - `UpdateReceipt` (date, total).
   - `AddLine`, `UpdateLine`, `RemoveLine`.
@@ -62,7 +65,9 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
   - `DeleteReceipt`, which also deletes the photo.
 
   Unknown receipt or line, or a receipt of another list → 404.
+  - Note: `AddLine` and a text change in `UpdateLine` apply the memory or the suggestion like `ReadReceipt` (PD-128). `DeleteReceipt` works in any status, also `READING` (PD-129).
 - [ ] E10.14 Add `ConfirmReceipt`: it confirms the receipt and stores "text → product" in the memory for every linked line of that supermarket, so the last confirmation wins. It never touches list items or the catalog (PD-67, PD-71).
+  - Note: a confirmed receipt can be confirmed again, which stores the memory again (PD-130).
 - [ ] E10.15 Add the queries:
   - `GetReceipt`: status, supermarket, date, total, uploader, and lines with the linked or suggested product (name, brand, available). A product the catalog no longer knows is shown by its text. It also returns `differenceCents`.
   - `GetListReceipts`: `pending` (reading and draft) and `confirmed`, newest first.
@@ -72,15 +77,21 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 ### Infrastructure
 
 - [ ] E10.17 Install Tesseract with the `spa` and `cat` data in the php image (dev and prod), pinned like the other versions, and record it in "Pinned versions". Add `TesseractReceiptOcr` with the preprocessing from E10.1. An integration test reads a fixture photo inside the container.
+  - Note: not done yet (PD-127): no real receipt photos or access to the local AI yet. ❓ Needs the photos and the model.
 - [ ] E10.18 Add `MercadonaReceiptParser` (OCR text → date, total, product lines with units or weight, discount lines). Unit tests run against the recorded OCR text of every Mercadona fixture, and unreadable parts are left out rather than guessed (PD-62).
+  - Note: not done yet (PD-127): no real receipt photos or access to the local AI yet. ❓ Needs the photos and the model.
 - [ ] E10.19 Add `BonpreuEsclatReceiptParser`, the same way (PD-62).
+  - Note: not done yet (PD-127): no real receipt photos or access to the local AI yet. ❓ Needs the photos and the model.
 - [ ] E10.20 Add `AldiReceiptParser`, the same way (PD-62).
+  - Note: not done yet (PD-127): no real receipt photos or access to the local AI yet. ❓ Needs the photos and the model.
 - [ ] E10.41 Add `OpenAiCompatibleReceiptAi` over `symfony/http-client`: it posts the photo (base64 data URL, sized as in E10.40), the supermarket, the prompt and the JSON schema of E10.40 to `RECEIPT_AI_BASE_URL/chat/completions` with `RECEIPT_AI_MODEL`, the optional Bearer `RECEIPT_AI_API_KEY` and `RECEIPT_AI_TIMEOUT_SECONDS`. It maps the answer to a read result, and treats a network error, a timeout, a non-2xx answer, or JSON that does not match the schema or the receipt rules (PD-66) as a failure. One attempt, no retry. Unit tests use `MockHttpClient` with the recorded answers of E10.40 and cover each failure (PD-112, PD-113).
+  - Note: not done yet (PD-127): no real receipt photos or access to the local AI yet. ❓ Needs the photos and the model.
 - [ ] E10.21 Add the `ReceiptReader` adapter, which reads with the AI first and the OCR as fallback (PD-112):
   - When `RECEIPT_AI_BASE_URL` is set, it asks E10.41 and, on success, returns its result with `readBy` `AI`.
   - When the AI is not configured or fails, it runs the OCR and the parser of the receipt's supermarket, and returns `readBy` `OCR`.
   - When both fail, it is a failure (`readBy` `NONE`).
   - Every failure and the `readBy` are logged without the receipt text (PD-114). Unit tests use fakes of the AI and the OCR for every path.
+  - Note: not done yet (PD-127): no real receipt photos or access to the local AI yet. ❓ Needs the photos and the model.
 - [ ] E10.22 Add `FilesystemReceiptPhotoStorage` under `RECEIPT_STORAGE_DIR` (one file per receipt id, never a name taken from the upload). Add a `receipts` volume to `compose.yaml` and `compose.prod.yaml`. Integration test against a temporary directory.
 - [ ] E10.23 Add `symfony/messenger` with the Doctrine transport for `ReceiptReadingQueue` and the `ShoppingListDeleted` event, and a `worker` service (`messenger:consume`) in dev and prod. Every new development command or script gets the `make` question of PD-61.
 - [ ] E10.24 Add the migrations and the DBAL adapters:
@@ -132,6 +143,7 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
   3. Fix a line, accept a suggestion, link another line through the search, and confirm.
   4. See the receipt and the month's spending in the list.
   5. Upload the same photo again and see the line linked by the memory.
+  - Note: not done yet (PD-127): no real receipt photos or access to the local AI yet. ❓ Needs the photos and the model.
 
 ### Docs
 
