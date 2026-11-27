@@ -103,4 +103,5 @@ Before committing, check that:
 3. Push and run `gh pr create` with:
    - Title: same as the commit subject.
    - Body: the goal, a summary of the decisions (PD-n), deferred questions (OQ-n), the task list overview, and the attribution line.
-4. Give the user the PR link and list any open questions left.
+4. If the epic comes from an issue, move that issue to **To do** on the project board once the PR is open (PD-115; the commands are in the "Issue board" section of [implement-epic](../implement-epic/SKILL.md)).
+5. Give the user the PR link and list any open questions left.
