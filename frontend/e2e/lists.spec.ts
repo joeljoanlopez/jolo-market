@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
+import { formatPrice } from '../src/features/catalog/domain/format';
 import es from '../src/shared/i18n/locales/es.json' with { type: 'json' };
 import { csrfHeaders } from './support/session';
 import { totpCode } from './support/totp';
@@ -315,4 +316,37 @@ test('a user sees a list grouped by section, moves an item to another section an
   await expect(boxes.nth(0)).toHaveAccessibleName('servilletas');
   await expect(boxes.nth(1)).toHaveAccessibleName('Leche entera');
   await expect(boxes.nth(1)).toBeChecked();
+});
+
+// E17.6. Runs against the known catalog of backend/tests/Fixtures/e2e/catalog.sql.
+test('a user checks a product and sees the total of its supermarket drop to zero, then come back', async ({
+  page,
+}) => {
+  const listName = `Pendiente e2e ${String(Date.now() % 1_000_000)}`;
+  await page.goto('/');
+  await page.getByLabel(lists.create.name, { exact: true }).fill(listName);
+  await page.getByRole('button', { name: lists.create.submit }).click();
+  await expect(page).toHaveURL(/\/lists\/[^/]+$/);
+  const field = page.getByRole('combobox', { name: lists.add.text });
+  await field.fill('leche');
+  await suggestion(page, 'Leche entera').click();
+  await expect(item(page, 'Leche entera')).toBeVisible();
+
+  const mercadonaRow = page
+    .getByRole('region', { name: lists.totals.title })
+    .getByRole('listitem')
+    .filter({ hasText: 'Mercadona' });
+  const mercadonaChip = chip(page, /Mercadona/u);
+  const zero = formatPrice(0).replace(/\s/gu, ' ');
+  await expect(mercadonaRow).not.toContainText(zero);
+
+  await item(page, 'Leche entera').click();
+  await expect(item(page, 'Leche entera')).toBeChecked();
+  await expect(mercadonaRow).toContainText(zero);
+  await expect(mercadonaChip).toContainText(zero);
+
+  await item(page, 'Leche entera').click();
+  await expect(item(page, 'Leche entera')).not.toBeChecked();
+  await expect(mercadonaRow).not.toContainText(zero);
+  await expect(mercadonaChip).not.toContainText(zero);
 });
