@@ -142,6 +142,11 @@ test('a user adds catalog products from inside a list, by click, by keyboard and
   await field.press('Enter');
   await expect(item(page, 'Leche semidesnatada')).toBeVisible();
 
+  // 2b. The suggestions search in Spanish or Catalan: "llet" suggests Mercadona's milk (PD-101).
+  await field.fill('llet');
+  await expect(suggestion(page, 'Leche entera')).toBeVisible();
+  await expect(suggestion(page, 'Llet sencera')).toBeVisible();
+
   // 3. Free text with Enter, as before.
   await field.fill('pan');
   await field.press('Enter');

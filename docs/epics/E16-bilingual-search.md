@@ -65,7 +65,7 @@ Typesense is reached through Symfony HttpClient from Catalog Infrastructure only
 
 ### End to end
 
-- [ ] E16.13 Add products to `backend/tests/Fixtures/e2e/catalog.sql`: a Mercadona "Leche…" and a Bonpreu "Llet…" at least, plus "Pan…" and "Pa…". Extend `frontend/e2e/search.spec.ts`: searching "leche" shows both supermarkets, searching "pa" shows the bread of both, and searching "lece" shows the approximate notice with the milk. Extend `frontend/e2e/lists.spec.ts`: typing "llet" in "Qué necesitas" suggests the Mercadona milk (PD-101, PD-103, PD-104).
+- [x] E16.13 Add products to `backend/tests/Fixtures/e2e/catalog.sql`: a Mercadona "Leche…" and a Bonpreu "Llet…" at least, plus "Pan…" and "Pa…". Extend `frontend/e2e/search.spec.ts`: searching "leche" shows both supermarkets, searching "pa" shows the bread of both, and searching "lece" shows the approximate notice with the milk. Extend `frontend/e2e/lists.spec.ts`: typing "llet" in "Qué necesitas" suggests the Mercadona milk (PD-101, PD-103, PD-104).
 
 ### Docs
 

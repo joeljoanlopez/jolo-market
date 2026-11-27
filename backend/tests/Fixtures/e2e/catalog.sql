@@ -1,8 +1,10 @@
 -- Known catalog for the Playwright journeys (frontend/e2e/). Load it after the migrations:
 --   docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql --default-character-set=utf8mb4 -u"$MYSQL_USER" "$MYSQL_DATABASE"' < backend/tests/Fixtures/e2e/catalog.sql
 -- It replaces only its own rows (external ids starting with "e2e-"), so it can be loaded again.
--- Search "leche" expects, by PD-33: the L group (4 results) by unit price, then kg (2), then
--- unit (1), then the product without a unit price. The unavailable one must not appear.
+-- Search "leche" expects, by PD-33: the L group (5 results, Bonpreu's Catalan "Llet sencera" among them through the
+-- dictionary, PD-101) by unit price, then kg (2), then unit (1), then the product without a unit price. The
+-- unavailable one must not appear. "pan" and "pa" both find the bread of Mercadona and Bonpreu (E16).
+-- Search reads the Typesense index: run app:catalog:reindex-search after loading this file (PD-100).
 -- "Leche entera" also has a price history (E5): 0,95 € → 0,99 € → 0,89 € over the last 20 days, so its
 -- page shows a minimum of 0,89 €, a maximum of 0,99 € and a current price of 0,89 €. The dates are relative
 -- to now, so they always fall within the default period of 6 months (PD-48).
@@ -34,7 +36,15 @@ VALUES
      1000, 'l', 50, 50, 'l', 0, '2026-11-01 05:00:00'),
     -- Does not match "leche".
     (UUID_TO_BIN('01960000-0000-7000-8000-00000000000a'), 'mercadona', 'e2e-10', 'Yogur natural', 'Hacendado', 'Lácteos y huevos', NULL,
-     500, 'kg', 120, 240, 'kg', 1, '2026-11-09 05:00:00');
+     500, 'kg', 120, 240, 'kg', 1, '2026-11-09 05:00:00'),
+    -- Bonpreu names its products in Catalan: "leche" finds this milk through the dictionary (PD-101).
+    (UUID_TO_BIN('01960000-0000-7000-8000-00000000000b'), 'bonpreu', 'e2e-11', 'Llet sencera', 'Bonpreu', 'Lácteos y huevos', NULL,
+     1000, 'l', 110, 110, 'l', 1, '2026-11-09 05:00:00'),
+    -- The bread of two chains, one Spanish and one Catalan name ("pan" ↔ "pa", PD-101).
+    (UUID_TO_BIN('01960000-0000-7000-8000-00000000000c'), 'mercadona', 'e2e-12', 'Pan de molde', 'Hacendado', 'Panadería', NULL,
+     460, 'kg', 125, 272, 'kg', 1, '2026-11-09 05:00:00'),
+    (UUID_TO_BIN('01960000-0000-7000-8000-00000000000d'), 'bonpreu', 'e2e-13', 'Pa de pagès', 'Bonpreu', 'Panadería', NULL,
+     500, 'kg', 180, 360, 'kg', 1, '2026-11-09 05:00:00');
 
 -- Deleting a product deletes its snapshots (ON DELETE CASCADE), so loading this file again starts from scratch.
 INSERT INTO price_snapshot (product_id, price_cents, unit_price_cents, unit_price_unit, captured_at)
