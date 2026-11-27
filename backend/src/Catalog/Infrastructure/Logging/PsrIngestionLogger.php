@@ -50,6 +50,11 @@ final readonly class PsrIngestionLogger implements IngestionLogger
         }
     }
 
+    public function searchIndexFailed(string $reason): void
+    {
+        $this->logger->error('The search index could not be rebuilt after ingestion.', ['error' => $reason]);
+    }
+
     private static function durationInMilliseconds(IngestionRun $run): ?int
     {
         $finishedAt = $run->finishedAt();

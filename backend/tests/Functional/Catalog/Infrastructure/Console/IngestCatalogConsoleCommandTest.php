@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Catalog\Infrastructure\Console;
 
 use App\Catalog\Domain\Port\SourceProduct;
+use App\Catalog\Infrastructure\Search\TypesenseClient;
 use App\Tests\Support\Catalog\ConfigurableCatalogSource;
 use Doctrine\DBAL\Connection;
 use PHPUnit\Framework\Attributes\Test;
@@ -12,6 +13,7 @@ use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\HttpClient\HttpClient;
 
 /**
  * The test environment enables "mercadona" and "aldi" (backend/.env.test) and replaces
@@ -85,6 +87,39 @@ final class IngestCatalogConsoleCommandTest extends KernelTestCase
 
         self::assertSame(Command::FAILURE, $exitCode);
         self::assertSame(1, $this->countRows('product'));
+    }
+
+    #[Test]
+    public function it_rebuilds_the_search_index_after_ingesting(): void
+    {
+        $this->source('mercadona')->willReturn([new SourceProduct('1', 'Leche', 99, '1 L')]);
+        $this->source('aldi')->willFail(new \RuntimeException('Boom.'));
+
+        $this->command->execute([]);
+
+        $typesense = self::getContainer()->get('test.catalog.typesense_client');
+        self::assertInstanceOf(TypesenseClient::class, $typesense);
+        $alias = $typesense->request('GET', '/aliases/products_test');
+        self::assertIsString($alias['collection_name']);
+        $documents = $typesense->exportDocuments($alias['collection_name']);
+        self::assertCount(1, $documents);
+        self::assertSame('Leche', $documents[0]['name']);
+    }
+
+    #[Test]
+    public function it_fails_but_keeps_the_catalog_when_the_search_index_cannot_be_rebuilt(): void
+    {
+        self::getContainer()->set(TypesenseClient::class, new TypesenseClient(HttpClient::create(), 'http://127.0.0.1:1', 'key'));
+        $this->command = new CommandTester(new Application(self::$kernel ?? throw new \LogicException())->find('app:catalog:ingest'));
+        $this->source('mercadona')->willReturn([new SourceProduct('1', 'Leche', 99, '1 L')]);
+        $this->source('aldi')->willReturn([new SourceProduct('1', 'Pan', 50, '1 ud')]);
+
+        $exitCode = $this->command->execute([]);
+
+        self::assertSame(Command::FAILURE, $exitCode);
+        self::assertStringContainsString('The search index could not be rebuilt', $this->command->getDisplay());
+        self::assertSame(2, $this->countRows('product'));
+        self::assertSame(2, $this->countRows("ingestion_run WHERE status = 'succeeded'"));
     }
 
     #[Test]

@@ -16,6 +16,7 @@ use App\Tests\Support\Catalog\InMemoryIngestionLogger;
 use App\Tests\Support\Catalog\InMemoryIngestionRunRepository;
 use App\Tests\Support\Catalog\InMemoryPriceSnapshotRepository;
 use App\Tests\Support\Catalog\InMemoryProductRepository;
+use App\Tests\Support\Catalog\InMemoryProductSearchIndex;
 use App\Tests\Support\FixedClock;
 use App\Tests\Support\SequentialIdGenerator;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -48,6 +49,7 @@ final class DummyCatalogIngestionTest extends TestCase
             $this->clock,
             new SequentialIdGenerator(),
             new InMemoryIngestionLogger(),
+            new InMemoryProductSearchIndex(),
         );
     }
 

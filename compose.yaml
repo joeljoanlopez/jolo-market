@@ -35,12 +35,16 @@ services:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
         INSTALL_XDEBUG: ${INSTALL_XDEBUG:-false}
-    # While there are no users, print the one-time first-admin setup code in the logs (PD-14).
-    # It must never stop php-fpm from starting (no vendor/ or migrations yet on a fresh clone).
+    # While there are no users, print the one-time first-admin setup code in the logs (PD-14), and build the search
+    # index when it is missing or empty (PD-100), for example on a fresh stack or a new dummy catalog.
+    # Neither must ever stop php-fpm from starting (no vendor/ or migrations yet on a fresh clone).
     command:
       - sh
       - -c
-      - php bin/console app:setup:ensure-code --no-interaction || echo "Setup code not generated yet; run the migrations and restart php."; exec php-fpm
+      - >-
+        php bin/console app:setup:ensure-code --no-interaction || echo "Setup code not generated yet; run the migrations and restart php.";
+        php bin/console app:catalog:reindex-search --if-empty --no-interaction || echo "Search index not built yet; run make reindex.";
+        exec php-fpm
     volumes:
       - ./backend:/var/www/backend
     environment:

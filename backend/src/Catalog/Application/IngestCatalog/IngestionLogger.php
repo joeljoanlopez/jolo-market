@@ -17,4 +17,9 @@ interface IngestionLogger
     public function productSkipped(SupermarketId $supermarketId, string $externalId, string $reason): void;
 
     public function runFinished(IngestionRun $run): void;
+
+    /**
+     * The search index could not be rebuilt after the runs; the catalog stays ingested (PD-100).
+     */
+    public function searchIndexFailed(string $reason): void;
 }

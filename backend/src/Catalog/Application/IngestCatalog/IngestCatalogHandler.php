@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Catalog\Application\IngestCatalog;
 
+use App\Catalog\Application\ReindexProductSearch\ProductSearchIndex;
 use App\Catalog\Domain\Model\PriceSnapshot;
 use App\Catalog\Domain\Model\Product;
 use App\Catalog\Domain\Port\PriceSnapshotRepository;
@@ -54,6 +55,7 @@ final readonly class IngestCatalogHandler
         private Clock $clock,
         private IdGenerator $ids,
         private IngestionLogger $logger,
+        private ProductSearchIndex $searchIndex,
     ) {
         $bySlug = [];
         foreach ($sources as $source) {
@@ -75,7 +77,26 @@ final readonly class IngestCatalogHandler
             $summaries[] = IngestionRunSummary::of($this->ingest($supermarketId, $postalCode));
         }
 
-        return new IngestCatalogResult($summaries);
+        return new IngestCatalogResult($summaries, $command->rebuildSearchIndex ? $this->rebuildSearchIndex() : null);
+    }
+
+    /**
+     * Also after a failed run, so the products it marked unavailable leave the results.
+     *
+     * @return string|null why the rebuild failed
+     */
+    private function rebuildSearchIndex(): ?string
+    {
+        try {
+            $this->searchIndex->rebuild();
+        } catch (\Throwable $failure) {
+            // Like a failed run: the catalog stays ingested and the next run or a reindex catches up.
+            $this->logger->searchIndexFailed($failure->getMessage());
+
+            return $failure->getMessage();
+        }
+
+        return null;
     }
 
     /**

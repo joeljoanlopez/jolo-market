@@ -25,4 +25,12 @@ final class InMemoryIngestionLogger implements IngestionLogger
     {
         $this->finishedRuns[] = clone $run;
     }
+
+    /** @var list<string> */
+    public private(set) array $searchIndexFailures = [];
+
+    public function searchIndexFailed(string $reason): void
+    {
+        $this->searchIndexFailures[] = $reason;
+    }
 }

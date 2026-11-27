@@ -2,8 +2,9 @@
 # Entrypoint of the production php and scheduler containers (E6.3, E6.4).
 #
 # Every container checks the configuration first and stops with a clear message when it is wrong. The php container
-# (command php-fpm) then waits for MySQL, applies the migrations and prints the first-admin setup code (PD-14). The
-# scheduler starts after php is healthy (compose.prod.yaml), so it never runs against an unmigrated database.
+# (command php-fpm) then waits for MySQL, applies the migrations, prints the first-admin setup code (PD-14) and builds
+# the search index when it is missing or empty (PD-100). The scheduler starts after php is healthy (compose.prod.yaml),
+# so it never runs against an unmigrated database.
 
 set -eu
 
@@ -24,6 +25,10 @@ if [ "${1:-}" = php-fpm ]; then
 
     bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
     bin/console app:setup:ensure-code --no-interaction
+    # A failure must not stop php-fpm: everything but search keeps working (PD-105), and the next ingestion or
+    # app:catalog:reindex-search builds it.
+    bin/console app:catalog:reindex-search --if-empty --no-interaction \
+        || echo "The search index could not be built; search answers 503 until app:catalog:reindex-search succeeds." >&2
 fi
 
 exec "$@"
