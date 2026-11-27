@@ -100,6 +100,62 @@ patch-body {\"status\":\"In progress\"}" ]
     [ -z "$(patches)" ]
 }
 
+@test "a pull request on a non-standard branch finds its epic in the title, and a docs title sets Todo" {
+    run issue_status pull-request-opened claude/great-cray-jds0o9 "Adds the epic." "docs(epics): add E13 — Filter the list"
+
+    [ "$status" -eq 0 ]
+    [[ "$(patches)" == *"issues/59 "*'{"status":"Todo"}' ]]
+}
+
+@test "a docs title whose body closes the issue sets In review" {
+    run issue_status pull-request-opened claude/great-cray-jds0o9 "Implements it. Closes #59" "docs(epics): E13 done"
+
+    [ "$status" -eq 0 ]
+    [[ "$(patches)" == *'{"status":"In review"}' ]]
+}
+
+@test "a non-docs title on a non-standard branch sets In review" {
+    run issue_status pull-request-opened claude/great-cray-jds0o9 "Implements it." "feat(lists): E13 filter by supermarket"
+
+    [ "$status" -eq 0 ]
+    [[ "$(patches)" == *"issues/59 "*'{"status":"In review"}' ]]
+}
+
+@test "the epic number matches whole, so E1 does not pick E13" {
+    run issue_status pull-request-opened claude/x "" "feat: E1 and E13 work"
+
+    [ "$status" -eq 0 ]
+    [ -z "$(patches)" ]
+}
+
+@test "a title without an epic number changes nothing" {
+    run issue_status pull-request-opened claude/x "" "feat: something else"
+
+    [ "$status" -eq 0 ]
+    [ -z "$(patches)" ]
+}
+
+@test "a title whose epic number has several epic files changes nothing" {
+    run issue_status pull-request-opened claude/x "" "docs(epics): add E12"
+
+    [ "$status" -eq 0 ]
+    [ -z "$(patches)" ]
+}
+
+@test "the title is ignored when the branch is a standard epic branch" {
+    run issue_status pull-request-opened feat/e13-filter-list-by-supermarket "" "docs: E12 mention"
+
+    [ "$status" -eq 0 ]
+    [[ "$(patches)" == *"issues/59 "*'{"status":"In review"}' ]]
+}
+
+@test "creating a non-standard branch changes nothing, as it has no title yet" {
+    run issue_status branch-created claude/great-cray-jds0o9
+
+    [ "$status" -eq 0 ]
+    [ -z "$(patches)" ]
+}
+
 @test "it fails when GitHub refuses the change, so the workflow turns red" {
     export FAKE_GH_PATCH_FAIL=1
 

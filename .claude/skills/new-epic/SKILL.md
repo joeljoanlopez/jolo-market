@@ -103,5 +103,5 @@ Before committing, check that:
 3. Push and run `gh pr create` with:
    - Title: same as the commit subject.
    - Body: the goal, a summary of the decisions (PD-n), deferred questions (OQ-n), the task list overview, and the attribution line.
-4. If the epic comes from an issue, the `Issue status` workflow sets it to `Todo` when the PR opens (PD-115; it needs the `docs/e<n>-<slug>` branch name). Do not set it by hand.
+4. If the epic comes from an issue, the `Issue status` workflow sets it to `Todo` when the PR opens (PD-115; it needs the `docs/e<n>-<slug>` branch name, or, when the environment forces another branch name, a PR title starting with `docs(epics): add E<n> …`, PD-123). Do not set it by hand.
 5. Give the user the PR link and list any open questions left.

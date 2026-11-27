@@ -390,7 +390,7 @@ On `main` every job runs. On any other branch a job runs only when the branch ch
 
 `make ci-scope` prints what your branch would run.
 
-A separate workflow, [`issue-status.yml`](.github/workflows/issue-status.yml), keeps the status of the GitHub issue an epic was requested in up to date (PD-115): creating a `<type>/e<n>-<slug>` branch sets `In progress`, opening its pull request sets `In review`, and opening the pull request of a `docs/e<n>-<slug>` branch (a new epic) sets `Todo`. It runs `deploy/issue-status.sh`.
+A separate workflow, [`issue-status.yml`](.github/workflows/issue-status.yml), keeps the status of the GitHub issue an epic was requested in up to date (PD-115): creating a `<type>/e<n>-<slug>` branch sets `In progress`, opening its pull request sets `In review`, and opening the pull request of a `docs/e<n>-<slug>` branch (a new epic) sets `Todo`. When the pull request's branch is not an epic branch (for example `claude/<random>`), the epic is taken from the `E<n>` in the PR title and the Conventional Commit type decides: `docs…` → `Todo`, anything else → `In review` (PD-123). It runs `deploy/issue-status.sh`.
 
 ## Self-hosting (production)
 
