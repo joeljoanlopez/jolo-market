@@ -47,6 +47,7 @@ services:
         exec php-fpm
     volumes:
       - ./backend:/var/www/backend
+      - receipts:/var/receipts
     environment:
       DATABASE_URL: "mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}?serverVersion=9.7.4&charset=utf8mb4"
       XDEBUG_MODE: ${XDEBUG_MODE:-off}
@@ -121,3 +122,5 @@ volumes:
   mysql-data:
   frontend-node-modules:
   typesense-data:
+  # Receipt photos (PD-68).
+  receipts:

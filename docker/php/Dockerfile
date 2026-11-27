@@ -14,6 +14,9 @@ RUN apk add --no-cache icu-libs libzip \
 
 COPY docker/php/php.ini /usr/local/etc/php/conf.d/zz-app.ini
 
+# Mount point of the receipts volume (PD-68): a new volume takes its owner from the image.
+RUN mkdir -p /var/receipts && chown www-data:www-data /var/receipts
+
 WORKDIR /var/www/backend
 
 FROM base AS dev
@@ -32,7 +35,8 @@ RUN apk add --no-cache git unzip shadow \
     && rm -rf /tmp/pear
 
 # Match the host user so files written through the bind mount stay editable.
-RUN groupmod -o -g "${GID}" www-data && usermod -o -u "${UID}" -g "${GID}" www-data
+RUN groupmod -o -g "${GID}" www-data && usermod -o -u "${UID}" -g "${GID}" www-data \
+    && chown www-data:www-data /var/receipts
 
 COPY --from=composer /usr/bin/composer /usr/local/bin/composer
 COPY docker/php/xdebug.ini /usr/local/etc/php/conf.d/zz-xdebug.ini

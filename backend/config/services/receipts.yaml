@@ -1,0 +1,12 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\Receipts\:
+        resource: '../../src/Receipts/'
+
+    # One file per receipt in the receipts volume (PD-68, PD-69).
+    App\Receipts\Infrastructure\Storage\FilesystemReceiptPhotoStorage:
+        arguments:
+            $directory: '%env(string:RECEIPT_STORAGE_DIR)%'
