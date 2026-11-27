@@ -74,7 +74,8 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
   - `GetListReceipts`: `pending` (reading and draft) and `confirmed`, newest first.
   - `GetListSpending`: confirmed receipts only. It gives the total per month (by receipt date, Europe/Madrid) and per supermarket, newest month first (PD-70).
   - Note: pending receipts go by upload time, newest first; confirmed ones by receipt date, then upload time. The supermarkets of a month go by name. Receipts carry the supermarket name and the upload time; `readBy` is not returned (PD-114).
-- [ ] E10.16 Handle `ShoppingListDeleted` in Receipts: remove every receipt of the list and its photos (PD-63).
+- [x] E10.16 Handle `ShoppingListDeleted` in Receipts: remove every receipt of the list and its photos (PD-63).
+  - Note: the use case is `RemoveListReceipts`; the Messenger handler of `ShoppingListDeleted` that calls it is wired with E10.9 and E10.23.
 
 ### Infrastructure
 
