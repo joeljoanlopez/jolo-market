@@ -31,7 +31,7 @@ The backend does not change: `ListJson` and `ProductJson` already return `imageU
 
 ### End to end
 
-- [ ] E15.5 Extend `frontend/e2e/lists.spec.ts`: a user types in "Qué necesitas", sees the "Sin imagen" placeholder on the suggested products (the dummy catalog has no images, PD-99), adds one, sees the placeholder in its row and opens the product page by clicking it, then goes back to the list and checks that a free-text item shows no image.
+- [x] E15.5 Extend `frontend/e2e/lists.spec.ts`: a user types in "Qué necesitas", sees the "Sin imagen" placeholder on the suggested products (the dummy catalog has no images, PD-99), adds one, sees the placeholder in its row and opens the product page by clicking it, then goes back to the list and checks that a free-text item shows no image.
 
 ### Docs
 
