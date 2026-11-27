@@ -1,0 +1,60 @@
+name: Nueva funcionalidad
+description: Pide algo que la aplicación todavía no hace.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe el problema antes que la solución. Cada petición se convierte en una épica con `/new-epic`, y las preguntas que queden abiertas se resolverán ahí.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema o necesidad
+      description: ¿Qué quieres conseguir y qué te lo impide hoy?
+      placeholder: Cuando hago la compra en dos supermercados, no sé qué comprar en cada uno…
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Propuesta
+      description: Cómo te imaginas que funcione. Paso a paso, qué ves y qué haces, y en qué pantalla.
+    validations:
+      required: true
+  - type: dropdown
+    id: roles
+    attributes:
+      label: ¿Quién lo usa?
+      multiple: true
+      options:
+        - Administrador (ADMIN)
+        - Usuario (USER)
+        - Propietario de una lista
+        - Miembro de una lista
+        - Quien despliega o mantiene la instancia
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Criterios de aceptación
+      description: Qué tienes que poder hacer para darlo por terminado. Uno por línea.
+      placeholder: |
+        - Puedo …
+        - Si …, veo …
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Fuera de alcance
+      description: Lo que esta petición **no** incluye.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas
+      description: Otras formas de resolverlo que hayas pensado o que uses ahora.
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto adicional
+      description: Capturas, bocetos, enlaces o decisiones relacionadas (PD-n).

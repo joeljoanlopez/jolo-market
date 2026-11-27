@@ -104,3 +104,118 @@ test('two users share a list through its link, see each other’s changes, and a
 
   await memberContext.close();
 });
+
+function suggestion(page: Page, name: string) {
+  return page
+    .getByRole('listbox', { name: lists.suggestions.label })
+    .getByRole('option')
+    .filter({ has: page.getByText(name, { exact: true }) });
+}
+
+// E12.7. Runs against the known catalog of backend/tests/Fixtures/e2e/catalog.sql.
+test('a user adds catalog products from inside a list, by click, by keyboard and from every result', async ({
+  page,
+}) => {
+  const listName = `Productos e2e ${String(Date.now() % 1_000_000)}`;
+  await page.goto('/');
+  await page.getByLabel(lists.create.name, { exact: true }).fill(listName);
+  await page.getByRole('button', { name: lists.create.submit }).click();
+  await expect(page).toHaveURL(/\/lists\/[^/]+$/);
+  const listUrl = new URL(page.url()).pathname;
+  const field = page.getByRole('combobox', { name: lists.add.text });
+
+  // 1. A product with a click (PD-80, PD-81).
+  await field.fill('leche');
+  await suggestion(page, 'Leche entera').click();
+  await expect(item(page, 'Leche entera')).toBeVisible();
+  await expect(field).toHaveValue('');
+  await expect(field).toBeFocused();
+
+  // 2. Another one with the keyboard: the text option, then the first and second products.
+  await field.fill('leche');
+  await expect(suggestion(page, 'Leche semidesnatada')).toBeVisible();
+  await field.press('ArrowDown');
+  await field.press('ArrowDown');
+  await field.press('ArrowDown');
+  await expect(suggestion(page, 'Leche semidesnatada')).toHaveAttribute('aria-selected', 'true');
+  await field.press('Enter');
+  await expect(item(page, 'Leche semidesnatada')).toBeVisible();
+
+  // 3. Free text with Enter, as before.
+  await field.fill('pan');
+  await field.press('Enter');
+  await expect(item(page, 'pan')).toBeVisible();
+
+  const totals = page.getByRole('region', { name: lists.totals.title });
+  await expect(totals.getByText('Mercadona', { exact: true })).toBeVisible();
+  await expect(totals.getByText('Aldi', { exact: true })).toBeVisible();
+
+  // 4. Every result of the search, which adds straight to this list (PD-82).
+  await field.fill('yogur');
+  await page.getByRole('link', { name: lists.suggestions.seeAll }).click();
+  await expect(page).toHaveURL(`/search?q=yogur&list=${listUrl.split('/').at(-1) ?? ''}`);
+  await page.getByRole('button', { name: `Añadir Yogur natural a ${listName}` }).click();
+  await expect(page.getByText(`Añadido a «${listName}».`)).toBeVisible();
+
+  await page.getByRole('link', { name: `Volver a ${listName}` }).click();
+  await expect(page).toHaveURL(listUrl);
+  await expect(item(page, 'Yogur natural')).toBeVisible();
+});
+
+function chip(page: Page, name: RegExp) {
+  return page.getByRole('group', { name: lists.filter.label }).getByRole('button', { name });
+}
+
+// E13.5. Runs against the known catalog of backend/tests/Fixtures/e2e/catalog.sql.
+test('a user filters a list by supermarket, keeps the filter on reload and goes back to every item', async ({
+  page,
+}) => {
+  const listName = `Filtro e2e ${String(Date.now() % 1_000_000)}`;
+  await page.goto('/');
+  await page.getByLabel(lists.create.name, { exact: true }).fill(listName);
+  await page.getByRole('button', { name: lists.create.submit }).click();
+  await expect(page).toHaveURL(/\/lists\/[^/]+$/);
+  const listUrl = new URL(page.url()).pathname;
+  const field = page.getByRole('combobox', { name: lists.add.text });
+
+  // 1. Products of two supermarkets (Mercadona 0,89 €, Aldi 1,35 €) and a free-text item.
+  await field.fill('leche');
+  await suggestion(page, 'Leche entera').click();
+  await expect(item(page, 'Leche entera')).toBeVisible();
+  await field.fill('leche');
+  await suggestion(page, 'Leche semidesnatada').click();
+  await expect(item(page, 'Leche semidesnatada')).toBeVisible();
+  await addItem(page, 'pan', '1');
+
+  // 2. The chips with their totals (PD-84).
+  await expect(chip(page, new RegExp(lists.filter.all))).toHaveAttribute('aria-pressed', 'true');
+  await expect(chip(page, /Mercadona/u)).toHaveText(/0,89\s€/u);
+  await expect(chip(page, /Aldi/u)).toHaveText(/1,35\s€/u);
+
+  // 3. One supermarket: only its products, and the notice of the hidden free-text item (PD-85).
+  await chip(page, /Mercadona/u).click();
+  await expect(page).toHaveURL(`${listUrl}?supermarket=mercadona`);
+  await expect(item(page, 'Leche entera')).toBeVisible();
+  await expect(item(page, 'Leche semidesnatada')).toBeHidden();
+  await expect(item(page, 'pan')).toBeHidden();
+  await expect(page.getByText('1 elemento sin supermercado no se muestra')).toBeVisible();
+
+  // 4. A reload keeps the filter (PD-86).
+  await page.reload();
+  await expect(item(page, 'Leche entera')).toBeVisible();
+  await expect(item(page, 'Leche semidesnatada')).toBeHidden();
+  await expect(chip(page, /Mercadona/u)).toHaveAttribute('aria-pressed', 'true');
+
+  // 5. A new quantity changes the chip total: the same product adds to its quantity (PD-45).
+  await page.getByLabel(lists.add.quantity, { exact: true }).fill('2');
+  await field.fill('leche');
+  await suggestion(page, 'Leche entera').click();
+  await expect(chip(page, /Mercadona/u)).toHaveText(/2,67\s€/u);
+
+  // 6. Back to "Todos": every item is still in the list (PD-83).
+  await chip(page, new RegExp(lists.filter.all)).click();
+  await expect(page).toHaveURL(listUrl);
+  await expect(item(page, 'Leche entera')).toBeVisible();
+  await expect(item(page, 'Leche semidesnatada')).toBeVisible();
+  await expect(item(page, 'pan')).toBeVisible();
+});

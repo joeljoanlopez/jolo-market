@@ -122,3 +122,44 @@ export function AddToListButton({
     </Button>
   );
 }
+
+/** "Add to list" of a search result opened from a list: it adds straight to that list (PD-82). */
+export function AddToTargetListButton({
+  productName,
+  listName,
+  pending,
+  added,
+  failed,
+  onAdd,
+}: {
+  productName: string;
+  listName: string;
+  pending: boolean;
+  added: boolean;
+  failed: boolean;
+  onAdd: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <Button
+        variant="secondary"
+        size="sm"
+        aria-label={t('lists.addToList.addToTargetLabel', { name: productName, list: listName })}
+        disabled={pending}
+        onClick={onAdd}
+      >
+        {t('lists.addToList.addToTarget')}
+      </Button>
+      {failed ? <Alert>{t('lists.addToList.failed')}</Alert> : null}
+      <div role="status">
+        {added ? (
+          <Text size="sm" weight="medium">
+            {t('lists.addToList.added', { name: listName })}
+          </Text>
+        ) : null}
+      </div>
+    </div>
+  );
+}

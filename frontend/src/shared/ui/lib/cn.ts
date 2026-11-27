@@ -18,6 +18,8 @@ const twMerge = extendTailwindMerge({
         'danger-hover',
         'danger-foreground',
         'focus',
+        'qr',
+        'qr-background',
         'mercadona',
         'mercadona-foreground',
         'bonpreu',

@@ -253,6 +253,12 @@
       "empty": "La lista está vacía. Añade lo que necesites.",
       "itemFailed": "No se ha podido guardar el cambio. Inténtalo de nuevo."
     },
+    "filter": {
+      "label": "Filtrar por supermercado",
+      "all": "Todos",
+      "hidden_one": "{{count}} elemento sin supermercado no se muestra",
+      "hidden_other": "{{count}} elementos sin supermercado no se muestran"
+    },
     "notFound": {
       "title": "Lista no encontrada",
       "description": "Esta lista no existe, se ha borrado o ya no tienes acceso a ella.",
@@ -271,6 +277,15 @@
       "submit": "Añadir",
       "invalid": "Escribe entre 1 y 120 caracteres y una cantidad de 1 a 99.",
       "failed": "No se ha podido añadir. Inténtalo de nuevo."
+    },
+    "suggestions": {
+      "label": "Sugerencias",
+      "addText": "Añadir «{{text}}» como texto",
+      "loading": "Buscando productos…",
+      "empty": "No hay productos para «{{text}}».",
+      "error": "No se han podido buscar productos.",
+      "retry": "Reintentar",
+      "seeAll": "Ver todos los resultados"
     },
     "totals": {
       "title": "Total estimado por supermercado",
@@ -326,7 +341,18 @@
       "failed": "No se ha podido añadir. Inténtalo de nuevo.",
       "loading": "Cargando tus listas…",
       "noLists": "Aún no tienes listas.",
-      "createList": "Crear una lista"
+      "createList": "Crear una lista",
+      "addToTarget": "Añadir a la lista",
+      "addToTargetLabel": "Añadir {{name}} a {{list}}"
+    },
+    "backToList": "Volver a {{name}}"
+  },
+  "theme": {
+    "label": "Tema",
+    "options": {
+      "system": "Sistema",
+      "light": "Claro",
+      "dark": "Oscuro"
     }
   }
 }

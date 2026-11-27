@@ -7,8 +7,10 @@ import { routes as appRoutes } from '@/app/routes';
 import { FakeAuthGateway } from './FakeAuthGateway';
 import { FakeProductCatalog } from './FakeProductCatalog';
 import { FakeShoppingLists } from './FakeShoppingLists';
+import { FakeSystemColorScheme } from './FakeSystemColorScheme';
 import { FakeUserAdministration } from './FakeUserAdministration';
 import { testI18n } from './i18n';
+import { InMemoryThemePreferenceStore } from './InMemoryThemePreferenceStore';
 import { createTestQueryClient } from './render';
 
 interface RenderAppOptions {
@@ -16,6 +18,8 @@ interface RenderAppOptions {
   catalog?: FakeProductCatalog;
   administration?: FakeUserAdministration;
   lists?: FakeShoppingLists;
+  themeStore?: InMemoryThemePreferenceStore;
+  systemColorScheme?: FakeSystemColorScheme;
   routes?: RouteObject[];
 }
 
@@ -27,6 +31,8 @@ export function renderApp(
     catalog = new FakeProductCatalog(),
     administration = new FakeUserAdministration(),
     lists = new FakeShoppingLists(),
+    themeStore = new InMemoryThemePreferenceStore(),
+    systemColorScheme = new FakeSystemColorScheme(),
     routes = appRoutes,
   }: RenderAppOptions = {},
 ) {
@@ -40,6 +46,8 @@ export function renderApp(
       authGateway={auth}
       userAdministration={administration}
       shoppingLists={lists}
+      themePreferenceStore={themeStore}
+      systemColorScheme={systemColorScheme}
     />,
   );
   return router;

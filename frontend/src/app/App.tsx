@@ -13,6 +13,11 @@ import { ProductCatalogContext } from '@/features/catalog/application/productCat
 import type { ShoppingLists } from '@/features/shopping-list/application/ShoppingLists';
 import { ShoppingListsContext } from '@/features/shopping-list/application/shoppingListsContext';
 import { createShoppingListApi } from '@/features/shopping-list/infrastructure/shoppingListApi';
+import type { SystemColorScheme } from '@/features/theme/application/SystemColorScheme';
+import { ThemePreferenceProvider } from '@/features/theme/application/ThemePreferenceProvider';
+import type { ThemePreferenceStore } from '@/features/theme/application/ThemePreferenceStore';
+import { createLocalStorageThemePreferenceStore } from '@/features/theme/infrastructure/localStorageThemePreferenceStore';
+import { createMatchMediaSystemColorScheme } from '@/features/theme/infrastructure/matchMediaSystemColorScheme';
 import { createHttpClient } from '@/shared/http/httpClient';
 
 interface AppProps {
@@ -24,6 +29,10 @@ interface AppProps {
   userAdministration: UserAdministration;
   /** Defaults to the API client on this origin; tests pass a fake. */
   shoppingLists?: ShoppingLists;
+  /** Defaults to this browser's localStorage; tests pass an in-memory store. */
+  themePreferenceStore?: ThemePreferenceStore;
+  /** Defaults to the browser's prefers-color-scheme; tests pass a fake. */
+  systemColorScheme?: SystemColorScheme;
 }
 
 /** Root component. Dependencies are injected so tests can use a memory router. */
@@ -35,11 +44,17 @@ export function App({
   authGateway,
   userAdministration,
   shoppingLists,
+  themePreferenceStore,
+  systemColorScheme,
 }: AppProps) {
   const [lists] = useState(
     () =>
       shoppingLists ?? createShoppingListApi(createHttpClient({ baseUrl: window.location.origin })),
   );
+  const [themeStore] = useState(
+    () => themePreferenceStore ?? createLocalStorageThemePreferenceStore(),
+  );
+  const [systemScheme] = useState(() => systemColorScheme ?? createMatchMediaSystemColorScheme());
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -48,7 +63,9 @@ export function App({
           <UserAdministrationContext value={userAdministration}>
             <ProductCatalogContext value={productCatalog}>
               <ShoppingListsContext value={lists}>
-                <RouterProvider router={router} />
+                <ThemePreferenceProvider store={themeStore} systemColorScheme={systemScheme}>
+                  <RouterProvider router={router} />
+                </ThemePreferenceProvider>
               </ShoppingListsContext>
             </ProductCatalogContext>
           </UserAdministrationContext>

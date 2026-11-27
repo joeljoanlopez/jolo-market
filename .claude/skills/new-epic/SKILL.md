@@ -33,6 +33,7 @@ Build a list of **every product question the epic needs answered**. Go through t
 - **Existing data**: does anything already stored need migrating or keep working as before?
 - **Compatibility**: does the current behavior stay available (for example free-text items next to product items)?
 - **Copy**: any wording the user cares about (Spanish copy goes to `es.json`).
+- **Development commands**: when the epic adds or changes a development command (a Composer or npm script, a script in `deploy/`, a console command used while developing), should it get a `make` target (PD-61)?
 - **Acceptance**: what the user must be able to do for the feature to count as done, and which journey Playwright must cover.
 
 Ask the questions **one at a time**, most fundamental first (answers often remove or create later questions):

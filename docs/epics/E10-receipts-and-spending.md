@@ -2,7 +2,7 @@
 
 **Goal:** the owner and the members of a shopping list upload the photo of a Mercadona, Bonpreu i Esclat or Aldi receipt. The server reads it with the instance's local AI, or with local OCR when the AI is not configured or fails, and a draft comes out of it. They review the draft, link each line to a product of that supermarket and confirm it. The list then shows what was bought and how much was spent each month, per supermarket. Lines that were linked once are linked by themselves next time.
 
-Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 to PD-71, PD-73 to PD-75. Open questions: none.
+Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 to PD-71, PD-112 to PD-114. Open questions: none.
 
 ## Acceptance criteria
 
@@ -17,8 +17,8 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 - Users who are not owner or member get `404` for the receipts, the spending and the photos of the list (PD-63).
 - Confirming a receipt changes neither the list items nor the catalog prices and price history (PD-67, PD-71).
 - `deploy/backup.sh` also saves the receipt photos, and the README explains how to restore them (PD-69).
-- When `RECEIPT_AI_BASE_URL` is set, the receipt is read by the AI. When the AI is not configured, cannot be reached, times out, answers with an error or returns JSON that does not match the schema, the receipt is read by the OCR instead. The receipt stores `readBy` (`ai`, `ocr` or `none`) (PD-73, PD-74, PD-75).
-- No test reaches the network. The AI reader is tested against recorded AI answers, and OCR and parsers against recorded photos (PD-62, PD-73).
+- When `RECEIPT_AI_BASE_URL` is set, the receipt is read by the AI. When the AI is not configured, cannot be reached, times out, answers with an error or returns JSON that does not match the schema, the receipt is read by the OCR instead. The receipt stores `readBy` (`ai`, `ocr` or `none`) (PD-112, PD-113, PD-114).
+- No test reaches the network. The AI reader is tested against recorded AI answers, and OCR and parsers against recorded photos (PD-62, PD-112).
 
 ## Tasks
 
@@ -26,13 +26,13 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 
 - [ ] E10.1 Spike (one day): run Tesseract (`spa` + `cat`) on the sample receipts of each chain, choose the image preprocessing (grayscale, threshold, scaling) and check the text is good enough for a parser. Record what each chain prints (date, total, line, weight line, discount line) and the preprocessing in a note under this task.
   - Needs **2–3 real receipt photos per chain** from the product owner, with the card digits covered. They become the fixtures in `backend/tests/Fixtures/Receipts/`.
-- [ ] E10.40 Spike (one day): send the same sample photos to the product owner's local vision model through its OpenAI-compatible API with `response_format` `json_schema`. Write the JSON schema and the prompt (supermarket name, Spanish and Catalan receipts, amounts in cents, units or kg). Check whether the server honours `json_schema` and how long a receipt takes, and choose the image size sent. Record the model, server, schema, prompt, timings and the answers in a note under this task. The answers become the recorded fixtures of E10.41 (PD-73).
+- [ ] E10.40 Spike (one day): send the same sample photos to the product owner's local vision model through its OpenAI-compatible API with `response_format` `json_schema`. Write the JSON schema and the prompt (supermarket name, Spanish and Catalan receipts, amounts in cents, units or kg). Check whether the server honours `json_schema` and how long a receipt takes, and choose the image size sent. Record the model, server, schema, prompt, timings and the answers in a note under this task. The answers become the recorded fixtures of E10.41 (PD-112).
   - Needs the product owner's model name and server (Ollama, llama.cpp, vLLM, LM Studio…) to run it.
 
 ### Domain (Receipts)
 
-- [ ] E10.2 Create the `Receipts` context and add its value objects: `ReceiptId`, `ReceiptStatus` (`READING`, `DRAFT`, `CONFIRMED`), `LineText` (1–120 characters after trimming), `LineQuantity` (whole units 1–999, or a weight of 1–99 999 thousandths of a kg) `ReadBy` (`AI`, `OCR`, `NONE`, PD-75) and `ReceiptDate` (a day; "not in the future" is checked against the `Clock` where it is set) (PD-66).
-- [ ] E10.3 Add the `Receipt` aggregate. `upload(listId, supermarketId, uploaderId, photo, uploadedAt)` starts it as `READING`. `completeReading(readResult)` moves it to `DRAFT` with the date, total and lines that were read and who read them, or empty with `readBy` `NONE` when reading failed (PD-65, PD-75).
+- [ ] E10.2 Create the `Receipts` context and add its value objects: `ReceiptId`, `ReceiptStatus` (`READING`, `DRAFT`, `CONFIRMED`), `LineText` (1–120 characters after trimming), `LineQuantity` (whole units 1–999, or a weight of 1–99 999 thousandths of a kg) `ReadBy` (`AI`, `OCR`, `NONE`, PD-114) and `ReceiptDate` (a day; "not in the future" is checked against the `Clock` where it is set) (PD-66).
+- [ ] E10.3 Add the `Receipt` aggregate. `upload(listId, supermarketId, uploaderId, photo, uploadedAt)` starts it as `READING`. `completeReading(readResult)` moves it to `DRAFT` with the date, total and lines that were read and who read them, or empty with `readBy` `NONE` when reading failed (PD-65, PD-114).
 - [ ] E10.4 Add line behavior to `Receipt`:
   - `addProductLine`, `addDiscountLine`, `updateLine`, `removeLine`, `linkProduct(lineId, productId)` and `unlink` (product lines only).
   - `changeDate` and `changeTotal`.
@@ -75,12 +75,12 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 - [ ] E10.18 Add `MercadonaReceiptParser` (OCR text → date, total, product lines with units or weight, discount lines). Unit tests run against the recorded OCR text of every Mercadona fixture, and unreadable parts are left out rather than guessed (PD-62).
 - [ ] E10.19 Add `BonpreuEsclatReceiptParser`, the same way (PD-62).
 - [ ] E10.20 Add `AldiReceiptParser`, the same way (PD-62).
-- [ ] E10.41 Add `OpenAiCompatibleReceiptAi` over `symfony/http-client`: it posts the photo (base64 data URL, sized as in E10.40), the supermarket, the prompt and the JSON schema of E10.40 to `RECEIPT_AI_BASE_URL/chat/completions` with `RECEIPT_AI_MODEL`, the optional Bearer `RECEIPT_AI_API_KEY` and `RECEIPT_AI_TIMEOUT_SECONDS`. It maps the answer to a read result, and treats a network error, a timeout, a non-2xx answer, or JSON that does not match the schema or the receipt rules (PD-66) as a failure. One attempt, no retry. Unit tests use `MockHttpClient` with the recorded answers of E10.40 and cover each failure (PD-73, PD-74).
-- [ ] E10.21 Add the `ReceiptReader` adapter, which reads with the AI first and the OCR as fallback (PD-73):
+- [ ] E10.41 Add `OpenAiCompatibleReceiptAi` over `symfony/http-client`: it posts the photo (base64 data URL, sized as in E10.40), the supermarket, the prompt and the JSON schema of E10.40 to `RECEIPT_AI_BASE_URL/chat/completions` with `RECEIPT_AI_MODEL`, the optional Bearer `RECEIPT_AI_API_KEY` and `RECEIPT_AI_TIMEOUT_SECONDS`. It maps the answer to a read result, and treats a network error, a timeout, a non-2xx answer, or JSON that does not match the schema or the receipt rules (PD-66) as a failure. One attempt, no retry. Unit tests use `MockHttpClient` with the recorded answers of E10.40 and cover each failure (PD-112, PD-113).
+- [ ] E10.21 Add the `ReceiptReader` adapter, which reads with the AI first and the OCR as fallback (PD-112):
   - When `RECEIPT_AI_BASE_URL` is set, it asks E10.41 and, on success, returns its result with `readBy` `AI`.
   - When the AI is not configured or fails, it runs the OCR and the parser of the receipt's supermarket, and returns `readBy` `OCR`.
   - When both fail, it is a failure (`readBy` `NONE`).
-  - Every failure and the `readBy` are logged without the receipt text (PD-75). Unit tests use fakes of the AI and the OCR for every path.
+  - Every failure and the `readBy` are logged without the receipt text (PD-114). Unit tests use fakes of the AI and the OCR for every path.
 - [ ] E10.22 Add `FilesystemReceiptPhotoStorage` under `RECEIPT_STORAGE_DIR` (one file per receipt id, never a name taken from the upload). Add a `receipts` volume to `compose.yaml` and `compose.prod.yaml`. Integration test against a temporary directory.
 - [ ] E10.23 Add `symfony/messenger` with the Doctrine transport for `ReceiptReadingQueue` and the `ShoppingListDeleted` event, and a `worker` service (`messenger:consume`) in dev and prod. Every new development command or script gets the `make` question of PD-61.
 - [ ] E10.24 Add the migrations and the DBAL adapters:
@@ -138,11 +138,11 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 - [ ] E10.38 Update `docs/architecture.md` with the Receipts context:
   - Bounded contexts, the domain model, ports and adapters, and the allowed cross-context paths.
   - The worker and the optional local AI in "Runtime and deployment".
-  - The receipt flow in "Key flows", with the AI first and the OCR fallback (PD-73).
+  - The receipt flow in "Key flows", with the AI first and the OCR fallback (PD-112).
   - The HTTP API, and the tables in "Persistence".
 - [ ] E10.39 Update the README:
   - Receipts API.
   - `RECEIPT_STORAGE_DIR` and the `receipts` volume in the `.env` reference.
-  - `RECEIPT_AI_BASE_URL`, `RECEIPT_AI_MODEL`, `RECEIPT_AI_API_KEY` and `RECEIPT_AI_TIMEOUT_SECONDS`, how to point them at Ollama or another OpenAI-compatible server, and the warning that an AI not run by the operator sends the receipt photos out of the server (PD-74).
+  - `RECEIPT_AI_BASE_URL`, `RECEIPT_AI_MODEL`, `RECEIPT_AI_API_KEY` and `RECEIPT_AI_TIMEOUT_SECONDS`, how to point them at Ollama or another OpenAI-compatible server, and the warning that an AI not run by the operator sends the receipt photos out of the server (PD-113).
   - The `worker` service.
   - Backup and restore of the photos (PD-69).
