@@ -6,7 +6,7 @@ SHELL := /bin/sh
 
 COMPOSE := docker compose
 
-.PHONY: help dev-stack-only init start stop restart logs shell migrate check check-backend check-frontend test-unit test-deploy ci-scope unmapped-categories
+.PHONY: help dev-stack-only init start stop restart logs shell migrate check check-backend check-frontend test-unit test-deploy ci-scope unmapped-categories reindex
 
 help: ## List every target with its description
 	@awk 'BEGIN { FS = ":.*## " } /^[a-z-]+:.*## / { printf "  %-20s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -68,6 +68,10 @@ test-unit: dev-stack-only ## Run the backend unit suite only (fast TDD loop)
 # Read only: the output is the input for extending the section mapping (PD-95).
 unmapped-categories: dev-stack-only ## List the catalog categories that map to the "Otros" section
 	$(COMPOSE) exec php bin/console app:catalog:unmapped-categories
+
+# Also reloads the dictionary of config/search/synonyms.yaml (PD-100, PD-101); search keeps answering meanwhile.
+reindex: dev-stack-only ## Rebuild the product search index from the catalog
+	$(COMPOSE) exec php bin/console app:catalog:reindex-search
 
 # On the host, like CI.
 check-frontend: ## Run Prettier, ESLint, tsc and Vitest on the host
