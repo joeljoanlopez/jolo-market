@@ -67,7 +67,7 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 
   Unknown receipt or line, or a receipt of another list → 404.
   - Note: `AddLine` and a text change in `UpdateLine` apply the memory or the suggestion like `ReadReceipt` (PD-128). `DeleteReceipt` works in any status, also `READING` (PD-129).
-- [ ] E10.14 Add `ConfirmReceipt`: it confirms the receipt and stores "text → product" in the memory for every linked line of that supermarket, so the last confirmation wins. It never touches list items or the catalog (PD-67, PD-71).
+- [x] E10.14 Add `ConfirmReceipt`: it confirms the receipt and stores "text → product" in the memory for every linked line of that supermarket, so the last confirmation wins. It never touches list items or the catalog (PD-67, PD-71).
   - Note: a confirmed receipt can be confirmed again, which stores the memory again (PD-130).
 - [ ] E10.15 Add the queries:
   - `GetReceipt`: status, supermarket, date, total, uploader, and lines with the linked or suggested product (name, brand, available). A product the catalog no longer knows is shown by its text. It also returns `differenceCents`.
