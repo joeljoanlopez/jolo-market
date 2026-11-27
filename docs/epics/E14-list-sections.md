@@ -2,7 +2,7 @@
 
 **Goal:** the owner and the members of a shopping list see its pending items grouped by store section (Fruta y verdura, Lácteos y huevos, Despensa…), in a fixed order that follows a typical walk through the store, so they can shop section by section. A product's section comes from its catalog category, and any member can change the section of any item. Requested in [issue #65](https://github.com/joeljoanlopez/jolo-market/issues/65).
 
-Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, PD-85, PD-90, PD-91, PD-92, PD-93, PD-94, PD-95, PD-96.
+Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, PD-85, PD-90, PD-91, PD-92, PD-93, PD-94, PD-95, PD-96, PD-115, PD-116, PD-117.
 
 ## Acceptance criteria
 
@@ -24,7 +24,7 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 
 ### Domain (Catalog)
 
-- [ ] E14.1 Add the `Section` enum in `Catalog\Domain` with the thirteen sections of PD-90, their English ids and their display order, and a `SectionMapping` domain service that turns a supermarket id and a `CategoryPath` into a `Section` by the longest matching prefix, `other` for a missing or unknown path (PD-91). Start with the mapping of the dummy catalog categories (`DummyCatalog`), so every dummy product gets a section other than `other`; unit tests cover the longest-prefix rule, a missing path and an unknown path.
+- [ ] E14.1 Add the `Section` enum in `Catalog\Domain` with the thirteen sections of PD-90, their English ids and their display order, and a `SectionMapping` domain service that turns a supermarket id and a `CategoryPath` into a `Section` by the longest matching prefix, `other` for a missing or unknown path (PD-91). Start with the mapping of the dummy catalog categories (`DummyCatalog`), so every dummy product gets a section other than `other` ("Lácteos y huevos > Quesos" and "Carne y pescado > Embutidos" go to `deli-and-cheese`, PD-115); unit tests cover the longest-prefix rule, a missing path and an unknown path.
 
 ### Application (Catalog → ShoppingList)
 
@@ -33,7 +33,7 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 ### Domain and persistence (ShoppingList)
 
 - [ ] E14.3 Add an optional section choice to list items (`FreeTextItem` and `ProductItem`): `ShoppingList::changeItemSection(itemId, ?section)` sets or removes it (removing it on a free-text item leaves it in "Otros"), an unknown item is `ListItemNotFound`, and adding an already listed product keeps the choice (PD-92, PD-94). Add a nullable `section` column to `list_item` with a migration (existing rows stay `NULL`, PD-94), and map it in the DBAL repository.
-- [ ] E14.4 Accept `section` in `UpdateItemCommand`/`UpdateItemHandler`, validated against the section ids (unknown → a validation exception mapped to `422`), saved with the retry of PD-43.
+- [ ] E14.4 Accept `section` in `UpdateItemCommand`/`UpdateItemHandler`, validated against the section ids (unknown → a validation exception mapped to `422`), saved with the retry of PD-43. A checked item accepts it too (PD-117).
 
 ### API
 
@@ -46,6 +46,7 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 ### Mapping of the real chains
 
 - [ ] E14.7 Extend `SectionMapping` for Mercadona, Bonpreu i Esclat and Aldi. Input: the output of `app:catalog:unmapped-categories` on the product owner's real catalog, which the product owner provides (tests never call the real stores). Map by the most specific prefix where a top category mixes sections (Bonpreu "Frescos"). Bonpreu promotion paths ("Ofertes > …") stay in "Otros" (PD-92 lets members fix those items). Unit tests cover a sample of each chain, including the recorded fixture categories in `backend/tests/Fixtures/`. The product owner reviews the mapping in the pull request.
+  - Note: this container cannot reach the product owner's instance, so the rest of the epic is built first; the product owner then runs `make unmapped-categories` on their real catalog and pastes the output in the pull request, and the mapping is written in the same pull request. Until then this task stays unticked (confirmed by the product owner on 2026-11-27).
 
 ### Frontend (domain and infrastructure)
 
@@ -54,7 +55,7 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 
 ### Frontend (presentational)
 
-- [ ] E14.10 Add a `SectionHeader` component and a section selector on `ListItemRow` for pending items: the thirteen sections by their Spanish names, and for a product item also "Automática (<catalog section>)" (PD-92). It only gets props and emits `onSectionChange(section | null)`. Theme tokens only, `cva` variants if needed.
+- [ ] E14.10 Add a `SectionHeader` component and a section selector on `ListItemRow` for pending items (a compact native select under the quantity line, labelled with the item's name, PD-116): the thirteen sections by their Spanish names, and for a product item also "Automática (<catalog section>)" (PD-92). It only gets props and emits `onSectionChange(section | null)`. Theme tokens only, `cva` variants if needed.
 
 ### Frontend (container)
 
