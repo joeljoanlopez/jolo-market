@@ -219,3 +219,45 @@ test('a user filters a list by supermarket, keeps the filter on reload and goes 
   await expect(item(page, 'Leche semidesnatada')).toBeVisible();
   await expect(item(page, 'pan')).toBeVisible();
 });
+
+function row(page: Page, name: string) {
+  return page
+    .getByRole('list', { name: lists.page.items })
+    .getByRole('listitem')
+    .filter({ has: item(page, name) });
+}
+
+// E15.5. The e2e catalog has no images (PD-99), so every product shows the placeholder.
+test('a user sees product images in the suggestions and the list, and opens a product from its image', async ({
+  page,
+}) => {
+  const noImage = es.catalog.product.noImage;
+  const listName = `Imágenes e2e ${String(Date.now() % 1_000_000)}`;
+  await page.goto('/');
+  await page.getByLabel(lists.create.name, { exact: true }).fill(listName);
+  await page.getByRole('button', { name: lists.create.submit }).click();
+  await expect(page).toHaveURL(/\/lists\/[^/]+$/);
+  const listUrl = new URL(page.url()).pathname;
+  const field = page.getByRole('combobox', { name: lists.add.text });
+
+  // 1. The suggested products show the placeholder (PD-97). Images are hidden from assistive
+  // technology, which the product names already serve.
+  await field.fill('leche');
+  await expect(
+    suggestion(page, 'Leche entera').getByRole('img', { name: noImage, includeHidden: true }),
+  ).toBeVisible();
+
+  // 2. Added to the list, its row shows the placeholder too, which opens the product page (PD-48).
+  await suggestion(page, 'Leche entera').click();
+  const image = row(page, 'Leche entera').getByRole('img', { name: noImage, includeHidden: true });
+  await expect(image).toBeVisible();
+  await image.click();
+  await expect(page).toHaveURL(/\/product\/[^/]+$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Leche entera' })).toBeVisible();
+
+  // 3. Back in the list, a free-text item shows no image or placeholder.
+  await page.goBack();
+  await expect(page).toHaveURL(listUrl);
+  await addItem(page, 'pan', '1');
+  await expect(row(page, 'pan').getByRole('img', { includeHidden: true })).toHaveCount(0);
+});
