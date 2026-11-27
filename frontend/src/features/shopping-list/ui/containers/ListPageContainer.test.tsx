@@ -980,3 +980,58 @@ describe('ListPageContainer: sections (E14)', () => {
     expect(await sectionHeaders()).toEqual([sectionCopy.bakery, sectionCopy['dairy-and-eggs']]);
   });
 });
+
+describe('ListPageContainer: totals count pending items only (E17)', () => {
+  function totalsRow(name: string) {
+    return screen.findByRole('region', { name: copy.totals.title }).then((region) => {
+      const row = within(region).getByText(name).closest('li');
+      if (row === null) {
+        throw new Error(`No totals row for ${name}.`);
+      }
+      return row;
+    });
+  }
+
+  it('lowers the row total and the chip total when an item is checked, and restores them when it is unchecked (PD-120)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = lists.seed({ items: [product('milk', 0, MILK, 2), product('oil', 1, OIL)] });
+    renderAt(lists, `/lists/${stored.id}`);
+    const user = userEvent.setup();
+    expect(await totalsRow('Mercadona')).toHaveTextContent(asShown(formatPrice(250)));
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Leche entera' }));
+
+    await waitFor(async () => {
+      expect(await chip('Mercadona')).toHaveTextContent(asShown(formatPrice(0)));
+    });
+    expect(await totalsRow('Mercadona')).toHaveTextContent(asShown(formatPrice(0)));
+    expect(await chip('Bonpreu')).toHaveTextContent(asShown(formatPrice(800)));
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Leche entera' }));
+
+    await waitFor(async () => {
+      expect(await chip('Mercadona')).toHaveTextContent(asShown(formatPrice(250)));
+    });
+    expect(await totalsRow('Mercadona')).toHaveTextContent(asShown(formatPrice(250)));
+  });
+
+  it('keeps a fully bought supermarket at 0 with its checked items under its chip (PD-84, PD-85, PD-121)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = lists.seed({ items: [product('milk', 0, MILK), product('oil', 1, OIL)] });
+    renderAt(lists, `/lists/${stored.id}`);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Leche entera' }));
+    await waitFor(async () => {
+      expect(await chip('Mercadona')).toHaveTextContent(asShown(formatPrice(0)));
+    });
+    const row = await totalsRow('Mercadona');
+    expect(row).toHaveTextContent(asShown(formatPrice(0)));
+    expect(row).toHaveTextContent('0 productos');
+
+    await user.click(await chip('Mercadona'));
+
+    expect(await shownItemNames()).toEqual(['Leche entera']);
+    expect(screen.getByRole('checkbox', { name: 'Leche entera' })).toBeChecked();
+  });
+});

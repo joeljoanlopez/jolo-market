@@ -51,7 +51,7 @@ final class ManageListApiTest extends ShoppingListApiTestCase
                     'product' => ['id' => $gone, 'name' => 'Leche desnatada', 'brand' => null, 'supermarketId' => 'mercadona', 'priceCents' => 99, 'imageUrl' => null, 'available' => false, 'section' => 'other'], 'section' => 'other', 'sectionOverride' => null],
             ],
             'totals' => [
-                ['supermarketId' => 'aldi', 'supermarketName' => 'Aldi', 'totalCents' => 89, 'itemCount' => 1],
+                ['supermarketId' => 'aldi', 'supermarketName' => 'Aldi', 'totalCents' => 0, 'itemCount' => 0],
                 ['supermarketId' => 'mercadona', 'supermarketName' => 'Mercadona', 'totalCents' => 250, 'itemCount' => 1],
             ],
         ], $this->json());

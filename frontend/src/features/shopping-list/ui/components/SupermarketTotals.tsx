@@ -13,7 +13,7 @@ interface SupermarketTotalsProps {
   excluded: string[];
 }
 
-/** Estimated cost of the list per supermarket: price × quantity of its available products (PD-45). */
+/** What is still to buy per supermarket: price × quantity of its available, unchecked products (PD-45, PD-120). */
 export function SupermarketTotals({ totals, excluded }: SupermarketTotalsProps) {
   const { t } = useTranslation();
   const titleId = useId();

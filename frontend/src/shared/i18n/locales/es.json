@@ -305,7 +305,7 @@
       "seeAll": "Ver todos los resultados"
     },
     "totals": {
-      "title": "Total estimado por supermercado",
+      "title": "Pendiente de comprar por supermercado",
       "empty": "Añade productos desde la búsqueda para ver el total estimado por supermercado.",
       "itemCount_one": "{{count}} producto",
       "itemCount_other": "{{count}} productos",
