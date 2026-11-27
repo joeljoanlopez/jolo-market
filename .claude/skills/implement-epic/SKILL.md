@@ -89,13 +89,15 @@ If a task turns out to be bigger than planned, or impossible as written, add a `
    - Title: `<type>(<scope>): <epic title> (E<n>)`.
    - Body: the goal, the tasks implemented (E<n>.m with one line each), the decisions recorded during the work (PD-n) and their notes, anything left pending (unticked tasks and why), how it was verified (checks and e2e), and the attribution line required in this session.
 2. Watch CI with `gh pr checks --watch`. If it fails, fix it on the branch and push again. A red CI means the epic is not done.
-3. If the epic has an associated issue, move it to **In review** on the project board as soon as the PR exists (PD-115).
+3. If the epic has an associated issue, put `Closes #<n>` in the PR body: the project's built-in workflow then moves the issue to **In review** (PD-115). Do not move it by hand.
 4. Give the user the PR link, the decisions recorded and anything left pending.
 
 ## Issue board
 
-Epics requested from an issue follow PD-115: `To do` when the epic is added (`/new-epic` PR), `In progress` when implementation starts, `In review` when the implementation PR is open. To change the status:
+Epics requested from an issue follow PD-115. Only **In progress** is the assistant's job; `To do` and `In review` are built-in workflows of the GitHub project.
+
+To move the issue to In progress:
 
 1. Find the project and the item: `gh project list --owner joeljoanlopez`, then `gh project item-list <project-number> --owner joeljoanlopez --format json` and pick the item whose content is the issue.
 2. Set the field: `gh project field-list <project-number> --owner joeljoanlopez` for the `Status` field and option ids, then `gh project item-edit --id <item-id> --project-id <project-id> --field-id <status-field-id> --single-select-option-id <option-id>`.
-3. If it fails (for example the token lacks the `project` scope), tell the user which move is pending. Do not skip it silently and do not block the PR on it.
+3. If it fails (for example the token lacks the `project` scope), tell the user the move is pending. Do not skip it silently and do not block the work on it.
