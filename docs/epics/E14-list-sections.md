@@ -69,4 +69,4 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 
 ### Docs
 
-- [ ] E14.14 Update `docs/architecture.md` (`Section` and `SectionMapping` in the Catalog domain model, `section` and `sectionOverride` in `GET /api/lists/{id}`, `section` in the `PATCH` row, the `list_item.section` column, the new console command, the grouping functions and components in Frontend structure) and the README ("What it does", the shopping list API, the new command and the `make unmapped-categories` row in "Make targets").
+- [x] E14.14 Update `docs/architecture.md` (`Section` and `SectionMapping` in the Catalog domain model, `section` and `sectionOverride` in `GET /api/lists/{id}`, `section` in the `PATCH` row, the `list_item.section` column, the new console command, the grouping functions and components in Frontend structure) and the README ("What it does", the shopping list API, the new command and the `make unmapped-categories` row in "Make targets").

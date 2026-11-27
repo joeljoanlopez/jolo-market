@@ -12,6 +12,7 @@ Self-hosted supermarket price comparator and shared shopping list, inspired by [
 - **Private instance**: users are created by an admin, activate their account through a one-time link, and log in with mandatory TOTP 2FA.
 - **Product images in lists**: each product of a list, and each product suggested while you type, shows its catalog image. Tapping the image in a list opens the product page. A product without an image, or with one that no longer loads, shows a grey "Sin imagen" box instead.
 - **Estimated totals** per supermarket for list items linked to a concrete product.
+- **Lists grouped by section**: a list shows its pending items under store sections (Fruta y verdura, Panadería, Lácteos y huevos… and "Otros" last), always in the same order, so you can shop section by section; checked items go to one block at the end. A product's section comes from its catalog category, and any member can move any pending item to another section with the small selector on its row ("Automática" sends a product back to its catalog section).
 - **Filter a list by supermarket**: chips above the items show only the products of one chain, with its estimated total, so you know what to buy in each store. The filter is your own view (it never changes the list) and lives in the URL (`?supermarket=`), so it survives a reload.
 - **Price history**: every catalog refresh stores a dated price snapshot. Each product has a page (`/product/:id`, linked from search results and lists) with a chart of its price over the last 30 days, 6 months, year or all of it, and its minimum, maximum and current price.
 - **Dark mode**: the app follows the light or dark theme of your device, and the "Tema" dropdown in the header forces Claro or Oscuro. The choice is remembered in your browser.
@@ -169,6 +170,16 @@ docker compose exec php bin/console app:catalog:prune-history
 
 It prints how many snapshots it deleted and the cutoff, and exits with `0`, or `2` when `PRICE_HISTORY_RETENTION_MONTHS` is below 1 (nothing is deleted).
 
+### Categories without a section
+
+A list puts each product in the section its catalog category maps to; the mapping lives in the code (`Catalog\Domain\Service\SectionMapping`), and a category it does not know lands in "Otros". To see which stored categories still do, per supermarket and with the most products first:
+
+```sh
+make unmapped-categories   # docker compose exec php bin/console app:catalog:unmapped-categories
+```
+
+It changes nothing. Its output is what a pull request that extends the mapping starts from.
+
 ### Auto-deploy (optional)
 
 The server can update itself when a pull request is merged into `main`, without opening ports or installing a GitHub runner: a user systemd timer runs `deploy/auto-deploy.sh` every 5 minutes. When `origin/main` has a new commit whose CI is green, the script fast-forwards to it and runs `docker compose up -d --build --wait` on the [production stack](#self-hosting-production): the new images are built, the php container applies the database migrations when it starts, and the deploy succeeds once every health check passes. A CI that is still running is checked again on the next run, and a red one is not deployed. It never touches a copy on another branch, with uncommitted changes in tracked files or with commits that are not in `origin/main`: it logs why and exits.
@@ -260,7 +271,10 @@ curl -b jar -H "$H" -H 'Content-Type: application/json' -d '{"name":"Compra"}' h
 curl -b jar -H "$H" -X POST http://localhost:8080/api/lists/join/<shareToken>           # 200 {id}
 curl -b jar -i 'http://localhost:8080/api/lists/<id>'                                   # list + ETag; If-None-Match → 304
 curl -b jar -H "$H" -H 'Content-Type: application/json' -d '{"type":"text","text":"pan"}' http://localhost:8080/api/lists/<id>/items   # 201 {id}
+curl -b jar -H "$H" -H 'Content-Type: application/json' -X PATCH -d '{"section":"bakery"}' http://localhost:8080/api/lists/<id>/items/<itemId>   # 204; null follows the catalog again
 ```
+
+Each item of `GET /api/lists/<id>` carries `section` (where it is shown) and `sectionOverride` (the section chosen by hand, or `null`), and a product item's `product.section` is its catalog section.
 
 ### Make targets
 
@@ -280,6 +294,7 @@ curl -b jar -H "$H" -H 'Content-Type: application/json' -d '{"type":"text","text
 | `make test-unit` | `docker compose exec php composer test:unit` |
 | `make check-frontend` | `cd frontend && npm run check`, on your machine like CI (fails when Node is missing) |
 | `make test-deploy` | `deploy/test.sh` |
+| `make unmapped-categories` | `docker compose exec php bin/console app:catalog:unmapped-categories`: the catalog categories that map to "Otros" (see [Categories without a section](#categories-without-a-section)) |
 | `make ci-scope` | `deploy/ci-scope.sh`: prints which CI jobs your branch runs, compared with `origin/main` (see [Continuous integration](#continuous-integration)); no Docker needed |
 
 ### Backend checks
