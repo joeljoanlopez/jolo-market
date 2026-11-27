@@ -5,6 +5,7 @@ import { Link } from 'react-router';
 
 import type { Product } from '@/features/catalog/domain/product';
 import { PriceTag } from '@/features/catalog/ui/components/PriceTag';
+import { ProductImage } from '@/features/catalog/ui/components/ProductImage';
 import { SupermarketBadge } from '@/features/catalog/ui/components/SupermarketBadge';
 import { Button } from '@/shared/ui/atoms/Button/Button';
 import { Text } from '@/shared/ui/atoms/Text/Text';
@@ -145,6 +146,11 @@ function Option({
 function ProductOption({ product }: { product: Product }) {
   return (
     <>
+      {/* Not a link: tapping the image picks the product, like the rest of the option (PD-97).
+          Hidden from assistive technology, since the option already names the product. */}
+      <div aria-hidden="true" className="shrink-0">
+        <ProductImage src={product.imageUrl} name={product.name} size="sm" />
+      </div>
       <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
         <Text as="span" weight="medium">
           {product.name}

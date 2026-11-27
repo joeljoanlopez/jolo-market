@@ -47,6 +47,14 @@ function options() {
   return within(screen.getByRole('listbox')).getAllByRole('option');
 }
 
+/** The image of an option, hidden from assistive technology (the option names the product). */
+function imageIn(index: number, name: string | RegExp = /.*/u) {
+  return within(screen.getAllByRole('option')[index] ?? document.body).queryByRole('img', {
+    name,
+    hidden: true,
+  });
+}
+
 describe('ProductSuggestions', () => {
   it('offers the text first, then each product with its brand, supermarket and prices (PD-80)', () => {
     renderSuggestions();
@@ -115,5 +123,29 @@ describe('ProductSuggestions', () => {
 
     expect(props.onRetry).toHaveBeenCalledOnce();
     expect(options()[0]).toHaveTextContent('Añadir «leche» como texto');
+  });
+
+  it('shows each product with its image at 48 px, or the placeholder, and the text without one (PD-97)', () => {
+    renderSuggestions({
+      search: {
+        status: 'success',
+        options: suggestionOptions([milk, { ...eggs, imageUrl: null }]),
+      },
+    });
+
+    expect(imageIn(1)).toHaveAttribute('src', 'https://img.example/leche.jpg');
+    expect(imageIn(1)).toHaveClass('size-12');
+    expect(imageIn(2, es.catalog.product.noImage)).toHaveClass('size-12');
+    expect(imageIn(0)).not.toBeInTheDocument();
+  });
+
+  it('picks the product when its image is clicked, which is not a link (PD-97)', async () => {
+    const props = renderSuggestions();
+
+    const image = imageIn(1);
+    expect(image?.closest('a')).toBeNull();
+    await userEvent.click(image ?? document.body);
+
+    expect(props.onPickProduct).toHaveBeenCalledWith(milk);
   });
 });
