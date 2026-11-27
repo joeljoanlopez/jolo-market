@@ -221,10 +221,13 @@ test('a user filters a list by supermarket, keeps the filter on reload and goes 
 });
 
 function row(page: Page, name: string) {
-  return page
-    .getByRole('list', { name: lists.page.items })
-    .getByRole('listitem')
-    .filter({ has: item(page, name) });
+  return (
+    page
+      .getByRole('list', { name: lists.page.items })
+      .getByRole('listitem')
+      // `has` resolves inside each list item, so it names the checkbox alone, not through `item()`.
+      .filter({ has: page.getByRole('checkbox', { name, exact: true }) })
+  );
 }
 
 // E15.5. The e2e catalog has no images (PD-99), so every product shows the placeholder.
