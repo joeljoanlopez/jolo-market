@@ -32,7 +32,7 @@ Typesense is reached through Symfony HttpClient from Catalog Infrastructure only
 
 ### Dictionary (Catalog)
 
-- [ ] E16.2 Define the format of `backend/config/search/synonyms.yaml`: a list of groups of equivalent words, for example `[leche, llet]` or `[huevo, huevos, ou, ous]`. Add a loader in Catalog Infrastructure that reads it into synonym groups and rejects an invalid file with a clear message: an empty group, a group of one word, a word with spaces or a word in two groups. Words are lowercased. Unit-test the loader with small fixture files (PD-101).
+- [x] E16.2 Define the format of `backend/config/search/synonyms.yaml`: a list of groups of equivalent words, for example `[leche, llet]` or `[huevo, huevos, ou, ous]`. Add a loader in Catalog Infrastructure that reads it into synonym groups and rejects an invalid file with a clear message: an empty group, a group of one word, a word with spaces or a word in two groups. Words are lowercased. Unit-test the loader with small fixture files (PD-101).
 
 ### Indexing (Catalog)
 
