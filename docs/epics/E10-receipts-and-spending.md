@@ -97,7 +97,7 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
   - Note: not done yet (PD-127): no real receipt photos or access to the local AI yet. ❓ Needs the photos and the model.
 - [x] E10.22 Add `FilesystemReceiptPhotoStorage` under `RECEIPT_STORAGE_DIR` (one file per receipt id, never a name taken from the upload). Add a `receipts` volume to `compose.yaml` and `compose.prod.yaml`. Integration test against a temporary directory.
 - [ ] E10.23 Add `symfony/messenger` with the Doctrine transport for `ReceiptReadingQueue` and the `ShoppingListDeleted` event, and a `worker` service (`messenger:consume`) in dev and prod. Every new development command or script gets the `make` question of PD-61.
-- [ ] E10.24 Add the migrations and the DBAL adapters:
+- [x] E10.24 Add the migrations and the DBAL adapters:
   - Tables `receipt` (with `read_by`), `receipt_line` and `receipt_product_link` (PK `supermarket_id`, `normalized_text`).
   - `DbalReceiptRepository`, `DbalProductLinkMemory` and the spending read model.
   - Integration tests.
