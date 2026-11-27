@@ -69,10 +69,13 @@ final class ReceiptQueriesApiTest extends ReceiptsApiTestCase
 
         self::assertResponseIsSuccessful();
         $json = $this->json();
+        self::assertIsArray($json['pending']);
+        self::assertIsArray($json['confirmed']);
         self::assertSame([$reading, $draft], array_column($json['pending'], 'id'));
         self::assertSame(['reading', 'draft'], array_column($json['pending'], 'status'));
         self::assertSame([$confirmed], array_column($json['confirmed'], 'id'));
         $summary = $json['confirmed'][0];
+        self::assertIsArray($summary);
         self::assertSame('2026-11-10', $summary['date']);
         self::assertSame(2599, $summary['totalCents']);
         self::assertSame('Mercadona', $summary['supermarketName']);
