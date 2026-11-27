@@ -10,6 +10,7 @@ import { ProductPageContainer } from '@/features/catalog/ui/containers/ProductPa
 import { SearchPageContainer } from '@/features/catalog/ui/containers/SearchPageContainer';
 import { HomePage } from '@/features/home/ui/components/HomePage';
 import { ListReceiptsContainer } from '@/features/receipts/ui/containers/ListReceiptsContainer';
+import { ReceiptPageContainer } from '@/features/receipts/ui/containers/ReceiptPageContainer';
 import { AddToListContainer } from '@/features/shopping-list/ui/containers/AddToListContainer';
 import { BackToListContainer } from '@/features/shopping-list/ui/containers/BackToListContainer';
 import { JoinPageContainer } from '@/features/shopping-list/ui/containers/JoinPageContainer';
@@ -68,6 +69,10 @@ export const routes: RouteObject[] = [
               {
                 path: 'lists/:listId',
                 element: <ListPageContainer renderListExtras={listReceipts} />,
+              },
+              {
+                path: 'lists/:listId/receipts/:receiptId',
+                element: <ReceiptPageContainer notFound={<NotFoundPage />} />,
               },
               // Inside RequireAuth: a visitor without a session logs in first and comes back.
               { path: 'join/:token', element: <JoinPageContainer /> },

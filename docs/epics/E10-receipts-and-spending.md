@@ -134,13 +134,14 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
   - `MonthlySpending` with its per-supermarket breakdown, using the supermarket color tokens (PD-20).
   - Empty, loading and error states.
   - Note: `ListPageContainer` gets the section through a `renderListExtras` slot that `app/routes.tsx` fills with `ListReceiptsContainer`, so the shopping-list feature does not import receipts. Confirmed receipts also link to their review, since they can be edited again (PD-65).
-- [ ] E10.35 Add the review page `/lists/:id/receipts/:receiptId`:
+- [x] E10.35 Add the review page `/lists/:id/receipts/:receiptId`:
   - The photo, and the date and total fields.
   - The line editor: product and discount lines, quantity in units or kg.
   - On each line, the linked or suggested product with "Aceptar", "Cambiar" (search limited to the receipt's supermarket, PD-33) and "Sin enlazar".
   - The difference warning and "Confirmar".
   - "Borrar" with the inline confirmation of PD-42.
   - A non-member gets the not-found page.
+  - Note: "Confirmar" stays as "Confirmar de nuevo" on a confirmed receipt (PD-130). While the receipt is being read, the page shows the photo and a "Leyendo" message and polls until the draft is ready. The routes give the page the app's not-found page through a `notFound` prop.
 - [ ] E10.36 Add all the Spanish copy of the feature to `es.json` (no hard-coded strings).
 
 ### End to end
