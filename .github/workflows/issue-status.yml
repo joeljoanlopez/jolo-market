@@ -1,7 +1,7 @@
 name: Issue status
 
 # PD-115: the native status of the issue an epic was requested in follows the work. deploy/issue-status.sh works out
-# the issue and the status from the epic's branch name.
+# the issue and the status from the epic's branch name, or from the PR title when the branch is not an epic branch.
 #
 # GitHub runs `create` workflows from the default branch, so In progress only works once this file is on main.
 on:
@@ -36,4 +36,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BRANCH: ${{ github.head_ref }}
           BODY: ${{ github.event.pull_request.body }}
-        run: deploy/issue-status.sh pull-request-opened "$BRANCH" "$BODY"
+          TITLE: ${{ github.event.pull_request.title }}
+        run: deploy/issue-status.sh pull-request-opened "$BRANCH" "$BODY" "$TITLE"
