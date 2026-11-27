@@ -50,7 +50,7 @@ Typesense is reached through Symfony HttpClient from Catalog Infrastructure only
 
 ### API
 
-- [ ] E16.9 Add `"approximate": bool` to the response of `GET /api/products`. When Typesense does not answer or returns an error, the endpoint answers `503` with a generic title and no internal details, through a `SearchUnavailable` exception mapped like the PD-18 errors. Functional tests cover the flag and the `503` (with a Typesense adapter pointed at an unreachable URL) (PD-104, PD-105).
+- [x] E16.9 Add `"approximate": bool` to the response of `GET /api/products`. When Typesense does not answer or returns an error, the endpoint answers `503` with a generic title and no internal details, through a `SearchUnavailable` exception mapped like the PD-18 errors. Functional tests cover the flag and the `503` (with a Typesense adapter pointed at an unreachable URL) (PD-104, PD-105).
 
 ### Dictionary content
 

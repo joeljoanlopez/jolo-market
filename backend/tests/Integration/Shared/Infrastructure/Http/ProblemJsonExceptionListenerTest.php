@@ -7,6 +7,7 @@ namespace App\Tests\Integration\Shared\Infrastructure\Http;
 use App\Shared\Domain\Exception\Conflict;
 use App\Shared\Domain\Exception\InvalidArgument;
 use App\Shared\Domain\Exception\NotFound;
+use App\Shared\Domain\Exception\Unavailable;
 use App\Shared\Infrastructure\Http\ProblemJsonExceptionListener;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -50,6 +51,19 @@ final class ProblemJsonExceptionListenerTest extends TestCase
         self::assertSame(409, $response->getStatusCode());
         self::assertSame(
             ['type' => 'about:blank', 'title' => 'Conflict', 'status' => 409, 'detail' => 'Username "maria" is already taken.'],
+            $this->body($response),
+        );
+    }
+
+    #[Test]
+    public function it_maps_an_unavailable_dependency_to_a_503_without_internal_details(): void
+    {
+        $response = $this->handle(new SampleSearchUnavailable('Typesense at http://typesense:8108 timed out.'));
+
+        self::assertSame(503, $response->getStatusCode());
+        self::assertSame('application/problem+json', $response->headers->get('Content-Type'));
+        self::assertSame(
+            ['type' => 'about:blank', 'title' => 'Service Unavailable', 'status' => 503],
             $this->body($response),
         );
     }
@@ -105,5 +119,9 @@ final class SampleInvalidQuantity extends InvalidArgument
 }
 
 final class SampleUsernameTaken extends Conflict
+{
+}
+
+final class SampleSearchUnavailable extends Unavailable
 {
 }

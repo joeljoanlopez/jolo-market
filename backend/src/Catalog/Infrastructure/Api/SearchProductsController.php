@@ -39,6 +39,8 @@ final readonly class SearchProductsController
             'total' => $page->total,
             // An object even when empty, so clients always get a unit → cents map.
             'cheapestUnitPriceCents' => (object) $page->cheapestUnitPriceCentsByUnit,
+            // The results come from the typo fallback (PD-103, PD-104).
+            'approximate' => $page->approximate,
         ]);
     }
 
