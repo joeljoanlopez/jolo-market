@@ -51,7 +51,7 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 ### Frontend (domain and infrastructure)
 
 - [x] E14.8 Add `section` and `sectionOverride` to the list item type, and the catalog `section` to its product (PD-118), in `features/shopping-list/domain` and map them in `shoppingListApi` (PD-96). Add an `updateItemSection(listId, itemId, section | null)` call to the `ShoppingLists` port, `shoppingListApi` and `FakeShoppingLists`.
-- [ ] E14.9 Add pure functions in `features/shopping-list/domain` that group the unchecked items of a list (or of the E13 filtered items) by section, in the order of PD-90, keeping list order inside each section and leaving out empty sections, and return the checked items apart in list order (PD-93).
+- [x] E14.9 Add pure functions in `features/shopping-list/domain` that group the unchecked items of a list (or of the E13 filtered items) by section, in the order of PD-90, keeping list order inside each section and leaving out empty sections, and return the checked items apart in list order (PD-93).
 
 ### Frontend (presentational)
 
