@@ -1,0 +1,39 @@
+name: Issue status
+
+# PD-115: the native status of the issue an epic was requested in follows the work. deploy/issue-status.sh works out
+# the issue and the status from the epic's branch name.
+#
+# GitHub runs `create` workflows from the default branch, so In progress only works once this file is on main.
+on:
+  create:
+  pull_request:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  issue-status:
+    name: Set the issue status
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request' || github.ref_type == 'branch'
+    steps:
+      - uses: actions/checkout@v7
+
+      # The branch name and the PR body reach the script through the environment, never through the shell text.
+      - name: Branch created
+        if: github.event_name == 'create'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.ref_name }}
+        run: deploy/issue-status.sh branch-created "$BRANCH"
+
+      - name: Pull request opened
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.head_ref }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: deploy/issue-status.sh pull-request-opened "$BRANCH" "$BODY"

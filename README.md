@@ -390,6 +390,8 @@ On `main` every job runs. On any other branch a job runs only when the branch ch
 
 `make ci-scope` prints what your branch would run.
 
+A separate workflow, [`issue-status.yml`](.github/workflows/issue-status.yml), keeps the status of the GitHub issue an epic was requested in up to date (PD-115): creating a `<type>/e<n>-<slug>` branch sets `In progress`, opening its pull request sets `In review`, and opening the pull request of a `docs/e<n>-<slug>` branch (a new epic) sets `Todo`. It runs `deploy/issue-status.sh`.
+
 ## Self-hosting (production)
 
 `compose.prod.yaml` runs the production stack on a single host: nginx with the built SPA, php-fpm with OPcache, the scheduler and MySQL in a named volume. Images are built on the host from this repository; there is no registry. Requirements: Docker with Docker Compose v2, `git`, and about 2 GB of RAM to build the images.
