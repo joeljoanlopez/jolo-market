@@ -127,12 +127,13 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 - [x] E10.32 Add `FormData` uploads to `createHttpClient` (no JSON `Content-Type`, with the CSRF header). Add `createReceiptsApi(httpClient)` over the E10.26–E10.29 endpoints, validating every body (`UnexpectedResponseError` otherwise). MSW tests.
 - [x] E10.33 Add the `ReceiptsApi` port with its context and in-memory fake. Add the hooks `useListReceipts` and `useListSpending`, which poll every 5 s while a receipt is `reading` (PD-7), `useReceipt` and the editing mutations.
   - Note: `useReceipt` also polls while its receipt is being read, so the review shows the draft by itself. `useUploadReceipt` is the upload mutation; `useReceiptEditing` holds the review mutations.
-- [ ] E10.34 Add the receipts section to the list page:
+- [x] E10.34 Add the receipts section to the list page:
   - `UploadReceiptForm`: supermarket select among the enabled ones, and a photo input that accepts only JPEG, PNG and WebP up to 10 MB, checked before upload.
   - `PendingReceiptsList` ("Leyendo…" and "Borrador", linking to the review).
   - `ConfirmedReceiptsList`.
   - `MonthlySpending` with its per-supermarket breakdown, using the supermarket color tokens (PD-20).
   - Empty, loading and error states.
+  - Note: `ListPageContainer` gets the section through a `renderListExtras` slot that `app/routes.tsx` fills with `ListReceiptsContainer`, so the shopping-list feature does not import receipts. Confirmed receipts also link to their review, since they can be edited again (PD-65).
 - [ ] E10.35 Add the review page `/lists/:id/receipts/:receiptId`:
   - The photo, and the date and total fields.
   - The line editor: product and discount lines, quantity in units or kg.

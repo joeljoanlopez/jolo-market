@@ -9,6 +9,7 @@ import type { Product } from '@/features/catalog/domain/product';
 import { ProductPageContainer } from '@/features/catalog/ui/containers/ProductPageContainer';
 import { SearchPageContainer } from '@/features/catalog/ui/containers/SearchPageContainer';
 import { HomePage } from '@/features/home/ui/components/HomePage';
+import { ListReceiptsContainer } from '@/features/receipts/ui/containers/ListReceiptsContainer';
 import { AddToListContainer } from '@/features/shopping-list/ui/containers/AddToListContainer';
 import { BackToListContainer } from '@/features/shopping-list/ui/containers/BackToListContainer';
 import { JoinPageContainer } from '@/features/shopping-list/ui/containers/JoinPageContainer';
@@ -25,6 +26,11 @@ function addToList(product: Product, listId?: string) {
   return (
     <AddToListContainer productId={product.id} productName={product.name} targetListId={listId} />
   );
+}
+
+// The shopping list never imports the receipts feature: its page gets the section from here.
+function listReceipts(listId: string) {
+  return <ListReceiptsContainer listId={listId} />;
 }
 
 function backToList(listId: string) {
@@ -59,7 +65,10 @@ export const routes: RouteObject[] = [
                 element: <ProductPageContainer renderProductActions={addToList} />,
               },
               { path: 'profile', element: <ProfilePageContainer /> },
-              { path: 'lists/:listId', element: <ListPageContainer /> },
+              {
+                path: 'lists/:listId',
+                element: <ListPageContainer renderListExtras={listReceipts} />,
+              },
               // Inside RequireAuth: a visitor without a session logs in first and comes back.
               { path: 'join/:token', element: <JoinPageContainer /> },
               {

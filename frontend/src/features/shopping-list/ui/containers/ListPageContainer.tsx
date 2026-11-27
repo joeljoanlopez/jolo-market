@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 
@@ -46,8 +46,13 @@ import { ShareLinkButton } from '../components/ShareLinkButton';
 import { SupermarketFilter } from '../components/SupermarketFilter';
 import { SupermarketTotals } from '../components/SupermarketTotals';
 
+interface ListPageContainerProps {
+  /** Sections of other features shown under the list, such as its receipts (E10); the routes compose them. */
+  renderListExtras?: (listId: string) => ReactNode;
+}
+
 /** `/lists/:listId`: an open list, kept up to date while it is on screen (PD-7). */
-export function ListPageContainer() {
+export function ListPageContainer({ renderListExtras }: ListPageContainerProps = {}) {
   const { t } = useTranslation();
   const { listId = '' } = useParams();
   const state = useShoppingList(listId);
@@ -71,11 +76,11 @@ export function ListPageContainer() {
         </div>
       );
     case 'success':
-      return <OpenList list={state.list} />;
+      return <OpenList list={state.list} extras={renderListExtras?.(state.list.id) ?? null} />;
   }
 }
 
-function OpenList({ list }: { list: ShoppingList }) {
+function OpenList({ list, extras }: { list: ShoppingList; extras: ReactNode }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const items = useListItems(list.id);
@@ -187,6 +192,7 @@ function OpenList({ list }: { list: ShoppingList }) {
           (item) => item.product.name ?? t('lists.item.unknownProduct'),
         )}
       />
+      {extras}
       {management.failedAction === null ? null : (
         <Alert>{actionErrors[management.failedAction]}</Alert>
       )}
