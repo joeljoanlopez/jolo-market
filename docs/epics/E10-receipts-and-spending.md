@@ -125,7 +125,8 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 
 - [x] E10.31 Add the `receipts` feature domain: types (`Receipt`, `ReceiptLine`, `ReceiptStatus`, `MonthlySpending`) and pure functions `formatLineQuantity` (`2 ud`, `0,532 kg`), `formatMonth` (`noviembre 2026`) and `hasDifference`.
 - [x] E10.32 Add `FormData` uploads to `createHttpClient` (no JSON `Content-Type`, with the CSRF header). Add `createReceiptsApi(httpClient)` over the E10.26–E10.29 endpoints, validating every body (`UnexpectedResponseError` otherwise). MSW tests.
-- [ ] E10.33 Add the `ReceiptsApi` port with its context and in-memory fake. Add the hooks `useListReceipts` and `useListSpending`, which poll every 5 s while a receipt is `reading` (PD-7), `useReceipt` and the editing mutations.
+- [x] E10.33 Add the `ReceiptsApi` port with its context and in-memory fake. Add the hooks `useListReceipts` and `useListSpending`, which poll every 5 s while a receipt is `reading` (PD-7), `useReceipt` and the editing mutations.
+  - Note: `useReceipt` also polls while its receipt is being read, so the review shows the draft by itself. `useUploadReceipt` is the upload mutation; `useReceiptEditing` holds the review mutations.
 - [ ] E10.34 Add the receipts section to the list page:
   - `UploadReceiptForm`: supermarket select among the enabled ones, and a photo input that accepts only JPEG, PNG and WebP up to 10 MB, checked before upload.
   - `PendingReceiptsList` ("Leyendo…" and "Borrador", linking to the review).
