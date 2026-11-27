@@ -573,7 +573,7 @@ describe('ListPageContainer: product suggestions (E12)', () => {
 
     await waitFor(() => {
       expect(
-        within(screen.getByRole('list', { name: copy.page.items })).getByRole('listitem'),
+        screen.getByRole('checkbox', { name: 'Leche entera' }).closest('li'),
       ).toHaveTextContent('× 3');
     });
     expect(stored.items).toMatchObject([{ id: 'a', quantity: 3 }]);
@@ -832,5 +832,151 @@ describe('ListPageContainer: filter by supermarket (E13)', () => {
     expect(stored.items.map((item) => item.id)).toHaveLength(5);
     await user.click(await chip(copy.filter.all));
     expect(await shownItemNames()).toContain('fruta');
+  });
+});
+
+const sectionCopy = copy.sections;
+
+/** The section headers shown, in order. */
+async function sectionHeaders() {
+  return within(await itemList())
+    .queryAllByRole('heading', { level: 2 })
+    .map((heading) => heading.textContent);
+}
+
+/** The item names under one section header. */
+async function namesIn(section: string) {
+  return within(within(await itemList()).getByRole('list', { name: section }))
+    .getAllByRole('checkbox')
+    .map((box) => box.getAttribute('aria-label'));
+}
+
+function sectionSelect(name: string) {
+  return screen.findByRole('combobox', { name: copy.item.section.replace('{{name}}', name) });
+}
+
+const BREAD: ListProduct = {
+  ...MILK,
+  id: 'product-bread',
+  name: 'Pan de molde',
+  section: 'bakery',
+};
+
+describe('ListPageContainer: sections (E14)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('groups pending items under their section in the store order, "Otros" last (PD-90, PD-93)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = lists.seed({
+      items: [
+        text('napkins', 0, 'servilletas'),
+        product('milk', 1, MILK),
+        product('bread', 2, BREAD),
+        product('yogurt', 3, { ...MILK, id: 'product-yogurt', name: 'Yogur' }),
+      ],
+    });
+    renderAt(lists, `/lists/${stored.id}`);
+
+    expect(await sectionHeaders()).toEqual([
+      sectionCopy.bakery,
+      sectionCopy['dairy-and-eggs'],
+      sectionCopy.other,
+    ]);
+    expect(await namesIn(sectionCopy['dairy-and-eggs'])).toEqual(['Leche entera', 'Yogur']);
+    expect(await namesIn(sectionCopy.other)).toEqual(['servilletas']);
+  });
+
+  it('shows the checked items in one block at the end, in list order (PD-93)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = lists.seed({
+      items: [
+        { ...product('bread', 0, BREAD), checked: true },
+        product('milk', 1, MILK),
+        { ...text('napkins', 2, 'servilletas'), checked: true },
+      ],
+    });
+    renderAt(lists, `/lists/${stored.id}`);
+
+    expect(await sectionHeaders()).toEqual([sectionCopy['dairy-and-eggs']]);
+    expect(await shownItemNames()).toEqual(['Leche entera', 'Pan de molde', 'servilletas']);
+  });
+
+  it('moves a free-text item to the section a member chooses (PD-92)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = lists.seed({ items: [text('bread', 0, 'pan'), product('milk', 1, MILK)] });
+    renderAt(lists, `/lists/${stored.id}`);
+    const user = userEvent.setup();
+
+    await user.selectOptions(await sectionSelect('pan'), 'bakery');
+
+    await waitFor(async () => {
+      expect(await sectionHeaders()).toEqual([sectionCopy.bakery, sectionCopy['dairy-and-eggs']]);
+    });
+    expect(await namesIn(sectionCopy.bakery)).toEqual(['pan']);
+    expect(stored.items[0]?.sectionOverride).toBe('bakery');
+  });
+
+  it('sends a product back to its catalog section with "Automática" (PD-92)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = lists.seed({
+      items: [{ ...product('milk', 0, MILK), section: 'drinks', sectionOverride: 'drinks' }],
+    });
+    renderAt(lists, `/lists/${stored.id}`);
+    const user = userEvent.setup();
+    expect(await sectionHeaders()).toEqual([sectionCopy.drinks]);
+
+    await user.selectOptions(await sectionSelect('Leche entera'), '');
+
+    await waitFor(async () => {
+      expect(await sectionHeaders()).toEqual([sectionCopy['dairy-and-eggs']]);
+    });
+    expect(stored.items[0]?.sectionOverride).toBeNull();
+  });
+
+  it('drops a section once its last pending item is checked (PD-93)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = lists.seed({ items: [product('bread', 0, BREAD), product('milk', 1, MILK)] });
+    renderAt(lists, `/lists/${stored.id}`);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Pan de molde' }));
+
+    await waitFor(async () => {
+      expect(await sectionHeaders()).toEqual([sectionCopy['dairy-and-eggs']]);
+    });
+  });
+
+  it('shows a section change of another member after the next poll (PD-7, PD-43)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const lists = new FakeShoppingLists();
+    const stored = lists.seed({ items: [text('bread', 0, 'pan')] });
+    renderAt(lists, `/lists/${stored.id}`);
+    expect(await sectionHeaders()).toEqual([sectionCopy.other]);
+
+    lists.currentUser = JOAN;
+    stored.members = [JOAN];
+    await lists.updateItemSection(stored.id, 'bread', 'bakery');
+    await act(() => vi.advanceTimersByTimeAsync(LIST_REFRESH_INTERVAL_MS));
+
+    await waitFor(async () => {
+      expect(await sectionHeaders()).toEqual([sectionCopy.bakery]);
+    });
+  });
+
+  it('groups the products of the chosen supermarket the same way (PD-85, PD-93)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = lists.seed({
+      items: [
+        product('bread', 0, BREAD),
+        product('oil', 1, OIL),
+        product('milk', 2, MILK),
+        text('napkins', 3, 'servilletas'),
+      ],
+    });
+    renderAt(lists, `/lists/${stored.id}?supermarket=mercadona`);
+
+    expect(await sectionHeaders()).toEqual([sectionCopy.bakery, sectionCopy['dairy-and-eggs']]);
   });
 });

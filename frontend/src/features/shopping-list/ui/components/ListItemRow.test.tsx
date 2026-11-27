@@ -1,11 +1,13 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import es from '@/shared/i18n/locales/es.json';
 import { renderWithProviders as renderWithoutRouter } from '@/test/render';
 
+import type { SectionId } from '../../domain/sections';
 import type { ListItem, ListProduct, ProductItem } from '../../domain/shoppingList';
 import { ListItemRow } from './ListItemRow';
 
@@ -56,7 +58,7 @@ const TEXT_ITEM: ListItem = {
 };
 
 /** The product name and image link to the product page, so the row needs a router. */
-function renderRow(item: ListItem) {
+function renderRow(item: ListItem, onSectionChange: (section: SectionId | null) => void = vi.fn()) {
   const ui: ReactElement = (
     <MemoryRouter>
       <ul>
@@ -65,6 +67,7 @@ function renderRow(item: ListItem) {
           supermarketName="Mercadona"
           onCheckedChange={() => undefined}
           onRemove={() => undefined}
+          onSectionChange={onSectionChange}
         />
       </ul>
     </MemoryRouter>
@@ -127,5 +130,74 @@ describe('ListItemRow', () => {
 
     expect(image('Foto de Leche entera')).not.toHaveClass('opacity-50');
     expect(screen.getByText(es.lists.item.unavailable)).toBeInTheDocument();
+  });
+
+  describe('section selector (PD-92, PD-116)', () => {
+    const sectionNames = Object.values(es.lists.sections);
+    const selector = (name: string) =>
+      screen.getByRole('combobox', { name: es.lists.item.section.replace('{{name}}', name) });
+    const optionNames = (name: string) =>
+      within(selector(name))
+        .getAllByRole('option')
+        .map((option) => option.textContent);
+
+    it('offers the thirteen sections for a free-text item, with its current one chosen', () => {
+      renderRow({ ...TEXT_ITEM, section: 'bakery', sectionOverride: 'bakery' });
+
+      expect(optionNames('pan')).toEqual(sectionNames);
+      expect(selector('pan')).toHaveValue('bakery');
+      expect(selector('pan')).toHaveClass('h-8');
+    });
+
+    it('shows "Otros" for a free-text item without a choice', () => {
+      renderRow(TEXT_ITEM);
+
+      expect(selector('pan')).toHaveDisplayValue(es.lists.sections.other);
+    });
+
+    it('offers "Automática (<catalog section>)" first for a product item, chosen while it follows the catalog', () => {
+      renderRow(aProductItem({ section: 'dairy-and-eggs' }));
+
+      const automatic = es.lists.item.automaticSection.replace(
+        '{{section}}',
+        es.lists.sections['dairy-and-eggs'],
+      );
+      expect(optionNames('Leche entera')).toEqual([automatic, ...sectionNames]);
+      expect(selector('Leche entera')).toHaveDisplayValue(automatic);
+    });
+
+    it('shows the section chosen by hand on a product item', () => {
+      renderRow({ ...aProductItem(), section: 'drinks', sectionOverride: 'drinks' });
+
+      expect(selector('Leche entera')).toHaveDisplayValue(es.lists.sections.drinks);
+    });
+
+    it('emits the chosen section, and null for "Automática"', async () => {
+      const onSectionChange = vi.fn();
+      renderRow(
+        { ...aProductItem(), section: 'drinks', sectionOverride: 'drinks' },
+        onSectionChange,
+      );
+
+      await userEvent.selectOptions(selector('Leche entera'), 'bakery');
+      await userEvent.selectOptions(selector('Leche entera'), '');
+
+      expect(onSectionChange.mock.calls).toEqual([['bakery'], [null]]);
+    });
+
+    it('emits null when a free-text item goes back to "Otros", its default', async () => {
+      const onSectionChange = vi.fn();
+      renderRow({ ...TEXT_ITEM, section: 'bakery', sectionOverride: 'bakery' }, onSectionChange);
+
+      await userEvent.selectOptions(selector('pan'), 'other');
+
+      expect(onSectionChange).toHaveBeenCalledWith(null);
+    });
+
+    it('is not shown on a checked item', () => {
+      renderRow({ ...TEXT_ITEM, checked: true });
+
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    });
   });
 });

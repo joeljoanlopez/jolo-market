@@ -15,11 +15,12 @@ import { Text } from '@/shared/ui/atoms/Text/Text';
 import { useListItems, type AddItemError } from '../../application/useListItems';
 import { useListManagement, type ListAction } from '../../application/useListManagement';
 import { useShoppingList } from '../../application/useShoppingList';
+import { groupBySection } from '../../domain/sections';
 import {
   isOwner,
-  itemsForDisplay,
   joinPath,
   unpricedItems,
+  type ListItem,
   type ShoppingList,
 } from '../../domain/shoppingList';
 import {
@@ -39,6 +40,7 @@ import { AddItemForm, type OpenSuggestions } from '../components/AddItemForm';
 import { ListActions } from '../components/ListActions';
 import { ListItemRow } from '../components/ListItemRow';
 import { ListNotFound } from '../components/ListNotFound';
+import { SectionHeader } from '../components/SectionHeader';
 import { MembersPanel } from '../components/MembersPanel';
 import { ShareLinkButton } from '../components/ShareLinkButton';
 import { SupermarketFilter } from '../components/SupermarketFilter';
@@ -95,8 +97,28 @@ function OpenList({ list }: { list: ShoppingList }) {
     delete: t('lists.actions.errors.delete'),
     leave: t('lists.actions.errors.leave'),
   };
-  const shown = itemsForDisplay(
-    filter.selected === null ? list.items : itemsOfSupermarket(list.items, filter.selected),
+  const shown =
+    filter.selected === null ? list.items : itemsOfSupermarket(list.items, filter.selected);
+  const grouped = groupBySection(shown);
+  const row = (item: ListItem) => (
+    <ListItemRow
+      key={item.id}
+      item={item}
+      supermarketName={
+        item.type === 'product' && item.product.supermarketId !== null
+          ? (supermarketNames.get(item.product.supermarketId) ?? null)
+          : null
+      }
+      onCheckedChange={(checked) => {
+        items.setChecked(item.id, checked);
+      }}
+      onRemove={() => {
+        items.remove(item.id);
+      }}
+      onSectionChange={(section) => {
+        items.changeSection(item.id, section);
+      }}
+    />
   );
   const hidden = filter.selected === null ? 0 : hiddenWithoutSupermarket(list.items);
   const owner = isOwner(list);
@@ -143,24 +165,20 @@ function OpenList({ list }: { list: ShoppingList }) {
       {shown.length === 0 ? (
         <Text tone="muted">{t('lists.page.empty')}</Text>
       ) : (
-        <ul aria-label={t('lists.page.items')} className="flex flex-col gap-2">
-          {shown.map((item) => (
-            <ListItemRow
-              key={item.id}
-              item={item}
-              supermarketName={
-                item.type === 'product' && item.product.supermarketId !== null
-                  ? (supermarketNames.get(item.product.supermarketId) ?? null)
-                  : null
-              }
-              onCheckedChange={(checked) => {
-                items.setChecked(item.id, checked);
-              }}
-              onRemove={() => {
-                items.remove(item.id);
-              }}
-            />
+        <ul aria-label={t('lists.page.items')} className="flex flex-col gap-4">
+          {grouped.sections.map((group) => (
+            <li key={group.section} className="flex flex-col gap-2">
+              <SectionHeader section={group.section} />
+              <ul aria-label={t(`lists.sections.${group.section}`)} className="flex flex-col gap-2">
+                {group.items.map(row)}
+              </ul>
+            </li>
           ))}
+          {grouped.checked.length === 0 ? null : (
+            <li>
+              <ul className="flex flex-col gap-2">{grouped.checked.map(row)}</ul>
+            </li>
+          )}
         </ul>
       )}
       <SupermarketTotals

@@ -87,13 +87,6 @@ export function isOwner(list: ShoppingList): boolean {
   return list.role === 'owner';
 }
 
-/** Unchecked items first, then checked ones, each group in position order (PD-45). */
-export function itemsForDisplay(items: readonly ListItem[]): ListItem[] {
-  return [...items].sort(
-    (a, b) => Number(a.checked) - Number(b.checked) || a.position - b.position,
-  );
-}
-
 /** The list with one item checked or unchecked, e.g. to show the change before the API answers. */
 export function withItemChecked(
   list: ShoppingList,

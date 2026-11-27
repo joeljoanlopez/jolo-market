@@ -55,12 +55,12 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 
 ### Frontend (presentational)
 
-- [ ] E14.10 Add a `SectionHeader` component and a section selector on `ListItemRow` for pending items (a compact native select under the quantity line, labelled with the item's name, PD-116): the thirteen sections by their Spanish names, and for a product item also "Automática (<catalog section>)" (PD-92). It only gets props and emits `onSectionChange(section | null)`. Theme tokens only, `cva` variants if needed.
+- [x] E14.10 Add a `SectionHeader` component and a section selector on `ListItemRow` for pending items (a compact native select under the quantity line, labelled with the item's name, PD-116): the thirteen sections by their Spanish names, and for a product item also "Automática (<catalog section>)" (PD-92). It only gets props and emits `onSectionChange(section | null)`. Theme tokens only, `cva` variants if needed.
 
 ### Frontend (container)
 
-- [ ] E14.11 Wire it into `ListPageContainer` with `useListItems`: render the grouped unchecked items with their headers, then the checked block (PD-93), also when a supermarket is chosen (E13). Changing the selector calls `updateItemSection`, and the item moves to its new section. Container tests with `FakeShoppingLists` cover the grouping, a free-text item in "Otros", moving an item, going back to "Automática", checking the last item of a section (the section disappears) and a section change by another member arriving through polling.
-- [ ] E14.12 Add the Spanish copy to `es.json`: the thirteen section names, the selector label and "Automática ({{section}})" (PD-8).
+- [x] E14.11 Wire it into `ListPageContainer` with `useListItems`: render the grouped unchecked items with their headers, then the checked block (PD-93), also when a supermarket is chosen (E13). Changing the selector calls `updateItemSection`, and the item moves to its new section. Container tests with `FakeShoppingLists` cover the grouping, a free-text item in "Otros", moving an item, going back to "Automática", checking the last item of a section (the section disappears) and a section change by another member arriving through polling.
+- [x] E14.12 Add the Spanish copy to `es.json`: the thirteen section names, the selector label and "Automática ({{section}})" (PD-8).
 
 ### End to end
 

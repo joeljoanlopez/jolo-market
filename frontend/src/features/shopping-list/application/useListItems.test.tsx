@@ -137,6 +137,33 @@ describe('useListItems', () => {
       expect(itemsOf(result.current.list)).toEqual([]);
     });
   });
+
+  it('chooses the section of an item and removes the choice (PD-92)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = seedWithBread(lists);
+    const { result } = renderListWithItems(lists, stored.id);
+    await loaded(result);
+
+    act(() => {
+      result.current.items.changeSection('bread', 'bakery');
+    });
+    await waitFor(() => {
+      expect(itemsOf(result.current.list)[0]).toMatchObject({
+        section: 'bakery',
+        sectionOverride: 'bakery',
+      });
+    });
+
+    act(() => {
+      result.current.items.changeSection('bread', null);
+    });
+    await waitFor(() => {
+      expect(itemsOf(result.current.list)[0]).toMatchObject({
+        section: 'other',
+        sectionOverride: null,
+      });
+    });
+  });
 });
 
 describe('useAddProductToList', () => {

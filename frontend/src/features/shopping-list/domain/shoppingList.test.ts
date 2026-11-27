@@ -5,7 +5,6 @@ import {
   isValidItemText,
   isValidListName,
   isValidQuantity,
-  itemsForDisplay,
   joinPath,
   unpricedItems,
   withItemChecked,
@@ -66,23 +65,6 @@ function aList(overrides: Partial<ShoppingList> = {}): ShoppingList {
 }
 
 describe('shoppingList domain', () => {
-  it('shows unchecked items first, then checked ones, each group in position order (PD-45)', () => {
-    const items = [
-      aTextItem({ id: 'a', position: 0, checked: true }),
-      aTextItem({ id: 'b', position: 1 }),
-      aTextItem({ id: 'c', position: 2, checked: true }),
-      aTextItem({ id: 'd', position: 3 }),
-    ];
-
-    expect(itemsForDisplay(items).map((item) => item.id)).toEqual(['b', 'd', 'a', 'c']);
-  });
-
-  it('sorts by position even when the items arrive out of order', () => {
-    const items = [aTextItem({ id: 'b', position: 1 }), aTextItem({ id: 'a', position: 0 })];
-
-    expect(itemsForDisplay(items).map((item) => item.id)).toEqual(['a', 'b']);
-  });
-
   it('knows whether the current user owns the list', () => {
     expect(isOwner(aList({ role: 'owner' }))).toBe(true);
     expect(isOwner(aList({ role: 'member', shareToken: null }))).toBe(false);
