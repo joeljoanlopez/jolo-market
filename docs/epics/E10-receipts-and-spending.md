@@ -41,7 +41,7 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
   - At most 200 lines.
   - Every amount is a positive `Money` (PD-19). `difference()` is products − discounts − total, with its sign as a separate value (PD-66).
 - [x] E10.5 Add `confirm` to `Receipt`. It needs a date and a total, else `ReceiptNotConfirmable` (422). A draft becomes `CONFIRMED`. Editing a confirmed receipt keeps it confirmed. A receipt that is still `READING` cannot be edited or confirmed (409) (PD-65).
-- [ ] E10.6 Add the ports `ReceiptRepository` (`save`, `findById`, `findByList`, `removeByList`), `ReceiptPhotoStorage` (`store`, `read`, `delete`) and `ProductLinkMemory` (`find(supermarketId, text)`, `remember(supermarketId, text, productId)` where the last one wins). Text is compared ignoring case and repeated spaces (PD-67).
+- [x] E10.6 Add the ports `ReceiptRepository` (`save`, `findById`, `findByList`, `removeByList`), `ReceiptPhotoStorage` (`store`, `read`, `delete`) and `ProductLinkMemory` (`find(supermarketId, text)`, `remember(supermarketId, text, productId)` where the last one wins). Text is compared ignoring case and repeated spaces (PD-67).
 
 ### Catalog
 
