@@ -35,4 +35,4 @@ The backend does not change: `ListJson` and `ProductJson` already return `imageU
 
 ### Docs
 
-- [ ] E15.6 Update `docs/architecture.md` → Frontend structure (`ProductImage` in the catalog components, its use in `ProductCard`, `ProductDetailView`, `ListItemRow` and `ProductSuggestions`) and the README ("What it does": product images in lists and in the add-item suggestions).
+- [x] E15.6 Update `docs/architecture.md` → Frontend structure (`ProductImage` in the catalog components, its use in `ProductCard`, `ProductDetailView`, `ListItemRow` and `ProductSuggestions`) and the README ("What it does": product images in lists and in the add-item suggestions).
