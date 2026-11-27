@@ -15,6 +15,9 @@ services:
     App\Receipts\Application\ReceiptProductCatalog: '@App\Receipts\Infrastructure\Catalog\CatalogReceiptProductCatalog'
     App\Receipts\Application\ReceiptSupermarkets: '@App\Receipts\Infrastructure\Catalog\CatalogReceiptSupermarkets'
     App\Receipts\Application\ReceiptUserDirectory: '@App\Receipts\Infrastructure\Identity\IdentityReceiptUserDirectory'
+    App\Receipts\Application\ReceiptReadingQueue: '@App\Receipts\Infrastructure\Messenger\MessengerReceiptReadingQueue'
+    # Every reading fails until the AI and OCR readers exist (PD-127).
+    App\Receipts\Application\ReadReceipt\ReceiptReader: '@App\Receipts\Infrastructure\Reading\NoReceiptReader'
 
 when@test:
     services:
@@ -30,4 +33,7 @@ when@test:
             public: true
         test.receipts.user_directory:
             alias: App\Receipts\Application\ReceiptUserDirectory
+            public: true
+        test.receipts.reading_queue:
+            alias: App\Receipts\Application\ReceiptReadingQueue
             public: true

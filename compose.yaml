@@ -83,6 +83,31 @@ services:
       typesense:
         condition: service_healthy
 
+  # Reads uploaded receipts (PD-65) and removes the receipts of deleted lists (PD-63): messenger:consume receipts.
+  # Same image and code as php; the time limit makes it restart regularly, so it picks up code and config changes.
+  worker:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      target: dev
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+        INSTALL_XDEBUG: ${INSTALL_XDEBUG:-false}
+    command: ["php", "bin/console", "messenger:consume", "receipts", "--time-limit=3600"]
+    restart: unless-stopped
+    volumes:
+      - ./backend:/var/www/backend
+      - receipts:/var/receipts
+    environment:
+      DATABASE_URL: "mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}?serverVersion=9.7.4&charset=utf8mb4"
+      XDEBUG_MODE: "off"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      typesense:
+        condition: service_healthy
+
   mysql:
     image: mysql:9.7.4
     command:

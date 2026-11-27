@@ -1,5 +1,27 @@
-# Messenger only carries the scheduler's messages (the "scheduler" container consumes scheduler_default).
+# The "scheduler" container consumes scheduler_default (scheduled jobs). The "worker" container consumes
+# receipts: reading uploaded receipts (PD-65).
 framework:
     messenger:
+        failure_transport: failed
+
         transports:
             sync: 'sync://'
+            # The messenger_messages table is created by a migration, so the worker never alters the schema.
+            receipts:
+                dsn: 'doctrine://default?queue_name=receipts&auto_setup=0'
+                retry_strategy:
+                    max_retries: 3
+                    delay: 5000
+                    multiplier: 3
+            failed: 'doctrine://default?queue_name=failed&auto_setup=0'
+
+        routing:
+            App\Receipts\Application\ReadReceipt\ReadReceiptCommand: receipts
+
+when@test:
+    framework:
+        messenger:
+            transports:
+                # Tests read the queued messages and run them when they need to (no worker, no database queue).
+                receipts: 'in-memory://'
+                failed: 'in-memory://'
