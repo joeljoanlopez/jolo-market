@@ -33,7 +33,7 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 
 ### Domain (Receipts)
 
-- [ ] E10.2 Create the `Receipts` context and add its value objects: `ReceiptId`, `ReceiptStatus` (`READING`, `DRAFT`, `CONFIRMED`), `LineText` (1–120 characters after trimming), `LineQuantity` (whole units 1–999, or a weight of 1–99 999 thousandths of a kg) `ReadBy` (`AI`, `OCR`, `NONE`, PD-114) and `ReceiptDate` (a day; "not in the future" is checked against the `Clock` where it is set) (PD-66).
+- [x] E10.2 Create the `Receipts` context and add its value objects: `ReceiptId`, `ReceiptStatus` (`READING`, `DRAFT`, `CONFIRMED`), `LineText` (1–120 characters after trimming), `LineQuantity` (whole units 1–999, or a weight of 1–99 999 thousandths of a kg) `ReadBy` (`AI`, `OCR`, `NONE`, PD-114) and `ReceiptDate` (a day; "not in the future" is checked against the `Clock` where it is set) (PD-66).
 - [ ] E10.3 Add the `Receipt` aggregate. `upload(listId, supermarketId, uploaderId, photo, uploadedAt)` starts it as `READING`. `completeReading(readResult)` moves it to `DRAFT` with the date, total and lines that were read and who read them, or empty with `readBy` `NONE` when reading failed (PD-65, PD-114).
 - [ ] E10.4 Add line behavior to `Receipt`:
   - `addProductLine`, `addDiscountLine`, `updateLine`, `removeLine`, `linkProduct(lineId, productId)` and `unlink` (product lines only).
