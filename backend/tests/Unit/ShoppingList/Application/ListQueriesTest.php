@@ -28,7 +28,7 @@ final class ListQueriesTest extends ShoppingListHandlersTestCase
     #[Test]
     public function the_owner_sees_the_list_with_its_link_members_and_items_in_order(): void
     {
-        $this->catalog->add(self::MILK, 'Leche entera', 125, brand: 'Hacendado', imageUrl: 'https://example.com/milk.jpg');
+        $this->catalog->add(self::MILK, 'Leche entera', 125, brand: 'Hacendado', imageUrl: 'https://example.com/milk.jpg', section: 'dairy-and-eggs');
         $listId = $this->sharedList();
         $bread = $this->addText($listId, 'pan', quantity: 2);
         $milk = $this->addProduct($listId, self::MILK, self::JOAN);
@@ -44,8 +44,8 @@ final class ListQueriesTest extends ShoppingListHandlersTestCase
         self::assertEquals(new ListUserView(self::MARIA, 'maria'), $view->owner);
         self::assertEquals([new ListUserView(self::JOAN, 'joan')], $view->members);
         self::assertEquals([
-            new ListItemView($bread, 0, 2, false, 'text', 'pan', null),
-            new ListItemView($milk, 1, 1, true, 'product', null, new ListProductView(self::MILK, 'Leche entera', 'Hacendado', 'mercadona', 125, 'https://example.com/milk.jpg', true)),
+            new ListItemView($bread, 0, 2, false, 'text', 'pan', null, 'other', null),
+            new ListItemView($milk, 1, 1, true, 'product', null, new ListProductView(self::MILK, 'Leche entera', 'Hacendado', 'mercadona', 125, 'https://example.com/milk.jpg', true, 'dairy-and-eggs'), 'dairy-and-eggs', null),
         ], $view->items);
     }
 
@@ -103,6 +103,37 @@ final class ListQueriesTest extends ShoppingListHandlersTestCase
     }
 
     #[Test]
+    public function a_product_item_is_in_its_catalog_section_and_a_free_text_item_in_other(): void
+    {
+        $this->catalog->add(self::MILK, 'Leche entera', 125, section: 'dairy-and-eggs');
+        $listId = $this->createList();
+        $this->addText($listId, 'pan');
+        $this->addProduct($listId, self::MILK);
+
+        $items = $this->getList(self::MARIA, $listId)->items;
+
+        self::assertSame(['other', 'dairy-and-eggs'], array_map(static fn (ListItemView $item): string => $item->section, $items));
+        self::assertSame([null, null], array_map(static fn (ListItemView $item): ?string => $item->sectionOverride, $items));
+    }
+
+    #[Test]
+    public function a_section_chosen_by_hand_wins_over_the_catalog_and_the_product_keeps_its_catalog_section(): void
+    {
+        $this->catalog->add(self::MILK, 'Leche entera', 125, section: 'dairy-and-eggs');
+        $listId = $this->createList();
+        $bread = $this->addText($listId, 'pan');
+        $milk = $this->addProduct($listId, self::MILK);
+        $this->chooseSection($listId, $bread, 'bakery');
+        $this->chooseSection($listId, $milk, 'drinks');
+
+        [$breadView, $milkView] = $this->getList(self::MARIA, $listId)->items;
+
+        self::assertSame(['bakery', 'bakery'], [$breadView->section, $breadView->sectionOverride]);
+        self::assertSame(['drinks', 'drinks'], [$milkView->section, $milkView->sectionOverride]);
+        self::assertSame('dairy-and-eggs', $milkView->product?->section);
+    }
+
+    #[Test]
     public function an_unavailable_product_is_shown_flagged_and_left_out_of_the_totals(): void
     {
         $this->catalog->add(self::GONE, 'Leche desnatada', 99, 'bonpreu');
@@ -113,7 +144,7 @@ final class ListQueriesTest extends ShoppingListHandlersTestCase
         $view = $this->getList(self::MARIA, $listId);
 
         self::assertEquals(
-            [new ListItemView($gone, 0, 1, false, 'product', null, new ListProductView(self::GONE, 'Leche desnatada', null, 'bonpreu', 99, null, false))],
+            [new ListItemView($gone, 0, 1, false, 'product', null, new ListProductView(self::GONE, 'Leche desnatada', null, 'bonpreu', 99, null, false, 'other'), 'other', null)],
             $view->items,
         );
         self::assertSame([], $view->totals);
@@ -130,7 +161,7 @@ final class ListQueriesTest extends ShoppingListHandlersTestCase
         $view = $this->getList(self::MARIA, $listId);
 
         self::assertEquals(
-            [new ListItemView($water, 0, 1, false, 'product', null, new ListProductView(self::WATER, null, null, null, null, null, false))],
+            [new ListItemView($water, 0, 1, false, 'product', null, new ListProductView(self::WATER, null, null, null, null, null, false, 'other'), 'other', null)],
             $view->items,
         );
         self::assertSame([], $view->totals);
@@ -178,6 +209,11 @@ final class ListQueriesTest extends ShoppingListHandlersTestCase
     private function getList(string $actor, string $listId): ListView
     {
         return (new GetListHandler($this->updater, $this->catalog, $this->directory))(new GetListQuery($actor, $listId));
+    }
+
+    private function chooseSection(string $listId, string $itemId, string $section): void
+    {
+        (new UpdateItemHandler($this->updater, $this->clock))(new UpdateItemCommand(self::MARIA, $listId, $itemId, changeSection: true, section: $section));
     }
 
     private function check(string $listId, string $itemId): void

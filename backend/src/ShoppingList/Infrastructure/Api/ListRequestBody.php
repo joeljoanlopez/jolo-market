@@ -36,6 +36,14 @@ final readonly class ListRequestBody
         return \is_array($fields) ? new self($fields) : throw InvalidRequestBody::notJson();
     }
 
+    /**
+     * Whether the field was sent, even as null: a null section removes the choice (PD-96).
+     */
+    public function has(string $name): bool
+    {
+        return \array_key_exists($name, $this->fields);
+    }
+
     public function string(string $name): ?string
     {
         $value = $this->fields[$name] ?? null;

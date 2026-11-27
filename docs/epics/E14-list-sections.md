@@ -2,7 +2,7 @@
 
 **Goal:** the owner and the members of a shopping list see its pending items grouped by store section (Fruta y verdura, Lácteos y huevos, Despensa…), in a fixed order that follows a typical walk through the store, so they can shop section by section. A product's section comes from its catalog category, and any member can change the section of any item. Requested in [issue #65](https://github.com/joeljoanlopez/jolo-market/issues/65).
 
-Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, PD-85, PD-90, PD-91, PD-92, PD-93, PD-94, PD-95, PD-96, PD-115, PD-116, PD-117.
+Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, PD-85, PD-90, PD-91, PD-92, PD-93, PD-94, PD-95, PD-96, PD-115, PD-116, PD-117, PD-118.
 
 ## Acceptance criteria
 
@@ -16,7 +16,7 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 - Existing items need no migration: free-text items show in "Otros" and product items in their catalog section (PD-94).
 - With a supermarket filter chosen (E13), the filtered items are grouped the same way (PD-93).
 - Extending the mapping moves items already in lists to their new section, without touching stored data (PD-91).
-- `GET /api/lists/{id}` returns `section` and `sectionOverride` on each item; `PATCH /api/lists/{id}/items/{itemId}` accepts `section` (a section id or `null`), and an unknown section id is a `422` (PD-96).
+- `GET /api/lists/{id}` returns `section` and `sectionOverride` on each item, and `section` on the `product` of a product item (its catalog section, PD-118); `PATCH /api/lists/{id}/items/{itemId}` accepts `section` (a section id or `null`), and an unknown section id is a `422` (PD-96).
 - `app:catalog:unmapped-categories` (and `make unmapped-categories`) lists, per supermarket, the stored categories that map to "Otros" with their product count, most products first, and changes nothing (PD-95).
 - All new copy (section names, the selector, "Automática (…)") is Spanish in `es.json` (PD-8).
 
@@ -37,7 +37,7 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 
 ### API
 
-- [ ] E14.5 Return `section` (the choice, else the catalog section, else `other`) and `sectionOverride` on each item of `GET /api/lists/{id}` (`ListJson`), and accept `section` (id or `null`) in `PATCH /api/lists/{id}/items/{itemId}` (`ListItemsController`): `204`, unknown section id `422`, unknown item `404` (PD-96). Functional tests cover a free-text item, a mapped product, an unmapped product, a removed product, setting and removing a choice, and the `version` change that polling picks up.
+- [x] E14.5 Return `section` (the choice, else the catalog section, else `other`) and `sectionOverride` on each item of `GET /api/lists/{id}` (`ListJson`), and the catalog `section` on each item's `product` (PD-118), and accept `section` (id or `null`) in `PATCH /api/lists/{id}/items/{itemId}` (`ListItemsController`): `204`, unknown section id `422`, unknown item `404` (PD-96). Functional tests cover a free-text item, a mapped product, an unmapped product, a removed product, setting and removing a choice, and the `version` change that polling picks up.
 
 ### Console
 
@@ -50,7 +50,7 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 
 ### Frontend (domain and infrastructure)
 
-- [ ] E14.8 Add `section` and `sectionOverride` to the list item type in `features/shopping-list/domain` and map them in `shoppingListApi` (PD-96). Add an `updateItemSection(listId, itemId, section | null)` call to the `ShoppingLists` port, `shoppingListApi` and `FakeShoppingLists`.
+- [ ] E14.8 Add `section` and `sectionOverride` to the list item type, and the catalog `section` to its product (PD-118), in `features/shopping-list/domain` and map them in `shoppingListApi` (PD-96). Add an `updateItemSection(listId, itemId, section | null)` call to the `ShoppingLists` port, `shoppingListApi` and `FakeShoppingLists`.
 - [ ] E14.9 Add pure functions in `features/shopping-list/domain` that group the unchecked items of a list (or of the E13 filtered items) by section, in the order of PD-90, keeping list order inside each section and leaving out empty sections, and return the checked items apart in list order (PD-93).
 
 ### Frontend (presentational)

@@ -61,6 +61,8 @@ final readonly class ListItemsController
             $body->int('quantity'),
             $body->bool('checked'),
             $body->int('position'),
+            $body->has('section'),
+            $body->string('section'),
         ));
 
         return new Response(status: Response::HTTP_NO_CONTENT);
