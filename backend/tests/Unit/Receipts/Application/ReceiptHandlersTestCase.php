@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Receipts\Application;
 
+use App\Receipts\Application\LineLinker;
 use App\Receipts\Application\UploadReceipt\UploadReceiptCommand;
 use App\Receipts\Application\UploadReceipt\UploadReceiptHandler;
 use App\Receipts\Domain\Model\Receipt;
@@ -82,6 +83,11 @@ abstract class ReceiptHandlersTestCase extends TestCase
     protected function uploadHandler(): UploadReceiptHandler
     {
         return new UploadReceiptHandler($this->access, $this->supermarkets, $this->receipts, $this->photos, $this->queue, $this->ids, $this->clock);
+    }
+
+    protected function lineLinker(): LineLinker
+    {
+        return new LineLinker($this->memory, $this->catalog);
     }
 
     protected function receipt(string $id): Receipt
