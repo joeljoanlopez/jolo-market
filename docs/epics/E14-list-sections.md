@@ -41,7 +41,7 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 
 ### Console
 
-- [ ] E14.6 Add `app:catalog:unmapped-categories` in `Catalog\Infrastructure`: it lists, per supermarket, every stored category path that `SectionMapping` sends to `other`, with its number of products, most products first, and prints a message when there is none (PD-95). Integration test against a seeded catalog. Add the `make unmapped-categories` target (with `dev-stack-only`, PD-60) and its bats test.
+- [x] E14.6 Add `app:catalog:unmapped-categories` in `Catalog\Infrastructure`: it lists, per supermarket, every stored category path that `SectionMapping` sends to `other`, with its number of products, most products first, and prints a message when there is none (PD-95). Integration test against a seeded catalog. Add the `make unmapped-categories` target (with `dev-stack-only`, PD-60) and its bats test.
 
 ### Mapping of the real chains
 
