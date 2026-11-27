@@ -59,7 +59,7 @@ Related decisions: PD-7, PD-15, PD-19, PD-22, PD-24, PD-42, PD-43, PD-44, PD-62 
 - [x] E10.11 Add `UploadReceipt`, which receives an explicit `actorId`. It rejects a non-member (404), a supermarket that is not enabled (422, PD-64), and a file that is not JPEG, PNG or WebP or that is over 10 MB (422, PD-68). It then stores the photo, saves the receipt as `READING` and queues the reading.
 - [x] E10.12 Add `ReadReceipt`, run by the worker. It reads the photo and completes the reading. A product line whose text the memory knows gets that product linked. Every other product line gets the first suggestion as its **suggested** product, which is not linked until accepted. A reader failure gives an empty draft (PD-65, PD-67).
   - Note: a receipt deleted before the worker reads it is skipped (PD-129).
-- [ ] E10.13 Add the editing use cases, each with an explicit `actorId` and the access check:
+- [x] E10.13 Add the editing use cases, each with an explicit `actorId` and the access check:
   - `UpdateReceipt` (date, total).
   - `AddLine`, `UpdateLine`, `RemoveLine`.
   - `LinkLine` and `UnlinkLine`. Linking checks that the product belongs to the receipt's supermarket, else 422.

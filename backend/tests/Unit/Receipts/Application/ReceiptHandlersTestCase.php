@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Receipts\Application;
 
 use App\Receipts\Application\LineLinker;
+use App\Receipts\Application\ReadReceipt\ReadReceiptCommand;
+use App\Receipts\Application\ReadReceipt\ReadReceiptHandler;
+use App\Receipts\Application\ReceiptUpdater;
 use App\Receipts\Application\UploadReceipt\UploadReceiptCommand;
 use App\Receipts\Application\UploadReceipt\UploadReceiptHandler;
 use App\Receipts\Domain\Model\Receipt;
@@ -83,6 +86,22 @@ abstract class ReceiptHandlersTestCase extends TestCase
     protected function uploadHandler(): UploadReceiptHandler
     {
         return new UploadReceiptHandler($this->access, $this->supermarkets, $this->receipts, $this->photos, $this->queue, $this->ids, $this->clock);
+    }
+
+    /**
+     * An uploaded receipt that the worker read as nothing: an empty draft.
+     */
+    protected function draft(string $actor = self::MARIA, string $supermarket = 'mercadona'): string
+    {
+        $receiptId = $this->upload($actor, $supermarket);
+        (new ReadReceiptHandler($this->receipts, $this->photos, $this->reader, $this->lineLinker(), $this->ids, $this->clock))(new ReadReceiptCommand($receiptId));
+
+        return $receiptId;
+    }
+
+    protected function updater(): ReceiptUpdater
+    {
+        return new ReceiptUpdater($this->access, $this->receipts);
     }
 
     protected function lineLinker(): LineLinker
