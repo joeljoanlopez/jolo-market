@@ -64,7 +64,8 @@ Related decisions: PD-3, PD-7, PD-8, PD-22, PD-43, PD-45, PD-58, PD-60, PD-61, P
 
 ### End to end
 
-- [ ] E14.13 Extend `frontend/e2e/lists.spec.ts`: a user adds a dairy product and a free-text item to a list, sees each under its section header in the PD-90 order ("Otros" last), moves the free-text item to another section and sees it there after a reload, and checks an item and sees it in the checked block at the end.
+- [x] E14.13 Extend `frontend/e2e/lists.spec.ts`: a user adds a dairy product and a free-text item to a list, sees each under its section header in the PD-90 order ("Otros" last), moves the free-text item to another section and sees it there after a reload, and checks an item and sees it in the checked block at the end.
+  - Note: the e2e catalog (`backend/tests/Fixtures/e2e/catalog.sql`) now files its products under "Lácteos y huevos" instead of "Lácteos", so the dummy mapping (PD-115) puts the milk in Lácteos y huevos.
 
 ### Docs
 
