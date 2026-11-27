@@ -97,6 +97,55 @@ final class ReceiptLine
         return $this->suggestedProductId;
     }
 
+    /**
+     * A new text drops the link and the suggestion, which were for the old one (PD-128).
+     */
+    public function edit(LineText $text, ?LineQuantity $quantity, Money $amount): void
+    {
+        if ($this->isProduct() && null === $quantity) {
+            throw new \InvalidArgumentException('A product line needs a quantity.');
+        }
+        if (!$this->isProduct() && null !== $quantity) {
+            throw NotAProductLine::withId($this->id->value());
+        }
+        self::assertPositive($amount);
+
+        if ($text->value() !== $this->text->value()) {
+            $this->linkedProductId = null;
+            $this->suggestedProductId = null;
+        }
+        $this->text = $text;
+        $this->quantity = $quantity;
+        $this->amount = $amount;
+    }
+
+    public function link(ProductId $productId): void
+    {
+        $this->assertProduct();
+        $this->linkedProductId = $productId;
+        $this->suggestedProductId = null;
+    }
+
+    public function suggest(ProductId $productId): void
+    {
+        $this->assertProduct();
+        $this->suggestedProductId = $productId;
+    }
+
+    public function unlink(): void
+    {
+        $this->assertProduct();
+        $this->linkedProductId = null;
+        $this->suggestedProductId = null;
+    }
+
+    private function assertProduct(): void
+    {
+        if (!$this->isProduct()) {
+            throw NotAProductLine::withId($this->id->value());
+        }
+    }
+
     private static function assertPositive(Money $amount): void
     {
         if (0 === $amount->cents()) {

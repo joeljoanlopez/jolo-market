@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace App\Receipts\Domain\Model;
 
+use App\Receipts\Domain\ValueObject\InvalidReceiptDate;
+use App\Receipts\Domain\ValueObject\LineQuantity;
+use App\Receipts\Domain\ValueObject\LineText;
 use App\Receipts\Domain\ValueObject\ListId;
 use App\Receipts\Domain\ValueObject\PhotoType;
+use App\Receipts\Domain\ValueObject\ProductId;
 use App\Receipts\Domain\ValueObject\ReadBy;
 use App\Receipts\Domain\ValueObject\ReceiptDate;
 use App\Receipts\Domain\ValueObject\ReceiptId;
+use App\Receipts\Domain\ValueObject\ReceiptLineId;
 use App\Receipts\Domain\ValueObject\ReceiptStatus;
 use App\Receipts\Domain\ValueObject\SupermarketId;
 use App\Shared\Domain\ValueObject\Money;
@@ -95,6 +100,102 @@ final class Receipt
         $this->changed();
     }
 
+    public function addProductLine(ReceiptLineId $lineId, LineText $text, LineQuantity $quantity, Money $amount): void
+    {
+        $this->addLine(ReceiptLine::product($lineId, $text, $quantity, $amount));
+    }
+
+    public function addDiscountLine(ReceiptLineId $lineId, LineText $text, Money $amount): void
+    {
+        $this->addLine(ReceiptLine::discount($lineId, $text, $amount));
+    }
+
+    /**
+     * The quantity is required for a product line and must be null for a discount line.
+     */
+    public function updateLine(ReceiptLineId $lineId, LineText $text, ?LineQuantity $quantity, Money $amount): void
+    {
+        $this->line($lineId)->edit($text, $quantity, $amount);
+        $this->changed();
+    }
+
+    public function removeLine(ReceiptLineId $lineId): void
+    {
+        $lines = $this->lines;
+        unset($lines[$this->indexOf($lineId)]);
+        $this->lines = array_values($lines);
+        $this->changed();
+    }
+
+    /**
+     * The product must be of the receipt's supermarket; the application checks it (PD-67).
+     */
+    public function linkProduct(ReceiptLineId $lineId, ProductId $productId): void
+    {
+        $this->line($lineId)->link($productId);
+        $this->changed();
+    }
+
+    /**
+     * A suggested product is shown but not linked until a member accepts it (PD-67).
+     */
+    public function suggestProduct(ReceiptLineId $lineId, ProductId $productId): void
+    {
+        $this->line($lineId)->suggest($productId);
+        $this->changed();
+    }
+
+    public function unlink(ReceiptLineId $lineId): void
+    {
+        $this->line($lineId)->unlink();
+        $this->changed();
+    }
+
+    /**
+     * PD-66: the date is never in the future, as a day in Europe/Madrid.
+     */
+    public function changeDate(ReceiptDate $date, \DateTimeImmutable $now): void
+    {
+        if ($date->isAfter(ReceiptDate::today($now))) {
+            throw InvalidReceiptDate::inTheFuture($date->value());
+        }
+
+        $this->date = $date;
+        $this->changed();
+    }
+
+    public function changeTotal(Money $total): void
+    {
+        if (0 === $total->cents()) {
+            throw InvalidReceiptAmount::notPositive();
+        }
+
+        $this->total = $total;
+        $this->changed();
+    }
+
+    /**
+     * Null while there is no total to compare with (PD-66).
+     */
+    public function difference(): ?ReceiptDifference
+    {
+        if (null === $this->total) {
+            return null;
+        }
+
+        $products = Money::eur(0);
+        $discounts = Money::eur(0);
+        foreach ($this->lines as $line) {
+            if ($line->isProduct()) {
+                $products = $products->add($line->amount());
+            } else {
+                $discounts = $discounts->add($line->amount());
+            }
+        }
+
+        return ReceiptDifference::between($products, $discounts, $this->total);
+    }
+
     public function id(): ReceiptId
     {
         return $this->id;
@@ -172,6 +273,32 @@ final class Receipt
     public function hasUnsavedChanges(): bool
     {
         return $this->version !== $this->loadedVersion;
+    }
+
+    private function addLine(ReceiptLine $line): void
+    {
+        if (\count($this->lines) >= self::MAX_LINES) {
+            throw TooManyReceiptLines::max(self::MAX_LINES);
+        }
+
+        $this->lines[] = $line;
+        $this->changed();
+    }
+
+    private function line(ReceiptLineId $lineId): ReceiptLine
+    {
+        return $this->lines[$this->indexOf($lineId)];
+    }
+
+    private function indexOf(ReceiptLineId $lineId): int
+    {
+        foreach ($this->lines as $index => $line) {
+            if ($line->id()->equals($lineId)) {
+                return $index;
+            }
+        }
+
+        throw ReceiptLineNotFound::withId($lineId->value());
     }
 
     private function changed(): void
