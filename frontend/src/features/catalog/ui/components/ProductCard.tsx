@@ -9,6 +9,7 @@ import type { Product } from '../../domain/product';
 import { productPath } from '../../domain/productPath';
 import { useUnitSymbols } from '../useUnitSymbols';
 import { PriceTag } from './PriceTag';
+import { ProductImage } from './ProductImage';
 import { SupermarketBadge } from './SupermarketBadge';
 
 interface ProductCardProps {
@@ -25,20 +26,7 @@ export function ProductCard({ product, highlighted = false, actions }: ProductCa
 
   return (
     <article className="flex gap-3 rounded-lg border border-border bg-background p-3">
-      {product.imageUrl === null ? (
-        <div
-          role="img"
-          aria-label={t('catalog.product.noImage')}
-          className="size-16 shrink-0 rounded-md bg-surface"
-        />
-      ) : (
-        <img
-          src={product.imageUrl}
-          alt={t('catalog.product.imageAlt', { name: product.name })}
-          loading="lazy"
-          className="size-16 shrink-0 rounded-md object-contain"
-        />
-      )}
+      <ProductImage src={product.imageUrl} name={product.name} size="md" />
       <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
         <Text as="h2" weight="medium">
           <Link to={productPath(product.id)} className="underline-offset-2 hover:underline">

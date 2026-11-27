@@ -7,6 +7,7 @@ import { formatPackaging } from '../../domain/format';
 import type { ProductDetail } from '../../domain/product';
 import { useUnitSymbols } from '../useUnitSymbols';
 import { PriceTag } from './PriceTag';
+import { ProductImage } from './ProductImage';
 import { SupermarketBadge } from './SupermarketBadge';
 
 interface ProductDetailViewProps {
@@ -25,19 +26,7 @@ export function ProductDetailView({ product, actions, children }: ProductDetailV
   return (
     <article className="flex flex-col gap-6">
       <div className="flex gap-4">
-        {product.imageUrl === null ? (
-          <div
-            role="img"
-            aria-label={t('catalog.product.noImage')}
-            className="size-24 shrink-0 rounded-md bg-surface"
-          />
-        ) : (
-          <img
-            src={product.imageUrl}
-            alt={t('catalog.product.imageAlt', { name: product.name })}
-            className="size-24 shrink-0 rounded-md object-contain"
-          />
-        )}
+        <ProductImage src={product.imageUrl} name={product.name} size="lg" loading="eager" />
         <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
           <Text as="h1" size="2xl" weight="bold">
             {product.name}

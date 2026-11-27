@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -48,6 +48,14 @@ describe('ProductCard', () => {
     expect(screen.getByRole('img', { name: es.catalog.product.noImage })).toBeInTheDocument();
     expect(screen.queryByText('Hacendado')).not.toBeInTheDocument();
     expect(screen.getByText(es.catalog.product.noPackaging)).toBeInTheDocument();
+  });
+
+  it('falls back to the placeholder when the image fails to load (PD-98)', () => {
+    renderWithProviders(<ProductCard product={aProduct()} />);
+
+    fireEvent.error(screen.getByRole('img', { name: 'Foto de Leche entera' }));
+
+    expect(screen.getByRole('img', { name: es.catalog.product.noImage })).toBeInTheDocument();
   });
 
   it('highlights the price when it is the cheapest', () => {

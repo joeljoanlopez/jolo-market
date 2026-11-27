@@ -3,12 +3,13 @@ import { Link } from 'react-router';
 
 import { formatPrice } from '@/features/catalog/domain/format';
 import { productPath } from '@/features/catalog/domain/productPath';
+import { ProductImage } from '@/features/catalog/ui/components/ProductImage';
 import { Button } from '@/shared/ui/atoms/Button/Button';
 import { Checkbox } from '@/shared/ui/atoms/Checkbox/Checkbox';
 import { Text } from '@/shared/ui/atoms/Text/Text';
 import { cn } from '@/shared/ui/lib/cn';
 
-import type { ListItem } from '../../domain/shoppingList';
+import type { ListItem, ProductItem } from '../../domain/shoppingList';
 
 interface ListItemRowProps {
   item: ListItem;
@@ -37,6 +38,12 @@ export function ListItemRow({
           onCheckedChange(event.target.checked);
         }}
       />
+      {item.type === 'product' ? (
+        <ItemImage item={item} name={name} />
+      ) : (
+        // Same width as the image, so free text lines up with the product names (PD-97).
+        <div aria-hidden="true" className="w-12 shrink-0" />
+      )}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <Text as="span" weight="medium" className={cn(item.checked && 'text-muted line-through')}>
           {item.type === 'product' && item.product.name !== null ? (
@@ -69,15 +76,31 @@ export function ListItemRow({
   );
 }
 
+/**
+ * The product image, faded once checked (PD-97). For a known product it links to its page like
+ * the name (PD-48), but out of the tab order and hidden from assistive technology, which the
+ * name link already serves.
+ */
+function ItemImage({ item, name }: { item: ProductItem; name: string }) {
+  const image = (
+    <ProductImage src={item.product.imageUrl} name={name} size="sm" faded={item.checked} />
+  );
+  if (item.product.name === null) {
+    return image;
+  }
+  return (
+    <Link to={productPath(item.product.id)} tabIndex={-1} aria-hidden="true" className="shrink-0">
+      {image}
+    </Link>
+  );
+}
+
 /** The text of the item, or the product name; `null` for a product the catalog no longer knows. */
 function itemName(item: ListItem): string | null {
   return item.type === 'text' ? item.text : item.product.name;
 }
 
-function productDetails(
-  product: Extract<ListItem, { type: 'product' }>['product'],
-  supermarketName: string | null,
-): string {
+function productDetails(product: ProductItem['product'], supermarketName: string | null): string {
   const parts = [
     product.brand,
     supermarketName,
