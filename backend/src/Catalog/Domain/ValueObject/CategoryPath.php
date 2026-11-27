@@ -36,6 +36,14 @@ final readonly class CategoryPath
     }
 
     /**
+     * Reads back the form toString() gives, as it is stored.
+     */
+    public static function fromString(string $path): self
+    {
+        return self::fromSegments(explode(self::SEPARATOR, $path));
+    }
+
+    /**
      * @return non-empty-list<string>
      */
     public function segments(): array

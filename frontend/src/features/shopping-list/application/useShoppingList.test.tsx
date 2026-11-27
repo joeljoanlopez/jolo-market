@@ -54,6 +54,8 @@ describe('useShoppingList', () => {
       checked: false,
       type: 'text',
       text: 'pan',
+      section: 'other',
+      sectionOverride: null,
     });
     await act(() => vi.advanceTimersByTimeAsync(LIST_REFRESH_INTERVAL_MS));
 

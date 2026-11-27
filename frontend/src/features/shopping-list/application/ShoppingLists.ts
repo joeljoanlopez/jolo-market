@@ -1,3 +1,4 @@
+import type { SectionId } from '../domain/sections';
 import type { ListSummary, NewItem, ShoppingList } from '../domain/shoppingList';
 
 export interface CallOptions {
@@ -40,6 +41,8 @@ export interface ShoppingLists {
   /** Resolves with the item id (an unchecked product already in the list gets the quantity added). */
   addItem(listId: string, item: NewItem): Promise<string>;
   updateItem(listId: string, itemId: string, changes: ItemChanges): Promise<void>;
+  /** Chooses the item's section, or with `null` lets it follow the catalog again (PD-92). */
+  updateItemSection(listId: string, itemId: string, section: SectionId | null): Promise<void>;
   removeItem(listId: string, itemId: string): Promise<void>;
   clearCheckedItems(listId: string): Promise<void>;
 }

@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { ValidationError } from '@/shared/http/errors';
 
+import type { SectionId } from '../domain/sections';
 import {
   isValidItemText,
   isValidQuantity,
@@ -17,6 +18,7 @@ export type AddItemError = 'invalid' | 'failed';
 type ItemChange =
   | { kind: 'check'; itemId: string; checked: boolean }
   | { kind: 'quantity'; itemId: string; quantity: number }
+  | { kind: 'section'; itemId: string; section: SectionId | null }
   | { kind: 'remove'; itemId: string };
 
 export interface ListItems {
@@ -27,6 +29,8 @@ export interface ListItems {
   /** Shown at once; undone if the API refuses it (PD-43: it states the intent, never toggles). */
   setChecked: (itemId: string, checked: boolean) => void;
   changeQuantity: (itemId: string, quantity: number) => void;
+  /** Chooses the item's section, or with `null` lets it follow the catalog (PD-92). */
+  changeSection: (itemId: string, section: SectionId | null) => void;
   remove: (itemId: string) => void;
   /** The last change of an item failed. */
   failed: boolean;
@@ -63,6 +67,8 @@ export function useListItems(listId: string): ListItems {
           return lists.updateItem(listId, itemChange.itemId, { checked: itemChange.checked });
         case 'quantity':
           return lists.updateItem(listId, itemChange.itemId, { quantity: itemChange.quantity });
+        case 'section':
+          return lists.updateItemSection(listId, itemChange.itemId, itemChange.section);
         case 'remove':
           return lists.removeItem(listId, itemChange.itemId);
       }
@@ -109,6 +115,9 @@ export function useListItems(listId: string): ListItems {
     },
     changeQuantity: (itemId, quantity) => {
       change.mutate({ kind: 'quantity', itemId, quantity });
+    },
+    changeSection: (itemId, section) => {
+      change.mutate({ kind: 'section', itemId, section });
     },
     remove: (itemId) => {
       change.mutate({ kind: 'remove', itemId });

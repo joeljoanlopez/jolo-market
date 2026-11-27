@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\ShoppingList\Domain\Model;
 
+use App\ShoppingList\Domain\ValueObject\ItemSection;
 use App\ShoppingList\Domain\ValueObject\ListItemId;
 use App\ShoppingList\Domain\ValueObject\ProductId;
 use App\ShoppingList\Domain\ValueObject\Quantity;
 
 /**
  * An entity inside the ShoppingList aggregate; only the list changes it. Its position is its
- * place in the list. The quantity is always positive (Quantity).
+ * place in the list. The quantity is always positive (Quantity). Its section is the one a member
+ * chose (PD-92), or null to follow its catalog section, or "other" for free text.
  *
  * Changes state the intent (PD-43): checking sets checked, it never toggles. Each change says
  * whether it changed anything, so the list only moves its version on a real change.
@@ -22,20 +24,21 @@ final class ListItem
         private readonly ItemContent $content,
         private Quantity $quantity,
         private bool $checked,
+        private ?ItemSection $section,
     ) {
     }
 
     public static function add(ListItemId $id, ItemContent $content, Quantity $quantity): self
     {
-        return new self($id, $content, $quantity, false);
+        return new self($id, $content, $quantity, false, null);
     }
 
     /**
      * Rebuilds a stored item. Only persistence adapters call it.
      */
-    public static function reconstitute(ListItemId $id, ItemContent $content, Quantity $quantity, bool $checked): self
+    public static function reconstitute(ListItemId $id, ItemContent $content, Quantity $quantity, bool $checked, ?ItemSection $section): self
     {
-        return new self($id, $content, $quantity, $checked);
+        return new self($id, $content, $quantity, $checked, $section);
     }
 
     public function id(): ListItemId
@@ -56,6 +59,11 @@ final class ListItem
     public function isChecked(): bool
     {
         return $this->checked;
+    }
+
+    public function section(): ?ItemSection
+    {
+        return $this->section;
     }
 
     public function holdsProduct(ProductId $productId): bool
@@ -85,6 +93,19 @@ final class ListItem
             return false;
         }
         $this->checked = $checked;
+
+        return true;
+    }
+
+    /**
+     * @internal
+     */
+    public function changeSection(?ItemSection $section): bool
+    {
+        if ($this->section === $section) {
+            return false;
+        }
+        $this->section = $section;
 
         return true;
     }

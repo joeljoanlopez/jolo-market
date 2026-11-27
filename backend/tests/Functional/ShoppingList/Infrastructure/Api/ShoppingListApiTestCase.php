@@ -103,7 +103,7 @@ abstract class ShoppingListApiTestCase extends WebTestCase
         return null !== $this->lists()->findById(ShoppingListId::fromString($id));
     }
 
-    protected function seedProduct(int $number, string $name, int $priceCents, string $supermarket = 'mercadona', bool $available = true, ?string $brand = null): string
+    protected function seedProduct(int $number, string $name, int $priceCents, string $supermarket = 'mercadona', bool $available = true, ?string $brand = null, ?string $category = null): string
     {
         $id = \sprintf('0191bbbb-0000-7000-8000-%012d', $number);
         $this->db()->insert('product', [
@@ -112,6 +112,7 @@ abstract class ShoppingListApiTestCase extends WebTestCase
             'external_id' => (string) $number,
             'name' => $name,
             'brand' => $brand,
+            'category' => $category,
             'image_url' => null,
             'package_quantity' => null,
             'package_unit' => null,

@@ -25,7 +25,7 @@ final readonly class CatalogProductCatalog implements ProductCatalog
 
         $products = [];
         foreach ($views as $id => $view) {
-            $products[$id] = new CatalogProduct($view->productId, $view->name, $view->brand, $view->supermarketId, $view->supermarketName, $view->priceCents, $view->imageUrl, $view->available);
+            $products[$id] = new CatalogProduct($view->productId, $view->name, $view->brand, $view->supermarketId, $view->supermarketName, $view->priceCents, $view->imageUrl, $view->available, $view->section);
         }
 
         return $products;

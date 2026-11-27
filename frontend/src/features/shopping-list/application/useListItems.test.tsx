@@ -9,7 +9,18 @@ import { useShoppingList } from './useShoppingList';
 
 function seedWithBread(lists: FakeShoppingLists) {
   return lists.seed({
-    items: [{ id: 'bread', position: 0, quantity: 1, checked: false, type: 'text', text: 'pan' }],
+    items: [
+      {
+        id: 'bread',
+        position: 0,
+        quantity: 1,
+        checked: false,
+        type: 'text',
+        text: 'pan',
+        section: 'other',
+        sectionOverride: null,
+      },
+    ],
   });
 }
 
@@ -124,6 +135,33 @@ describe('useListItems', () => {
     });
     await waitFor(() => {
       expect(itemsOf(result.current.list)).toEqual([]);
+    });
+  });
+
+  it('chooses the section of an item and removes the choice (PD-92)', async () => {
+    const lists = new FakeShoppingLists();
+    const stored = seedWithBread(lists);
+    const { result } = renderListWithItems(lists, stored.id);
+    await loaded(result);
+
+    act(() => {
+      result.current.items.changeSection('bread', 'bakery');
+    });
+    await waitFor(() => {
+      expect(itemsOf(result.current.list)[0]).toMatchObject({
+        section: 'bakery',
+        sectionOverride: 'bakery',
+      });
+    });
+
+    act(() => {
+      result.current.items.changeSection('bread', null);
+    });
+    await waitFor(() => {
+      expect(itemsOf(result.current.list)[0]).toMatchObject({
+        section: 'other',
+        sectionOverride: null,
+      });
     });
   });
 });

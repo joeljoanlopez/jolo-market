@@ -12,6 +12,7 @@ use App\ShoppingList\Domain\Model\ProductItem;
 use App\ShoppingList\Domain\Model\ShoppingList;
 use App\ShoppingList\Domain\Port\ShoppingListChangedConcurrently;
 use App\ShoppingList\Domain\Port\ShoppingListRepository;
+use App\ShoppingList\Domain\ValueObject\ItemSection;
 use App\ShoppingList\Domain\ValueObject\ItemText;
 use App\ShoppingList\Domain\ValueObject\ListItemId;
 use App\ShoppingList\Domain\ValueObject\ListName;
@@ -64,6 +65,7 @@ final class DbalShoppingListRepositoryTest extends KernelTestCase
         $list->addProductItem(self::user(self::JOAN), self::item(2), ProductId::fromString(self::MILK), Quantity::of(99), self::at('12:00'));
         $list->addFreeTextItem(self::user(self::MARIA), self::item(3), ItemText::fromString('huevos'), Quantity::default(), self::at('12:00'));
         $list->check(self::user(self::MARIA), self::item(2), self::at('12:00'));
+        $list->changeItemSection(self::user(self::MARIA), self::item(1), ItemSection::BAKERY, self::at('12:00'));
         $list->moveItem(self::user(self::MARIA), self::item(3), 0, self::at('12:30'));
 
         $this->repository->save($list);
@@ -75,9 +77,9 @@ final class DbalShoppingListRepositoryTest extends KernelTestCase
         self::assertSame(self::TOKEN, $found->shareToken()->value());
         self::assertEquals([new Member(self::user(self::JOAN), self::at('11:00:00.123456')), new Member(self::user(self::PEDRO), self::at('11:30'))], $found->members());
         self::assertEquals([
-            ListItem::reconstitute(self::item(3), new FreeTextItem(ItemText::fromString('huevos')), Quantity::default(), false),
-            ListItem::reconstitute(self::item(1), new FreeTextItem(ItemText::fromString('pan de ñandú')), Quantity::of(2), false),
-            ListItem::reconstitute(self::item(2), new ProductItem(ProductId::fromString(self::MILK)), Quantity::of(99), true),
+            ListItem::reconstitute(self::item(3), new FreeTextItem(ItemText::fromString('huevos')), Quantity::default(), false, null),
+            ListItem::reconstitute(self::item(1), new FreeTextItem(ItemText::fromString('pan de ñandú')), Quantity::of(2), false, ItemSection::BAKERY),
+            ListItem::reconstitute(self::item(2), new ProductItem(ProductId::fromString(self::MILK)), Quantity::of(99), true, null),
         ], $found->items());
         self::assertEquals(self::at('10:00'), $found->createdAt());
         self::assertEquals(self::at('12:30'), $found->updatedAt());

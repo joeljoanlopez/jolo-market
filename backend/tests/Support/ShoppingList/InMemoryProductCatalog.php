@@ -20,6 +20,7 @@ final class InMemoryProductCatalog implements ProductCatalog
         bool $available = true,
         ?string $brand = null,
         ?string $imageUrl = null,
+        string $section = 'other',
     ): void {
         $supermarketName = match ($supermarketId) {
             'mercadona' => 'Mercadona',
@@ -27,7 +28,7 @@ final class InMemoryProductCatalog implements ProductCatalog
             'bonpreu' => 'Bonpreu i Esclat',
             default => ucfirst($supermarketId),
         };
-        $this->products[$productId] = new CatalogProduct($productId, $name, $brand, $supermarketId, $supermarketName, $priceCents, $imageUrl, $available);
+        $this->products[$productId] = new CatalogProduct($productId, $name, $brand, $supermarketId, $supermarketName, $priceCents, $imageUrl, $available, $section);
     }
 
     public function findByIds(array $ids): array

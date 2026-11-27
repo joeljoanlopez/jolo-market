@@ -8,6 +8,7 @@ use App\Shared\Domain\Clock;
 use App\Shared\Domain\ValueObject\UserId;
 use App\ShoppingList\Application\ListUpdater;
 use App\ShoppingList\Domain\Model\ShoppingList;
+use App\ShoppingList\Domain\ValueObject\ItemSection;
 use App\ShoppingList\Domain\ValueObject\Quantity;
 
 final readonly class UpdateItemHandler
@@ -22,8 +23,9 @@ final readonly class UpdateItemHandler
     {
         $actor = UserId::fromString($command->actorId);
         $quantity = null === $command->quantity ? null : Quantity::of($command->quantity);
+        $section = self::section($command);
 
-        $this->updater->update($command->listId, function (ShoppingList $list) use ($actor, $command, $quantity): void {
+        $this->updater->update($command->listId, function (ShoppingList $list) use ($actor, $command, $quantity, $section): void {
             $itemId = ItemReference::in($list, $actor, $command->itemId);
             $now = $this->clock->now();
 
@@ -39,6 +41,18 @@ final readonly class UpdateItemHandler
             if (null !== $command->position) {
                 $list->moveItem($actor, $itemId, $command->position, $now);
             }
+            if ($command->changeSection) {
+                $list->changeItemSection($actor, $itemId, $section, $now);
+            }
         });
+    }
+
+    private static function section(UpdateItemCommand $command): ?ItemSection
+    {
+        if (!$command->changeSection || null === $command->section) {
+            return null;
+        }
+
+        return ItemSection::tryFrom($command->section) ?? throw InvalidItemSection::unknown($command->section);
     }
 }
